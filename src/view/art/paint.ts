@@ -142,6 +142,79 @@ export function eyes(ctx: Ctx, cx: number, cy: number, spread: number, size: num
   }
 }
 
+/** Anime-style eyes: almond shape, thick upper lash, tall gradient iris, two highlights, brows. */
+export function animeEyes(ctx: Ctx, cx: number, cy: number, spread: number, size: number, iris: number, look = 0): void {
+  for (const sx of [-1, 1]) {
+    const x = cx + sx * spread;
+    const w = size * 0.95;
+    const h = size * 1.15;
+    // white of the eye (almond)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(x - w, cy);
+    ctx.quadraticCurveTo(x, cy - h * 1.05, x + w, cy - h * 0.1);
+    ctx.quadraticCurveTo(x, cy + h * 0.95, x - w, cy);
+    ctx.fill();
+    // iris (tall ellipse, darker on top)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x - w, cy);
+    ctx.quadraticCurveTo(x, cy - h * 1.05, x + w, cy - h * 0.1);
+    ctx.quadraticCurveTo(x, cy + h * 0.95, x - w, cy);
+    ctx.clip();
+    ctx.fillStyle = linear(ctx, 0, cy - h, 0, cy + h, [
+      [0, hex(shade(iris, -0.55))],
+      [0.55, hex(iris)],
+      [1, hex(shade(iris, 0.45))],
+    ]);
+    ctx.beginPath();
+    ctx.ellipse(x + look + sx * 0.6, cy + h * 0.05, w * 0.62, h * 0.82, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = hex(shade(iris, -0.7));
+    ctx.beginPath();
+    ctx.ellipse(x + look + sx * 0.6, cy + h * 0.02, w * 0.28, h * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // highlights
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(x + look - w * 0.25, cy - h * 0.35, w * 0.22, h * 0.2, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + look + w * 0.25, cy + h * 0.35, w * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // thick upper lash with a small flick at the outer corner
+    ctx.strokeStyle = INK;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2.5, size * 0.42);
+    ctx.beginPath();
+    ctx.moveTo(x - w * 1.05, cy + h * 0.02);
+    ctx.quadraticCurveTo(x, cy - h * 1.12, x + w * 1.05, cy - h * 0.12);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, size * 0.22);
+    ctx.beginPath();
+    const ox = sx > 0 ? x + w * 1.05 : x - w * 1.05;
+    const oy = sx > 0 ? cy - h * 0.12 : cy + h * 0.02;
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + sx * w * 0.35, oy - h * 0.25);
+    ctx.stroke();
+    // lower lid hint
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(29,21,48,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(x - w * 0.5, cy + h * 0.72);
+    ctx.quadraticCurveTo(x, cy + h * 0.9, x + w * 0.5, cy + h * 0.66);
+    ctx.stroke();
+    // brow (slightly determined)
+    ctx.strokeStyle = '#3a2210';
+    ctx.lineWidth = Math.max(2, size * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(x - sx * w * 0.9, cy - h * 1.45);
+    ctx.quadraticCurveTo(x, cy - h * 1.75, x + sx * w * 1.1, cy - h * 1.4);
+    ctx.stroke();
+  }
+}
+
 export function blush(ctx: Ctx, cx: number, cy: number, spread: number, r = 6): void {
   for (const sx of [-1, 1]) {
     ctx.fillStyle = radial(ctx, cx + sx * spread, cy, r * 1.4, [

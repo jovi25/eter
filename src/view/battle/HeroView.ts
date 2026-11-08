@@ -3,7 +3,9 @@ import { ELEMENTS, type Element } from '../../data/elements';
 import type { HeroState } from '../../sim/types';
 import { DEPTH, unitDepth } from './layers';
 
-const ORB_OFFSET = { x: 30, y: -70 };
+// Hero art is 112×144 with feet at y=136 and the staff socket at (96,22); shown at 85%.
+const HERO_SCALE = 0.85;
+const ORB_OFFSET = { x: (96 - 56) * HERO_SCALE, y: (22 - 136) * HERO_SCALE };
 
 /** The Arcanista on the field: idle bob, walking bounce, facing, staff orb in the affinity color. */
 export class HeroView {
@@ -18,7 +20,7 @@ export class HeroView {
 
   constructor(private scene: Phaser.Scene, hero: HeroState, affinity: Element) {
     const shadow = scene.add.image(0, 2, 'shadow').setScale(0.9, 1);
-    this.body = scene.add.image(0, 0, 'hero_arcanist').setOrigin(0.5, 0.88);
+    this.body = scene.add.image(0, 0, 'hero_arcanist').setOrigin(0.5, 136 / 144).setScale(HERO_SCALE);
     this.orb = scene.add.image(ORB_OFFSET.x, ORB_OFFSET.y, 'hero_orb').setTint(ELEMENTS[affinity].color).setBlendMode(Phaser.BlendModes.ADD);
     this.root = scene.add.container(hero.x, hero.y, [shadow, this.body, this.orb]);
     this.marker = scene.add.image(0, 0, 'move_marker').setDepth(DEPTH.groundFx).setVisible(false);
@@ -49,7 +51,7 @@ export class HeroView {
 
   /** Raise the staff and flash for Catalisar. */
   cast(): void {
-    this.scene.tweens.add({ targets: this.body, scaleY: 1.18, scaleX: 0.9, duration: 90, yoyo: true, ease: 'Quad.easeOut' });
+    this.scene.tweens.add({ targets: this.body, scaleY: HERO_SCALE * 1.15, scaleX: HERO_SCALE * 0.92, duration: 90, yoyo: true, ease: 'Quad.easeOut' });
     this.scene.tweens.add({ targets: this.orb, scale: 2.6, duration: 120, yoyo: true });
   }
 
@@ -71,7 +73,7 @@ export class HeroView {
       this.walkT += dtMs / 1000;
       this.body.setY(0);
       this.body.setAngle(0);
-      this.body.setScale(1, 1 + Math.sin(this.walkT * 3) * 0.025);
+      this.body.setScale(HERO_SCALE, HERO_SCALE * (1 + Math.sin(this.walkT * 3) * 0.02));
     }
   }
 }
