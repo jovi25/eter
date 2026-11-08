@@ -9,7 +9,7 @@ import { defaultModifiers, type SimModifiers } from '../data/modifiers';
 import { COMBO, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
-import { TOWERS, type TowerId, type TowerLevel } from '../data/towers';
+import { MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
 import { Rng } from './rng';
@@ -77,6 +77,7 @@ export class Simulation {
       enemies: [],
       towers: [],
       projectiles: [],
+      zones: [],
       combo: { count: 0, mult: 1, timer: 0 },
       hero: {
         x: HERO.start.x,
@@ -202,6 +203,7 @@ export class Simulation {
       splashFactor: 0,
       burnDps: 0,
       rootChance: 0,
+      chillStacks: 0,
       alive: true,
     });
     h.attackCooldown = 1 / (a.rate * this.mods.heroAttackSpeedMult);
@@ -235,7 +237,7 @@ export class Simulation {
     if (!this.mods.unlockedTowers.includes(type)) return null;
     const cost = TOWERS[type].levels[0].cost;
     if (s.gold < cost) return null;
-    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost };
+    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0 };
     s.towers.push(tower);
     this.addGold(-cost);
     this.events.emit('towerBuilt', { towerId: tower.id, slot, type });
@@ -303,6 +305,7 @@ export class Simulation {
     this.updateHero();
     this.updateTowers();
     this.updateProjectiles();
+    this.updateZones();
     this.updateCombo();
     this.cleanup();
     this.checkVictory();
@@ -559,7 +562,14 @@ export class Simulation {
   private fireChain(t: TowerState, target: EnemyState): void {
     const def = TOWERS[t.type];
     const lvl = this.levelOf(t);
-    const count = lvl.chainCount ?? 1;
+    let count = lvl.chainCount ?? 1;
+    let falloff = lvl.chainFalloff ?? 1;
+    const ab = this.abilityOf(t);
+    if (ab?.id === 'supercharge' && t.shots % ab.every === 0) {
+      count *= ab.chainMult;
+      falloff = 1;
+      this.events.emit('towerAbility', { towerId: t.id, ability: 'supercharge', x: t.x, y: t.y });
+    }
     const jump2 = (lvl.chainRange ?? 0) ** 2;
     const base = lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element];
     const points = [{ x: t.x, y: t.y }];
@@ -571,7 +581,7 @@ export class Simulation {
       points.push({ x: from.x, y: from.y });
       this.applyHit(from, {
         element: def.element,
-        damage: base * Math.pow(lvl.chainFalloff ?? 1, i),
+        damage: base * Math.pow(falloff, i),
         towerId: t.id,
         towerType: t.type,
       });
@@ -591,13 +601,39 @@ export class Simulation {
     this.events.emit('chainLightning', { towerId: t.id, points });
   }
 
+  /** The tower's special ability, if it is at max level. */
+  abilityOf(t: TowerState): TowerAbility | null {
+    return t.level >= MAX_LEVEL ? TOWERS[t.type].ability : null;
+  }
+
   private fire(t: TowerState, target: EnemyState): void {
     const def = TOWERS[t.type];
     const lvl = this.levelOf(t);
+    t.shots++;
     if (def.projectileSpeed <= 0) {
       this.fireChain(t, target);
       return;
     }
+    const ab = this.abilityOf(t);
+    this.launch(t, target);
+    if (ab?.id === 'volley' && t.shots % ab.every === 0) {
+      // Rajada: extra arrows at the next-furthest enemies in range.
+      const r2 = lvl.range * lvl.range;
+      const others = this.state.enemies
+        .filter((e) => e !== target && this.canTarget(t, e) && (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= r2)
+        .sort((a, b) => b.dist - a.dist)
+        .slice(0, ab.targets - 1);
+      for (const e of others) this.launch(t, e);
+      this.events.emit('towerAbility', { towerId: t.id, ability: 'volley', x: t.x, y: t.y });
+    }
+    t.cooldown = 1 / lvl.rate;
+    this.events.emit('towerFired', { towerId: t.id, targetId: target.id });
+  }
+
+  private launch(t: TowerState, target: EnemyState): void {
+    const def = TOWERS[t.type];
+    const lvl = this.levelOf(t);
+    const ab = this.abilityOf(t);
     const crit = lvl.critChance ? this.rng.chance(lvl.critChance) : false;
     const damage =
       lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * (crit ? (lvl.critMult ?? 2) : 1);
@@ -618,11 +654,36 @@ export class Simulation {
       splashFactor: lvl.splashFactor ?? 0,
       burnDps: lvl.burnDps ?? 0,
       rootChance: lvl.rootChance ?? 0,
+      chillStacks: ab?.id === 'deepfreeze' ? ab.stacks : 1,
+      ability: ab ?? undefined,
       alive: true,
     };
     this.state.projectiles.push(p);
-    t.cooldown = 1 / lvl.rate;
-    this.events.emit('towerFired', { towerId: t.id, targetId: target.id });
+  }
+
+  // ───────────────────────────── burning ground (max-level Braseiro) ─────────────────────────────
+
+  private createZone(x: number, y: number, radius: number, duration: number, burnDps: number): void {
+    const z = { id: this.nextId++, x, y, radius, time: duration, burnDps, tickTimer: 0 };
+    this.state.zones.push(z);
+    this.events.emit('zoneCreated', { zoneId: z.id, x, y, radius, duration });
+  }
+
+  private updateZones(): void {
+    const s = this.state;
+    if (s.zones.length === 0) return;
+    for (const z of s.zones) {
+      z.time -= DT;
+      z.tickTimer -= DT;
+      if (z.tickTimer > 0) continue;
+      z.tickTimer += STATUS.burning.tickInterval;
+      const r2 = z.radius * z.radius;
+      for (const e of s.enemies) {
+        if (!e.alive || e.flying) continue;
+        if ((e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= r2) this.applyBurn(e, z.burnDps);
+      }
+    }
+    s.zones = s.zones.filter((z) => z.time > 0);
   }
 
   private updateProjectiles(): void {
@@ -659,8 +720,11 @@ export class Simulation {
       towerId: p.towerId,
       towerType: p.towerType,
       hero: p.towerId === 0,
+      chillStacks: p.chillStacks,
+      entangle: p.ability?.id === 'entangle' ? { extra: p.ability.extra, radius: p.ability.radius } : undefined,
     };
     if (target) this.applyHit(target, base);
+    if (p.ability?.id === 'firefield') this.createZone(p.tx, p.ty, p.ability.radius, p.ability.duration, p.ability.burnDps);
     if (p.splashRadius > 0) {
       const r2 = p.splashRadius * p.splashRadius;
       for (const e of this.state.enemies.slice()) {
@@ -777,11 +841,22 @@ export class Simulation {
         if (hit.burnDps && hit.burnDps > 0) this.applyBurn(e, hit.burnDps);
         break;
       case 'ice':
-        this.applyChill(e);
+        for (let i = 0; i < (hit.chillStacks ?? 1) && e.frozenTime <= 0; i++) this.applyChill(e);
         break;
       case 'nature':
         if (hit.rootChance && this.canBeRooted(e) && this.rng.chance(hit.rootChance)) {
-          this.root(e, STATUS.rooted.duration + this.mods.rootDurationBonus);
+          const dur = STATUS.rooted.duration + this.mods.rootDurationBonus;
+          this.root(e, dur);
+          if (hit.entangle) {
+            // Raízes Profundas: the root grabs the nearest neighbours too.
+            const r2 = hit.entangle.radius ** 2;
+            const near = this.state.enemies
+              .filter((o) => o !== e && o.alive && this.canBeRooted(o) && (o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= r2)
+              .sort((a, b) => (a.x - e.x) ** 2 + (a.y - e.y) ** 2 - ((b.x - e.x) ** 2 + (b.y - e.y) ** 2))
+              .slice(0, hit.entangle.extra);
+            for (const o of near) this.root(o, dur);
+            if (near.length > 0) this.events.emit('towerAbility', { towerId: hit.towerId ?? 0, ability: 'entangle', x: e.x, y: e.y });
+          }
         }
         break;
       case 'physical':

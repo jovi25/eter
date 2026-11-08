@@ -604,6 +604,31 @@ const DRAW: Record<AssetKey, Drawer> = {
       gloss(c, cx - 5, cy - 41, 5, 3, 0.9);
     },
   },
+  fire_zone: {
+    w: 128,
+    h: 72,
+    draw: (c, cx, cy) => {
+      c.fillStyle = radial(c, cx, cy, 62, [[0, 'rgba(255,220,120,0.75)'], [0.45, 'rgba(255,110,30,0.55)'], [1, 'rgba(160,30,10,0)']]);
+      c.save();
+      c.translate(cx, cy);
+      c.scale(1, 0.55);
+      c.beginPath();
+      c.arc(0, 0, 62, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2;
+        const x = cx + Math.cos(a) * 40;
+        const y = cy + Math.sin(a) * 20;
+        shape(c, (k) => {
+          k.moveTo(x - 6, y);
+          k.quadraticCurveTo(x - 6, y - 10, x, y - 18);
+          k.quadraticCurveTo(x + 6, y - 10, x + 6, y);
+          k.closePath();
+        }, linear(c, 0, y - 18, 0, y, [[0, '#ffe27a'], [1, '#ff5a1f']]), 'rgba(122,42,16,0.6)', 1);
+      }
+    },
+  },
   pip: {
     w: 18,
     h: 18,

@@ -1,7 +1,7 @@
 import type { Element } from '../data/elements';
 import type { EnemyId } from '../data/enemies';
 import type { ReactionId } from '../data/reactions';
-import type { TowerId } from '../data/towers';
+import type { TowerAbility, TowerId } from '../data/towers';
 
 export interface EnemyState {
   id: number;
@@ -40,6 +40,7 @@ export interface TowerState {
   y: number;
   cooldown: number;
   invested: number;
+  shots: number; // attacks fired (drives every-Nth-shot abilities)
 }
 
 export interface ProjectileState {
@@ -59,7 +60,20 @@ export interface ProjectileState {
   splashFactor: number;
   burnDps: number;
   rootChance: number;
+  chillStacks: number;
+  ability?: TowerAbility; // max-level ability riding on this projectile
   alive: boolean;
+}
+
+/** Burning ground left by a max-level Braseiro. */
+export interface ZoneState {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  time: number; // seconds left
+  burnDps: number;
+  tickTimer: number;
 }
 
 export type WavePhase = 'prep' | 'spawning' | 'countdown' | 'done';
@@ -89,6 +103,7 @@ export interface SimState {
   enemies: EnemyState[];
   towers: TowerState[];
   projectiles: ProjectileState[];
+  zones: ZoneState[];
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;
@@ -116,4 +131,6 @@ export interface HitSpec {
   towerId?: number;
   towerType?: TowerId;
   hero?: boolean; // dealt by the hero (stats)
+  chillStacks?: number; // ice: stacks added per hit (default 1)
+  entangle?: { extra: number; radius: number }; // nature: a root spreads to neighbours
 }

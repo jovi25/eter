@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { ELEMENTS } from '../../data/elements';
-import { TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
+import { MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
 import type { Simulation } from '../../sim/simulation';
 import type { TowerState } from '../../sim/types';
 import { playSfx } from '../audio/sfx';
@@ -111,7 +111,14 @@ export class BuildMenu {
     sell.cost.setText(`+${this.sim.sellValue(tower)}`).setColor(PAL.goldCss);
     root.add([up.root, sell.root]);
     this.options.push(up);
-    root.add(uiText(this.scene, 0, -150, `${def.name}  nv ${tower.level}`, 22, PAL.uiText, 5));
+    root.add(uiText(this.scene, 0, -172, `${def.name}  nv ${tower.level}`, 22, PAL.uiText, 5));
+    // Max-level ability: preview it while upgrading, show it once unlocked.
+    const info = def.abilityInfo;
+    const unlocked = tower.level >= MAX_LEVEL;
+    const abilityText = unlocked ? `★ ${info.name}: ${info.desc}` : `No nível 3: ${info.name} — ${info.desc}`;
+    const ab = uiText(this.scene, 0, -146, abilityText, 17, unlocked ? PAL.goldCss : PAL.uiDim, 4);
+    ab.setWordWrapWidth(420).setAlign('center');
+    root.add(ab);
     this.refresh();
   }
 

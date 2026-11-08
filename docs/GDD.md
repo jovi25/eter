@@ -92,6 +92,20 @@ Reações em sequência (janela de 2 s) aumentam o contador: ×1,0 → máx ×1,
 - Cada reação no mapa (inclusive as do próprio Catalisar) tira 0,5 s da recarga. Visual: uma orbe voa da reação até o botão.
 - 3+ reações num único Catalisar: faixa "CATÁLISE ×N!".
 
+### Habilidades de nível máximo (pedido do jogador, durante a Fase 3)
+Objetivo: recompensar melhorar torres em vez de só espalhar muitas. Ativas só no nível 3 (aura colorida na torre; o menu mostra a prévia desde o nível 1).
+
+| Torre | Habilidade | Efeito |
+|---|---|---|
+| Arqueiro | Rajada | A cada 4º disparo, flechas extras em até 2 outros inimigos (3 no total) |
+| Braseiro | Chão em Chamas | O impacto deixa chão em chamas (raio 55, 3 s): inimigos terrestres ali ficam Queimando (12/s). Não dispara reação. |
+| Cristal Gélido | Frio Profundo | Cada acerto aplica 2 acúmulos de Resfriado |
+| Vinha Ancestral | Raízes Profundas | Ao enraizar, prende também os 2 vizinhos mais próximos (raio 75; respeita imunidade e voadores) |
+| Torre do Trovão | Supertensão | A cada 3º raio: dobro de saltos e sem perda de dano |
+
+Medido com robô (3 seeds): 5 torres no máximo vencem 3★, igual a 8 torres espalhadas; 4 torres no máximo perdem para o chefe.
+Nota: com o herói ajudando, a fase 1 ficou fácil para estratégias de combo (20 vidas); ajuste fino fica para a Fase 5.
+
 ## 4. Coleção e evolução
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

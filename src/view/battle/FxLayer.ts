@@ -138,6 +138,30 @@ export class FxLayer {
     return g;
   }
 
+  /** Burning ground patch that fades over its duration while emitting flames. */
+  fireZone(x: number, y: number, radius: number, duration: number): void {
+    const img = this.scene.add.image(x, y, 'fire_zone').setDepth(DEPTH.groundFx).setScale(radius / 55).setAlpha(0);
+    this.scene.tweens.add({ targets: img, alpha: 0.95, duration: 150 });
+    this.scene.tweens.add({ targets: img, alpha: 0, delay: duration * 1000 - 400, duration: 400, onComplete: () => img.destroy() });
+    const ticker = this.scene.time.addEvent({
+      delay: 140,
+      repeat: Math.floor((duration * 1000) / 140) - 2,
+      callback: () => this.flame(x + (Math.random() - 0.5) * radius * 1.6, y + (Math.random() - 0.5) * radius * 0.8),
+    });
+    void ticker;
+  }
+
+  /** Small label popping above something (ability names). */
+  popLabel(x: number, y: number, text: string, color: string): void {
+    const t = this.scene.add
+      .text(Phaser.Math.Clamp(x, 110, GAME_WIDTH - 110), y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '28px', color, stroke: PAL.inkCss, strokeThickness: 7 })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.banner)
+      .setScale(0.3);
+    this.scene.tweens.add({ targets: t, scale: 1, duration: 200, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: t, y: y - 40, alpha: 0, delay: 450, duration: 400, onComplete: () => t.destroy() });
+  }
+
   /** Tiny, short spark for ordinary hits (kept subtle so many towers don't white-out the screen). */
   hit(x: number, y: number, color: number): void {
     this.hitSparks.setParticleTint(color);

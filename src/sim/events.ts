@@ -18,6 +18,9 @@ export interface SimEvents {
   towerFired: { towerId: number; targetId: number };
   /** Lightning bolt path: tower first, then every enemy hit in order. */
   chainLightning: { towerId: number; points: { x: number; y: number }[] };
+  /** A max-level tower ability went off. */
+  towerAbility: { towerId: number; ability: 'volley' | 'firefield' | 'deepfreeze' | 'entangle' | 'supercharge'; x: number; y: number };
+  zoneCreated: { zoneId: number; x: number; y: number; radius: number; duration: number };
   heroFired: { targetId: number };
   /** Catalisar went off: everything within radius was hit with the affinity element. */
   catalyzed: { x: number; y: number; radius: number; element: Element; hits: number; reactions: number };

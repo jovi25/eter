@@ -42,6 +42,7 @@ export const ASSETS = {
   tower_vine: P,
   tower_storm: P,
   pip: P,
+  fire_zone: P,
   // hero
   hero_arcanist: P,
   hero_orb: P,

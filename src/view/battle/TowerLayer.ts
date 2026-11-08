@@ -1,4 +1,6 @@
 import * as Phaser from 'phaser';
+import { ELEMENTS } from '../../data/elements';
+import { MAX_LEVEL, TOWERS } from '../../data/towers';
 import type { TowerState } from '../../sim/types';
 import { unitDepth } from './layers';
 
@@ -6,12 +8,21 @@ class TowerView {
   readonly root: Phaser.GameObjects.Container;
   readonly top: Phaser.GameObjects.Image;
   readonly pips: Phaser.GameObjects.Image[] = [];
+  private aura: Phaser.GameObjects.Image;
+  private auraTween?: Phaser.Tweens.Tween;
 
-  constructor(scene: Phaser.Scene, t: TowerState) {
+  constructor(private scene: Phaser.Scene, t: TowerState) {
+    // Max-level aura: a pulsing glow in the tower's element color.
+    this.aura = scene.add
+      .image(0, 4, 'spark')
+      .setScale(5.5, 3.2)
+      .setTint(ELEMENTS[TOWERS[t.type].element].color)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setVisible(false);
     const base = scene.add.image(0, 6, 'tower_base');
     this.top = scene.add.image(0, -22, `tower_${t.type}`).setOrigin(0.5, 0.6);
     for (let i = 0; i < 3; i++) this.pips.push(scene.add.image(-18 + i * 18, 30, 'pip'));
-    this.root = scene.add.container(t.x, t.y, [base, this.top, ...this.pips]).setDepth(unitDepth(t.y + 20));
+    this.root = scene.add.container(t.x, t.y, [this.aura, base, this.top, ...this.pips]).setDepth(unitDepth(t.y + 20));
     this.setLevel(t.level);
   }
 
@@ -21,6 +32,15 @@ class TowerView {
     this.pips.forEach((p, i) => p.setVisible(i < level));
     this.baseScale = 1 + (level - 1) * 0.1;
     this.top.setScale(this.baseScale);
+    if (level >= MAX_LEVEL && !this.aura.visible) {
+      this.aura.setVisible(true).setAlpha(0.5);
+      this.auraTween = this.scene.tweens.add({ targets: this.aura, alpha: 0.95, scaleX: 6.3, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+  }
+
+  destroy(): void {
+    this.auraTween?.stop();
+    this.root.destroy();
   }
 }
 
@@ -48,7 +68,7 @@ export class TowerLayer {
     const v = this.views.get(id);
     if (!v) return;
     this.views.delete(id);
-    this.scene.tweens.add({ targets: v.root, scale: 0, alpha: 0, duration: 220, ease: 'Back.easeIn', onComplete: () => v.root.destroy() });
+    this.scene.tweens.add({ targets: v.root, scale: 0, alpha: 0, duration: 220, ease: 'Back.easeIn', onComplete: () => v.destroy() });
   }
 
   fired(id: number): void {

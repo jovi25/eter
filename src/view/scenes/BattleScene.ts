@@ -5,7 +5,7 @@ import { ENEMIES } from '../../data/enemies';
 import { ELEMENTS } from '../../data/elements';
 import { REACTIONS } from '../../data/reactions';
 import type { StageId } from '../../data/stages';
-import { TOWERS } from '../../data/towers';
+import { MAX_LEVEL, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
 import { Simulation } from '../../sim/simulation';
 import { playSfx } from '../audio/sfx';
@@ -288,6 +288,20 @@ export class BattleScene extends Phaser.Scene {
       this.fx.lightning(pts);
     });
 
+    ev.on('zoneCreated', (z) => this.fx.fireZone(z.x, z.y, z.radius, z.duration));
+
+    ev.on('towerAbility', (a) => {
+      const t = this.sim.getTower(a.towerId);
+      const name = t ? TOWERS[t.type].abilityInfo.name.toUpperCase() : '';
+      const color = t ? `#${ELEMENTS[TOWERS[t.type].element].color.toString(16).padStart(6, '0')}` : '#ffffff';
+      if (a.ability === 'entangle') {
+        this.fx.burst(a.x, a.y - 10, 0x6ad44a, 16);
+        this.fx.shockwave(a.x, a.y, 0x6ad44a, 1.4);
+      }
+      if (a.ability === 'supercharge') this.shake(90, 0.003);
+      if (t) this.fx.popLabel(t.x, t.y - 110, `${name}!`, color);
+    });
+
     ev.on('towerBuilt', (b) => {
       const t = this.sim.getTower(b.towerId)!;
       this.towers.add(t);
@@ -306,6 +320,13 @@ export class BattleScene extends Phaser.Scene {
       this.fx.burst(t.x, t.y - 20, PAL.gold, 20);
       this.fx.shockwave(t.x, t.y, PAL.gold, 1.2);
       playSfx('upgrade');
+      if (t.level >= MAX_LEVEL) {
+        const info = TOWERS[t.type].abilityInfo;
+        this.fx.bigBanner(`HABILIDADE\n${info.name.toUpperCase()}`, PAL.goldCss, 52, 700, true);
+        this.fx.shockwave(t.x, t.y, ELEMENTS[TOWERS[t.type].element].color, 2.2, 600);
+        playSfx('ready');
+        vibrate([30, 30, 60]);
+      }
     });
 
     ev.on('towerSold', (s) => {
