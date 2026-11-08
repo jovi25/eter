@@ -62,7 +62,7 @@ export class BuildMenu {
       const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
-      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, `tower_${type}`, def.levels[0].cost, locked, () => {
+      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, `ptower_${type}_0`, def.levels[0].cost, locked, () => {
         if (this.sim.state.gold < def.levels[0].cost || locked) {
           playSfx('error');
           this.shake(opt.root);
@@ -155,7 +155,7 @@ export class BuildMenu {
     g.fillCircle(0, 0, 39);
     g.fillStyle(0xffffff, 0.2);
     g.fillEllipse(-8, -14, 44, 22);
-    const img = this.scene.add.image(0, -4, icon).setScale(icon.startsWith('tower_') ? 0.62 : 1.1);
+    const img = this.scene.add.image(0, -4, icon).setScale(icon.startsWith('ptower_') ? 2 : 1.1);
     const costBg = this.scene.add.graphics();
     costBg.fillStyle(PAL.ink, 0.9);
     costBg.fillRoundedRect(-34, 26, 68, 28, 14);

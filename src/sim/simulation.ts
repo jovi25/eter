@@ -24,6 +24,7 @@ export interface SimOptions {
 export interface SpawnOptions {
   dist?: number;
   wave?: number;
+  path?: number;
   goldMult?: number;
   hp?: number; // override (tests)
 }
@@ -31,6 +32,7 @@ export interface SpawnOptions {
 interface PendingSpawn {
   at: number; // seconds after wave start
   enemy: EnemyId;
+  path: number;
 }
 
 const DT = SIM_DT;
@@ -42,7 +44,9 @@ const DT = SIM_DT;
 export class Simulation {
   readonly state: SimState;
   readonly events = new EventBus<SimEvents>();
+  /** First path (single-path maps); see paths for all. */
   readonly path: Path;
+  readonly paths: Path[];
   readonly stage: StageDef;
   readonly slots: readonly Vec2[];
   readonly mods: SimModifiers;
@@ -59,7 +63,8 @@ export class Simulation {
   constructor(opts: SimOptions) {
     this.stage = STAGES[opts.stage];
     const map = MAPS[this.stage.map];
-    this.path = new Path(map.path);
+    this.paths = map.paths.map((pts) => new Path(pts));
+    this.path = this.paths[0]!;
     this.slots = map.slots;
     this.mods = { ...defaultModifiers(), ...opts.modifiers };
     this.rng = new Rng(opts.seed);
@@ -67,7 +72,7 @@ export class Simulation {
       tick: 0,
       time: 0,
       seed: opts.seed,
-      gold: ECONOMY.startGold,
+      gold: this.stage.startGold ?? ECONOMY.startGold,
       lives: ECONOMY.startLives,
       wave: 0,
       totalWaves: this.stage.waves.length,
@@ -80,10 +85,10 @@ export class Simulation {
       zones: [],
       combo: { count: 0, mult: 1, timer: 0 },
       hero: {
-        x: HERO.start.x,
-        y: HERO.start.y,
-        targetX: HERO.start.x,
-        targetY: HERO.start.y,
+        x: map.heroStart.x,
+        y: map.heroStart.y,
+        targetX: map.heroStart.x,
+        targetY: map.heroStart.y,
         attackCooldown: 0,
         catalyzeCooldown: 0,
         catalyzeMax: HERO.catalyze.cooldown,
@@ -323,7 +328,10 @@ export class Simulation {
     const def = this.stage.waves[s.wave - 1]!;
     this.pending = [];
     for (const g of def.groups) {
-      for (let i = 0; i < g.count; i++) this.pending.push({ at: (g.delay ?? 0) + i * g.interval, enemy: g.enemy });
+      for (let i = 0; i < g.count; i++) {
+        const path = g.path !== undefined ? Math.min(g.path, this.paths.length - 1) : i % this.paths.length;
+        this.pending.push({ at: (g.delay ?? 0) + i * g.interval, enemy: g.enemy, path });
+      }
     }
     this.pending.sort((a, b) => a.at - b.at);
     if (bonus > 0) this.addGold(bonus);
@@ -341,7 +349,7 @@ export class Simulation {
     const elapsed = s.time - this.waveStartTime;
     while (this.pending.length > 0 && this.pending[0]!.at <= elapsed + 1e-9) {
       const p = this.pending.shift()!;
-      this.spawnEnemy(p.enemy, { wave: s.wave });
+      this.spawnEnemy(p.enemy, { wave: s.wave, path: p.path });
     }
     if (this.pending.length === 0) {
       if (s.wave < s.totalWaves) {
@@ -378,11 +386,13 @@ export class Simulation {
     const growth = def.scalesWithWave ? Math.pow(DIFFICULTY.hpGrowthPerWave, wave - 1) : 1;
     const hp = opts.hp ?? Math.round(def.hp * growth * this.stage.hpMult);
     const dist = opts.dist ?? 0;
-    const pos = this.path.pointAt(dist, this.tmp);
+    const pathIndex = Math.min(opts.path ?? 0, this.paths.length - 1);
+    const pos = this.paths[pathIndex]!.pointAt(dist, this.tmp);
     const e: EnemyState = {
       id: this.nextId++,
       type,
       wave,
+      pathIndex,
       hp,
       maxHp: hp,
       dist,
@@ -426,10 +436,11 @@ export class Simulation {
       const def = ENEMIES[e.type];
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
       e.dist += def.speed * (1 - slow) * DT;
-      this.path.pointAt(e.dist, this.tmp);
+      const path = this.paths[e.pathIndex]!;
+      path.pointAt(e.dist, this.tmp);
       e.x = this.tmp.x;
       e.y = this.tmp.y;
-      if (e.dist >= this.path.length) this.leak(e);
+      if (e.dist >= path.length) this.leak(e);
     }
   }
 
@@ -479,6 +490,7 @@ export class Simulation {
     for (let i = 0; i < boss.summon.count; i++) {
       this.spawnEnemy(boss.summon.enemy, {
         wave: e.wave,
+        path: e.pathIndex,
         dist: Math.max(0, e.dist - boss.summon.spacing * (i + 1)),
         goldMult: boss.summon.goldMult,
         // Summons don't scale with the wave: they are fodder, not a wall in front of the boss.
@@ -827,7 +839,9 @@ export class Simulation {
     if (!e.alive) return;
     if (reaction === 'thornfrost' && def.rootDurationMult) {
       // Ignores root immunity. Flyers can never be rooted.
-      if (!e.flying) this.root(e, (STATUS.rooted.duration + this.mods.rootDurationBonus) * def.rootDurationMult);
+      if (!e.flying && !ENEMIES[e.type].rootImmune) {
+        this.root(e, (STATUS.rooted.duration + this.mods.rootDurationBonus) * def.rootDurationMult);
+      }
     }
     if (def.appliesFragile || (reaction === 'melt' && this.mods.meltAppliesFragile)) {
       e.fragileTime = STATUS.fragile.duration;
@@ -867,7 +881,7 @@ export class Simulation {
   }
 
   canBeRooted(e: EnemyState): boolean {
-    return !e.flying && e.rootTime <= 0 && e.rootImmuneTime <= 0;
+    return !e.flying && !ENEMIES[e.type].rootImmune && e.rootTime <= 0 && e.rootImmuneTime <= 0;
   }
 
   private root(e: EnemyState, duration: number): void {
@@ -902,6 +916,13 @@ export class Simulation {
     }
   }
 
+  /** Element multiplier from the enemy's resistances (1 = neutral, 0 = immune, >1 = weakness). */
+  damageMultiplier(e: EnemyState, element: Element): number {
+    let r = ENEMIES[e.type].resist[element] ?? 0;
+    if (element === 'physical' && r > 0 && this.mods.physicalIgnoresResist) r = 0;
+    return Math.max(0, 1 - r);
+  }
+
   private dealDamage(
     e: EnemyState,
     amount: number,
@@ -910,7 +931,12 @@ export class Simulation {
   ): void {
     if (!e.alive || amount <= 0) return;
     let dmg = amount;
-    if (element === 'physical' && !this.mods.physicalIgnoresResist) dmg *= 1 - ENEMIES[e.type].physicalResist;
+    const eff = this.damageMultiplier(e, element);
+    if (eff <= 0) {
+      this.events.emit('enemyHit', { enemyId: e.id, x: e.x, y: e.y, damage: 0, element, crit: false, reaction: opts.reaction, dot: !!opts.dot, towerId: opts.towerId, eff: 0 });
+      return;
+    }
+    dmg *= eff;
     if (e.fragileTime > 0) dmg *= 1 + STATUS.fragile.damageTakenBonus;
     const final = Math.max(1, Math.round(dmg));
     e.hp -= final;
@@ -926,6 +952,7 @@ export class Simulation {
       reaction: opts.reaction,
       dot: !!opts.dot,
       towerId: opts.towerId,
+      eff,
     });
     if (e.hp <= 0) this.kill(e);
   }

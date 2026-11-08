@@ -1,0 +1,10 @@
+Arte de terceiros usada no Éter (todas com licença CC0 — domínio público, sem obrigação de crédito):
+
+- dungeon.png / dungeon.json — "16x16 DungeonTileset II" v1.7, por 0x72
+  https://0x72.itch.io/dungeontileset-ii — Licença: CC0 1.0 Universal
+  (dungeon.json foi gerado a partir do arquivo tile_list_v1.7 do pacote)
+
+- town.png — "Tiny Town" v1.1, por Kenney (www.kenney.nl)
+  https://kenney.nl/assets/tiny-town — Licença: CC0 1.0 Universal
+
+Obrigado aos autores!

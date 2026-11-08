@@ -162,6 +162,26 @@ export class FxLayer {
     this.scene.tweens.add({ targets: t, y: y - 40, alpha: 0, delay: 450, duration: 400, onComplete: () => t.destroy() });
   }
 
+  /** "New enemy" card sliding in under the HUD: name + its weaknesses/resistances. */
+  enemyCard(name: string, info: string): void {
+    const c = this.scene.add.container(GAME_WIDTH / 2, 170).setDepth(DEPTH.hud + 4);
+    const g = this.scene.add.graphics();
+    g.fillStyle(PAL.ink, 0.92);
+    g.fillRoundedRect(-320, -42, 640, 84, 18);
+    g.lineStyle(3, 0xffd34d, 1);
+    g.strokeRoundedRect(-320, -42, 640, 84, 18);
+    const t1 = this.scene.add
+      .text(0, -16, `NOVO INIMIGO: ${name.toUpperCase()}`, { fontFamily: FONT, fontStyle: 'bold', fontSize: '24px', color: PAL.goldCss, stroke: PAL.inkCss, strokeThickness: 5 })
+      .setOrigin(0.5);
+    const t2 = this.scene.add
+      .text(0, 16, info, { fontFamily: FONT, fontStyle: 'bold', fontSize: '19px', color: PAL.uiText, stroke: PAL.inkCss, strokeThickness: 4, align: 'center', wordWrap: { width: 610 } })
+      .setOrigin(0.5);
+    c.add([g, t1, t2]);
+    c.setAlpha(0).setY(130);
+    this.scene.tweens.add({ targets: c, alpha: 1, y: 170, duration: 250, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: c, alpha: 0, delay: 3800, duration: 400, onComplete: () => c.destroy() });
+  }
+
   /** Tiny, short spark for ordinary hits (kept subtle so many towers don't white-out the screen). */
   hit(x: number, y: number, color: number): void {
     this.hitSparks.setParticleTint(color);
@@ -202,7 +222,7 @@ export class FxLayer {
   }
 
   /** MMO-style bouncing damage number. */
-  damage(x: number, y: number, amount: number, element: Element, opts: { crit?: boolean; reaction?: ReactionId; dot?: boolean }): void {
+  damage(x: number, y: number, amount: number, element: Element, opts: { crit?: boolean; reaction?: ReactionId; dot?: boolean; eff?: number }): void {
     const t = this.numbers[this.numberIdx]!;
     this.numberIdx = (this.numberIdx + 1) % this.numbers.length;
     this.scene.tweens.killTweensOf(t);
@@ -210,6 +230,20 @@ export class FxLayer {
     let color = element === 'physical' ? '#ffffff' : toCss(ELEMENTS[element].color);
     let text = `${amount}`;
     if (opts.dot) size = 20;
+    // Resistances: show it clearly so players learn matchups.
+    const eff = opts.eff ?? 1;
+    if (eff === 0) {
+      text = 'IMUNE';
+      color = '#9a95b2';
+      size = 22;
+    } else if (eff > 1.05) {
+      text += ' ▲';
+      size += 4;
+    } else if (eff < 0.95) {
+      text += ' ▼';
+      color = '#b9b4cf';
+      size -= 2;
+    }
     if (opts.crit) {
       size = 38;
       color = '#ffe34d';
@@ -339,7 +373,15 @@ export class FxLayer {
     }
   }
 
+  private currentBanner: Phaser.GameObjects.Text | null = null;
+
   private showBigBanner(text: string, color: string, size: number, hold: number): void {
+    // Only one big banner at a time: a newer one (urgent or queued) clears whatever is still on screen.
+    const old = this.currentBanner;
+    if (old && old.active) {
+      this.scene.tweens.killTweensOf(old);
+      this.scene.tweens.add({ targets: old, alpha: 0, duration: 90, onComplete: () => old.destroy() });
+    }
     const b = this.scene.add
       .text(GAME_WIDTH / 2, 560, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: `${size}px`, color, stroke: PAL.inkCss, strokeThickness: 12, align: 'center' })
       .setOrigin(0.5)
@@ -348,5 +390,6 @@ export class FxLayer {
       .setAlpha(0);
     this.scene.tweens.add({ targets: b, scale: 1, alpha: 1, duration: 280, ease: 'Back.easeOut' });
     this.scene.tweens.add({ targets: b, alpha: 0, y: 520, delay: 280 + hold, duration: 300, onComplete: () => b.destroy() });
+    this.currentBanner = b;
   }
 }

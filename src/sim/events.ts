@@ -6,7 +6,7 @@ import type { TowerId } from '../data/towers';
 /** Everything the simulation tells the outside world. The view turns these into juice. */
 export interface SimEvents {
   enemySpawned: { enemyId: number; type: EnemyId; isBoss: boolean };
-  enemyHit: { enemyId: number; x: number; y: number; damage: number; element: Element; crit: boolean; reaction?: ReactionId; dot: boolean; towerId?: number };
+  enemyHit: { enemyId: number; x: number; y: number; damage: number; element: Element; crit: boolean; reaction?: ReactionId; dot: boolean; towerId?: number; eff: number }; // eff: element multiplier after resistances (0 = immune, >1 = weakness)
   enemyKilled: { enemyId: number; type: EnemyId; x: number; y: number; gold: number; isBoss: boolean };
   enemyLeaked: { enemyId: number; livesLost: number };
   statusApplied: { enemyId: number; status: 'burning' | 'chilled' | 'frozen' | 'rooted' | 'fragile' };

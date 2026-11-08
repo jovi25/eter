@@ -31,12 +31,13 @@ const LABELS: Record<keyof Settings, string> = { sound: 'Som', vibration: 'Vibra
 export class PausePanel {
   private objs: Phaser.GameObjects.GameObject[] = [];
 
-  constructor(scene: Phaser.Scene, cb: { onResume: () => void; onRestart: () => void }) {
+  constructor(scene: Phaser.Scene, cb: { onResume: () => void; onRestart: () => void; onExit: () => void }) {
     const bg = backdrop(scene);
-    const p = panel(scene, 520, 640);
-    p.add(uiText(scene, 0, -250, 'PAUSA', 56));
+    const p = panel(scene, 520, 740);
+    p.add(uiText(scene, 0, -300, 'PAUSA', 56));
+    p.add(new Button(scene, 0, 330, { width: 400, height: 64, label: 'Sair para o mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onExit }));
     (Object.keys(LABELS) as (keyof Settings)[]).forEach((key, i) => {
-      const y = -150 + i * 96;
+      const y = -200 + i * 92;
       const label = () => `${LABELS[key]}: ${getSettings()[key] ? 'LIGADO' : 'DESLIGADO'}`;
       const btn = new Button(scene, 0, y, {
         width: 400,
@@ -51,8 +52,8 @@ export class PausePanel {
       });
       p.add(btn);
     });
-    p.add(new Button(scene, 0, 150, { width: 400, height: 80, label: 'CONTINUAR', fontSize: 32, color: 0x3d7bd9, onClick: cb.onResume }));
-    p.add(new Button(scene, 0, 250, { width: 400, height: 72, label: 'Reiniciar fase', fontSize: 26, color: 0xc0504a, onClick: cb.onRestart }));
+    p.add(new Button(scene, 0, 120, { width: 400, height: 80, label: 'CONTINUAR', fontSize: 32, color: 0x3d7bd9, onClick: cb.onResume }));
+    p.add(new Button(scene, 0, 226, { width: 400, height: 68, label: 'Reiniciar fase', fontSize: 26, color: 0xc0504a, onClick: cb.onRestart }));
     this.objs = [bg, p];
   }
 
@@ -74,7 +75,7 @@ export interface EndStats {
 }
 
 export class EndPanel {
-  constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void }) {
+  constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void }) {
     backdrop(scene);
     const p = panel(scene, 600, 800);
     const title = uiText(scene, 0, -300, s.won ? 'VITÓRIA!' : 'DERROTA', 72, s.won ? PAL.goldCss : PAL.redCss, 12);
@@ -111,7 +112,14 @@ export class EndPanel {
       `Melhor Catalisar: ${s.bestCatalyze} reações`,
       `Tempo: ${mm}:${ss}`,
     ];
-    lines.forEach((l, i) => p.add(uiText(scene, 0, -60 + i * 46, l, 28, i >= 2 && i <= 4 ? '#ffe34d' : PAL.uiText, 6)));
-    p.add(new Button(scene, 0, 300, { width: 420, height: 88, label: s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 34, color: 0x3aa655, onClick: cb.onReplay }));
+    lines.forEach((l, i) => p.add(uiText(scene, 0, -80 + i * 42, l, 26, i >= 2 && i <= 4 ? '#ffe34d' : PAL.uiText, 6)));
+    if (cb.onNext) {
+      p.add(new Button(scene, 0, 222, { width: 440, height: 80, label: 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
+      p.add(new Button(scene, -112, 320, { width: 216, height: 64, label: 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));
+      p.add(new Button(scene, 112, 320, { width: 216, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
+    } else {
+      p.add(new Button(scene, 0, 222, { width: 440, height: 80, label: s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 32, color: 0x3aa655, onClick: cb.onReplay }));
+      p.add(new Button(scene, 0, 320, { width: 300, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
+    }
   }
 }

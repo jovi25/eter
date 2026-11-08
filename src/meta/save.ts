@@ -1,0 +1,131 @@
+// Player progress, saved in localStorage as versioned JSON (with migrations) + manual text backup.
+// Pure TypeScript (no Phaser) so it can be unit-tested.
+
+import { STAGE_ORDER, type StageId } from '../data/stages';
+
+export const SAVE_VERSION = 1;
+const KEY = 'eter.save';
+
+export interface StageProgress {
+  stars: number; // best stars (0 = never won)
+  wins: number;
+}
+
+export interface SaveData {
+  version: number;
+  createdAt: number;
+  stages: Partial<Record<StageId, StageProgress>>;
+}
+
+export function newSave(now = Date.now()): SaveData {
+  return { version: SAVE_VERSION, createdAt: now, stages: {} };
+}
+
+/** Upgrade any older save shape to the current version. Add one step per future version. */
+export function migrate(raw: unknown): SaveData {
+  if (!raw || typeof raw !== 'object') return newSave();
+  const data = raw as Partial<SaveData> & { version?: number };
+  const v = typeof data.version === 'number' ? data.version : 0;
+  if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
+  let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
+  if (out.version < 1) {
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {} };
+  }
+  // Sanitize
+  const stages: SaveData['stages'] = {};
+  for (const id of STAGE_ORDER) {
+    const s = out.stages?.[id];
+    if (s) stages[id] = { stars: clampInt(s.stars, 0, 3), wins: clampInt(s.wins, 0, 1e9) };
+  }
+  out.stages = stages;
+  return out;
+}
+
+function clampInt(v: unknown, min: number, max: number): number {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
+}
+
+/** Storage wrapper — every access is guarded (private mode, blocked storage). */
+export class SaveStore {
+  data: SaveData;
+
+  constructor(private storage: Pick<Storage, 'getItem' | 'setItem'> | null = safeLocalStorage()) {
+    this.data = this.read();
+  }
+
+  private read(): SaveData {
+    try {
+      const raw = this.storage?.getItem(KEY);
+      return raw ? migrate(JSON.parse(raw)) : newSave();
+    } catch {
+      return newSave();
+    }
+  }
+
+  persist(): void {
+    try {
+      this.storage?.setItem(KEY, JSON.stringify(this.data));
+    } catch {
+      /* storage full or blocked: progress stays in memory for this session */
+    }
+  }
+
+  isUnlocked(id: StageId): boolean {
+    const i = STAGE_ORDER.indexOf(id);
+    if (i <= 0) return true;
+    return (this.data.stages[STAGE_ORDER[i - 1]!]?.stars ?? 0) > 0;
+  }
+
+  stars(id: StageId): number {
+    return this.data.stages[id]?.stars ?? 0;
+  }
+
+  totalStars(): number {
+    return STAGE_ORDER.reduce((s, id) => s + this.stars(id), 0);
+  }
+
+  /** Record a finished match. Returns true if this was the first win of the stage. */
+  recordResult(id: StageId, won: boolean, stars: number): boolean {
+    if (!won) return false;
+    const prev = this.data.stages[id];
+    const first = !prev || prev.wins === 0;
+    this.data.stages[id] = { stars: Math.max(prev?.stars ?? 0, stars), wins: (prev?.wins ?? 0) + 1 };
+    this.persist();
+    return first;
+  }
+
+  /** Text backup: base64 of the JSON (safe to paste in a note or chat). */
+  exportText(): string {
+    const json = JSON.stringify(this.data);
+    return 'ETER1:' + btoa(unescape(encodeURIComponent(json)));
+  }
+
+  importText(text: string): void {
+    const t = text.trim();
+    if (!t.startsWith('ETER1:')) throw new Error('Texto de save inválido.');
+    const json = decodeURIComponent(escape(atob(t.slice(6))));
+    this.data = migrate(JSON.parse(json));
+    this.persist();
+  }
+
+  reset(): void {
+    this.data = newSave();
+    this.persist();
+  }
+}
+
+function safeLocalStorage(): Storage | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Shared instance for the game. */
+let shared: SaveStore | null = null;
+export function getSave(): SaveStore {
+  shared ??= new SaveStore();
+  return shared;
+}

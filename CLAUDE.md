@@ -37,6 +37,10 @@ Três moedas separadas: `gold` (partida), `coins` (ganhas jogando), `gems` (prem
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe` (logado como jovi25). Commits usam o e-mail noreply do GitHub.
 - O PC está numa rede Wi-Fi marcada como pública com o Node bloqueado no firewall, então o teste por `--host` na rede local não funciona; testar pelo link do Pages.
 
+## Arte de terceiros
+- Só CC0. Pacotes em `public/assets/` com créditos em `public/assets/CREDITS.txt`. Downloads ficam em pasta temporária; só PNG + licença entram no projeto.
+- `npm run balance`: relatório de dificuldade das 5 fases com robôs (60 partidas simuladas).
+
 ## Arquitetura
 - `src/sim/` — TypeScript puro, **sem Phaser**. Estado, ondas, inimigos, torres, status, reações, economia. Tick fixo (30/s), RNG com seed (determinístico). Emite eventos por um event bus.
 - `src/view/` — Phaser. Só lê o estado da simulação e reage a eventos (`reactionTriggered`, `enemyKilled`, `waveCleared`, `relicOpened`...). Todo o juice vive aqui.

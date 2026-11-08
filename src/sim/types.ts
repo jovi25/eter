@@ -7,6 +7,7 @@ export interface EnemyState {
   id: number;
   type: EnemyId;
   wave: number; // 1-based wave it belongs to
+  pathIndex: number; // which map path it walks
   hp: number;
   maxHp: number;
   dist: number; // distance walked along the path

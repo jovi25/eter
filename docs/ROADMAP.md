@@ -32,7 +32,18 @@ Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
 - [x] Catalisar com redução de cooldown por reação
 - **Aceite:** sinto o loop "reação → habilidade volta mais rápido".
 
-## Fase 4 — Meta e relicários
+## Fase 4a — Região 1 (feita)
+- [x] 5 fases com mapas e estratégias diferentes; caminhos múltiplos
+- [x] Resistências/fraquezas por elemento + 6 inimigos novos
+- [x] Dificuldade crescente medida por robô (`npm run balance`)
+- [x] Pixel art CC0 (0x72 + Kenney) e torres em pixel
+- [x] Mapa-mundo, estrelas, save versionado + backup em texto
+
+## Fase 4b — Classes de herói (proposta, aguardando aprovação)
+- [ ] Mago, Sacerdote, Cavaleiro, Druida — escolha antes de cada fase
+- [ ] Inimigos que param para lutar com unidades corpo a corpo (urso, cavaleiro)
+
+## Fase 4c — Meta e relicários
 - [ ] Save versionado + exportar/importar
 - [ ] Mapa-mundo com 5 fases; coins
 - [ ] Conquistas e missões diárias

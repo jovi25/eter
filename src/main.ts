@@ -3,6 +3,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { GAME_HEIGHT, GAME_WIDTH } from './data/config';
 import { BattleScene } from './view/scenes/BattleScene';
 import { BootScene } from './view/scenes/BootScene';
+import { WorldMapScene } from './view/scenes/WorldMapScene';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -15,7 +16,7 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: { activePointers: 2 },
-  scene: [BootScene, BattleScene],
+  scene: [BootScene, WorldMapScene, BattleScene],
 });
 
 // Handy while debugging in the browser console.

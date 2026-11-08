@@ -106,6 +106,44 @@ Objetivo: recompensar melhorar torres em vez de só espalhar muitas. Ativas só 
 Medido com robô (3 seeds): 5 torres no máximo vencem 3★, igual a 8 torres espalhadas; 4 torres no máximo perdem para o chefe.
 Nota: com o herói ajudando, a fase 1 ficou fácil para estratégias de combo (20 vidas); ajuste fino fica para a Fase 5.
 
+## Fase 4a — Região 1 completa (pedido do jogador)
+### Mapas (cada um pede uma estratégia)
+| Fase | Mapa | Ideia |
+|---|---|---|
+| 1 Campos de Vellmora I | Zigue-zague | Ensina o básico (fácil de propósito) |
+| 2 Campos de Vellmora II | Duas Entradas | Dois portais que se juntam: os espaços da junção valem ouro |
+| 3 Pântano de Vellmora | O Anel | Estrada em volta de um platô: cada espaço cobre duas estradas, melhorar compensa |
+| 4 Desfiladeiro | Corredor | Caminho curto e só 5 espaços: torres no máximo + herói decidem |
+| 5 Trono da Geada | Bifurcação | Estrada se divide e se junta; inimigos alternam lados; espaços do meio alcançam os dois |
+Mapas alinhados a uma grade de 48 px (ladrilhos de 16 px ×3). Grupos de ondas podem escolher o caminho; sem escolha, alternam.
+
+### Resistências e fraquezas por elemento
+Cada inimigo tem uma tabela: 0,4 = toma 40% menos; −0,5 = toma 50% a mais; 1 = imune. Reações usam a resistência do elemento que disparou. Números na tela: "IMUNE", "▲" (fraco), "▼" (resiste). Na primeira aparição de cada inimigo especial, um cartão "NOVO INIMIGO" mostra fraquezas.
+| Inimigo | Resistências / fraquezas |
+|---|---|
+| Gosma, Goblin Ligeiro | neutros |
+| Golem Musgoso | Físico −40% |
+| Diabrete Alado | voa |
+| Chifrudo de Brasa | **imune a Fogo** (ainda recebe a aura → combos), fraco a Gelo |
+| Zumbi Gélido | resiste 80% a Gelo, fraco a Fogo |
+| Esqueleto | resiste Físico 60% e Natureza 50%, fraco a Raio |
+| Xamã Orc | resiste Raio 60% e Arcano 50%, fraco a Físico |
+| Lamacento | resiste Natureza 70%, **não pode ser enraizado**, fraco a Fogo |
+| Colosso do Pântano | mini-chefe; resiste Físico/Gelo, fraco a Raio |
+
+### Dificuldade (medida por robô, `npm run balance`)
+Fase 1: tudo vence. Fases 2–5: só Arqueiros perde; estratégias de combo/foco vencem com cada vez menos vidas. Teste fixo: a fase 5 não é vencível só com Arqueiros, mas um build de combo vence.
+
+### Arte (pixel art CC0)
+- Personagens e monstros animados: **0x72 DungeonTileset II** (CC0). Cenário: **Kenney Tiny Town** (CC0). Créditos em `public/assets/CREDITS.txt`.
+- Torres e espaço de construção: pixel art gerada por código no mesmo estilo (contorno automático), ×3.
+- Interface e efeitos continuam suaves (botões, textos, partículas).
+- Mapeamento de sprites: `src/view/art/sprites.ts` (trocar sprite = mudar uma linha).
+
+### Progresso
+- Save versionado em localStorage (`eter.save`, com migrações) + backup em texto (copiar/restaurar no mapa-mundo).
+- Mapa-mundo da Região 1: fases liberadas em sequência, melhores estrelas, "próxima fase" no fim da partida.
+
 ## 4. Coleção e evolução
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

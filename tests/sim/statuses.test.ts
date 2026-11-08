@@ -154,8 +154,8 @@ describe('targeting', () => {
   it('towers pick the enemy furthest along the path', () => {
     const sim = newSim();
     const archer = sim.build(1, 'archer')!;
-    dummy(sim, 500);
-    const ahead = dummy(sim, 560);
+    dummy(sim, 440);
+    const ahead = dummy(sim, 480);
     expect(sim.findTarget(archer)!.id).toBe(ahead.id);
   });
 

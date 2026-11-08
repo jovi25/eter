@@ -3,6 +3,7 @@ import { ENEMIES } from '../../data/enemies';
 import type { EnemyState } from '../../sim/types';
 import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
+import { animKey, ENEMY_SPRITES } from '../art/sprites';
 import { unitDepth } from './layers';
 
 const HP_W = 52;
@@ -11,7 +12,7 @@ class EnemyView {
   readonly root: Phaser.GameObjects.Container;
   readonly shadow: Phaser.GameObjects.Image;
   readonly roots: Phaser.GameObjects.Image;
-  readonly body: Phaser.GameObjects.Image;
+  readonly body: Phaser.GameObjects.Sprite;
   readonly ice: Phaser.GameObjects.Image;
   readonly fragile: Phaser.GameObjects.Image;
   readonly hpBg: Phaser.GameObjects.Rectangle;
@@ -25,11 +26,13 @@ class EnemyView {
   dying: 'kill' | 'leak' | null = null;
   breath?: Phaser.Tweens.Tween;
   fireTimer = 0;
+  baseTint = -1;
+  flying = false;
 
   constructor(scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, 'shadow');
     this.roots = scene.add.image(0, 0, 'status_roots').setVisible(false);
-    this.body = scene.add.image(0, 0, 'enemy_slime');
+    this.body = scene.add.sprite(0, 0, 'dungeon', 'swampy_anim_f0');
     this.ice = scene.add.image(0, 0, 'status_ice').setVisible(false);
     this.fragile = scene.add.image(0, 0, 'status_fragile').setVisible(false);
     this.hpBg = scene.add.rectangle(0, 0, HP_W + 4, 9, PAL.ink).setVisible(false);
@@ -55,7 +58,7 @@ export class EnemyLayer {
   headOf(id: number): { x: number; y: number } | null {
     const v = this.views.get(id);
     if (!v) return null;
-    return { x: v.root.x, y: v.root.y + v.bodyY - v.body.displayHeight * 0.5 };
+    return { x: v.root.x, y: v.root.y + v.bodyY - v.body.displayHeight };
   }
 
   /** Remember positions before a sim tick, for interpolation. */
@@ -89,6 +92,8 @@ export class EnemyLayer {
       v.seen = true;
       const x = v.prevX + (e.x - v.prevX) * alpha;
       const y = v.prevY + (e.y - v.prevY) * alpha;
+      // Face the direction of travel (sprites look right by default).
+      if (Math.abs(x - v.root.x) > 0.05) v.body.setFlipX(x < v.root.x);
       v.root.setPosition(x, y).setDepth(unitDepth(y));
       this.updateStatus(v, e, dtMs);
     }
@@ -108,29 +113,28 @@ export class EnemyLayer {
     v.dying = null;
     v.flashUntil = 0;
     v.root.setVisible(true).setAlpha(1).setScale(1);
-    v.body.setTexture(`enemy_${e.type}`).setScale(1).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
-    const h = v.body.height;
-    v.bodyY = def.flying ? -h * 0.5 - 34 : -h * 0.42;
+    const spr = ENEMY_SPRITES[e.type];
+    v.baseTint = spr.tint ?? -1;
+    v.flying = def.flying;
+    v.body.setOrigin(0.5, 1).setScale(spr.scale).setAlpha(1).setFlipX(false).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    v.body.play({ key: animKey(spr.frames), startFrame: e.id % 4 });
+    if (v.baseTint >= 0) v.body.setTint(v.baseTint);
+    const h = v.body.displayHeight;
+    v.bodyY = def.flying ? -30 : 6;
     v.body.setPosition(0, v.bodyY);
     v.shadow.setScale(def.radius / 30, 1).setPosition(0, 4).setAlpha(def.flying ? 0.5 : 1);
     v.roots.setVisible(false).setScale(def.radius / 28);
-    v.ice.setVisible(false).setPosition(0, v.bodyY).setScale((def.radius * 2.4) / 64);
-    const top = v.bodyY - h * 0.5 - 8;
+    v.ice.setVisible(false).setPosition(0, v.bodyY - h * 0.5).setScale((v.body.displayWidth * 1.15) / 64, (h * 1.05) / 64);
+    const top = v.bodyY - h - 8;
     v.hpBg.setPosition(0, top).setVisible(false);
     v.hpFill.setPosition(-HP_W / 2, top).setVisible(false);
     v.fragile.setPosition(HP_W / 2 + 10, top).setVisible(false);
     // Breathing (squash & stretch) — bats flap faster and bob.
     v.breath?.stop();
-    v.breath = this.scene.tweens.add({
-      targets: v.body,
-      scaleY: def.flying ? 0.9 : 0.92,
-      scaleX: def.flying ? 1.08 : 1.05,
-      y: v.bodyY + (def.flying ? 6 : 1),
-      duration: def.flying ? 180 : 420 + (e.id % 5) * 40,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    // Flyers bob up and down (the sprite animation does the rest).
+    v.breath = def.flying
+      ? this.scene.tweens.add({ targets: v.body, y: v.bodyY - 8, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+      : undefined;
     // Spawn pop
     v.root.setScale(0.2);
     this.scene.tweens.add({ targets: v.root, scale: 1, duration: 220, ease: 'Back.easeOut' });
@@ -147,6 +151,7 @@ export class EnemyLayer {
       if (e.frozenTime > 0) v.body.setTint(0x9fdcff);
       else if (e.chillTime > 0 && e.chillStacks > 0) v.body.setTint(e.chillStacks > 1 ? 0x8fdcff : 0xb5ecff);
       else if (e.burnTime > 0) v.body.setTint(0xffb48a);
+      else if (v.baseTint >= 0) v.body.setTint(v.baseTint);
       else v.body.clearTint();
     }
     v.ice.setVisible(e.frozenTime > 0);
@@ -164,11 +169,14 @@ export class EnemyLayer {
       v.fireTimer -= dtMs;
       if (v.fireTimer <= 0) {
         v.fireTimer = 120;
-        this.onBurning(v.root.x + (Math.random() - 0.5) * 20, v.root.y + v.bodyY);
+        this.onBurning(v.root.x + (Math.random() - 0.5) * 20, v.root.y + v.bodyY - v.body.displayHeight * 0.5);
       }
     }
     // Rooted/frozen enemies stop breathing for clear feedback.
-    if (v.breath) v.breath.timeScale = e.frozenTime > 0 || e.rootTime > 0 ? 0 : 1;
+    const stopped = e.frozenTime > 0 || e.rootTime > 0;
+    if (v.breath) v.breath.timeScale = stopped ? 0 : 1;
+    if (stopped && v.body.anims.isPlaying) v.body.anims.pause();
+    else if (!stopped && v.body.anims.isPaused) v.body.anims.resume();
   }
 
   private despawn(v: EnemyView): void {

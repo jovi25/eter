@@ -5,13 +5,13 @@ import { dummy, newSim, record, runSeconds } from '../helpers';
 describe('Torre do Trovão (chain lightning)', () => {
   it('hits the target, then jumps to nearby enemies in sequence with falloff', () => {
     const sim = newSim();
-    const tower = sim.build(1, 'storm')!; // (250,430), lanes y=300 and y=560 in range
+    const tower = sim.build(1, 'storm')!; // (264,432), lanes y=288 and y=576 in range
     const lvl = TOWERS.storm.levels[0];
-    // A line of enemies 60px apart on the y=300 lane (dist 500 → x=270).
-    const a = dummy(sim, 560);
-    const b = dummy(sim, 500);
-    const c = dummy(sim, 440);
-    const d = dummy(sim, 380);
+    // A line of enemies 60px apart on the y=288 lane (dist 480 → x=240).
+    const a = dummy(sim, 480);
+    const b = dummy(sim, 420);
+    const c = dummy(sim, 360);
+    const d = dummy(sim, 300);
     const hits = record(sim, 'enemyHit');
     const bolts = record(sim, 'chainLightning');
     sim.step();
@@ -30,8 +30,8 @@ describe('Torre do Trovão (chain lightning)', () => {
   it('does not jump further than chainRange', () => {
     const sim = newSim();
     sim.build(1, 'storm');
-    dummy(sim, 560);
-    const far = dummy(sim, 300); // 260px away on the path
+    dummy(sim, 480);
+    const far = dummy(sim, 220); // 260px away on the path
     sim.step();
     expect(far.hp).toBe(far.maxHp);
   });
@@ -42,8 +42,8 @@ describe('Torre do Trovão (chain lightning)', () => {
     const t = sim.build(1, 'storm')!;
     sim.upgrade(t.id);
     sim.upgrade(t.id); // chainCount 5
-    dummy(sim, 560);
-    dummy(sim, 520);
+    dummy(sim, 480);
+    dummy(sim, 440);
     const hits = record(sim, 'enemyHit');
     sim.step();
     expect(hits).toHaveLength(2);
@@ -52,7 +52,7 @@ describe('Torre do Trovão (chain lightning)', () => {
   it('hits flyers', () => {
     const sim = newSim();
     const t = sim.build(1, 'storm')!;
-    dummy(sim, 560, 'bat');
+    dummy(sim, 480, 'bat');
     expect(sim.findTarget(t)).not.toBeNull();
   });
 
@@ -72,7 +72,7 @@ describe('Torre do Trovão (chain lightning)', () => {
   it('fires again after its cooldown', () => {
     const sim = newSim();
     sim.build(1, 'storm');
-    dummy(sim, 560);
+    dummy(sim, 480);
     const bolts = record(sim, 'chainLightning');
     runSeconds(sim, 1 / TOWERS.storm.levels[0].rate + 0.1);
     expect(bolts).toHaveLength(2);

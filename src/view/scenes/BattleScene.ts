@@ -1,10 +1,11 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ECONOMY } from '../../data/economy';
-import { ENEMIES } from '../../data/enemies';
-import { ELEMENTS } from '../../data/elements';
+import { ENEMIES, type EnemyId } from '../../data/enemies';
+import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTIONS } from '../../data/reactions';
-import type { StageId } from '../../data/stages';
+import { STAGE_ORDER, type StageId } from '../../data/stages';
+import { getSave } from '../../meta/save';
 import { MAX_LEVEL, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
 import { Simulation } from '../../sim/simulation';
@@ -58,6 +59,32 @@ export class BattleScene extends Phaser.Scene {
   private totalReactions = 0;
   private ended = false;
   private dotAcc = new Map<number, { sum: number; shownAt: number }>();
+  private stageId: StageId = 'v1';
+  private seenTypes = new Set<EnemyId>();
+
+  private toMap(): void {
+    this.cameras.main.fadeOut(220, 11, 7, 22);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap'));
+  }
+
+  /** First time a specialist enemy shows up in a match: a short card with its weaknesses. */
+  private introduceEnemy(type: EnemyId): void {
+    if (this.seenTypes.has(type)) return;
+    this.seenTypes.add(type);
+    const def = ENEMIES[type];
+    const entries = Object.entries(def.resist) as [Element, number][];
+    if (entries.length === 0 && !def.rootImmune && !def.flying) return;
+    const parts: string[] = [];
+    for (const [el, r] of entries) {
+      const name = ELEMENTS[el].name;
+      if (r >= 1) parts.push(`imune a ${name}`);
+      else if (r > 0) parts.push(`resiste a ${name}`);
+      else parts.push(`fraco a ${name}`);
+    }
+    if (def.rootImmune) parts.push('não pode ser enraizado');
+    if (def.flying) parts.push('voa (Vinha não alcança)');
+    this.fx.enemyCard(def.name, parts.join(' • '));
+  }
 
   constructor() {
     super('Battle');
@@ -65,7 +92,9 @@ export class BattleScene extends Phaser.Scene {
 
   create(data: BattleData): void {
     const seed = data.seed ?? Math.floor(Math.random() * 1e9);
-    this.sim = new Simulation({ stage: data.stage ?? 'v1', seed });
+    this.stageId = data.stage ?? 'v1';
+    this.sim = new Simulation({ stage: this.stageId, seed });
+    this.seenTypes = new Set();
     this.clock = new FixedClock();
     this.speed = 1;
     this.paused = false;
@@ -151,7 +180,8 @@ export class BattleScene extends Phaser.Scene {
     if (on) {
       this.pausePanel = new PausePanel(this, {
         onResume: () => this.setPaused(false),
-        onRestart: () => this.scene.restart({ stage: 'v1' }),
+        onRestart: () => this.scene.restart({ stage: this.stageId }),
+        onExit: () => this.toMap(),
       });
     } else {
       this.pausePanel?.destroy();
@@ -191,7 +221,7 @@ export class BattleScene extends Phaser.Scene {
         this.dotAcc.set(h.enemyId, acc);
         return;
       }
-      this.fx.damage(p.x, p.y, h.damage, h.element, { crit: h.crit, reaction: h.reaction });
+      this.fx.damage(p.x, p.y, h.damage, h.element, { crit: h.crit, reaction: h.reaction, eff: h.eff });
       this.enemies.flash(h.enemyId);
       if (h.crit) this.fx.burst(p.x, p.y + 20, 0xffe34d, 6);
       else this.fx.hit(p.x, p.y + 20, ELEMENTS[h.element].color);
@@ -264,6 +294,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     ev.on('enemySpawned', (s) => {
+      this.introduceEnemy(s.type);
       if (!s.isBoss) return;
       this.fx.bigBanner(`CHEFE MVP\n${ENEMIES.herald.name.toUpperCase()}`, '#bff4ff', 52, 1300);
       playSfx('boss');
@@ -284,7 +315,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     ev.on('chainLightning', (l) => {
-      const pts = l.points.map((p, i) => (i === 0 ? { x: p.x, y: p.y - 70 } : { x: p.x, y: p.y - 22 }));
+      const pts = l.points.map((p, i) => (i === 0 ? { x: p.x, y: p.y - 47 } : { x: p.x, y: p.y - 26 }));
       this.fx.lightning(pts);
     });
 
@@ -353,6 +384,9 @@ export class BattleScene extends Phaser.Scene {
     ev.on('gameOver', (g) => {
       this.ended = true;
       this.menu.close();
+      getSave().recordResult(this.stageId, g.won, g.stars);
+      const next = STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
+      const onNext = g.won && next ? () => this.scene.restart({ stage: next }) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
         new EndPanel(
@@ -368,7 +402,7 @@ export class BattleScene extends Phaser.Scene {
             kills: this.sim.state.stats.kills,
             bestCatalyze: this.sim.state.stats.bestCatalyzeReactions,
           },
-          { onReplay: () => this.scene.restart({ stage: 'v1' }) },
+          { onReplay: () => this.scene.restart({ stage: this.stageId }), onMap: () => this.toMap(), onNext },
         );
       });
     });
