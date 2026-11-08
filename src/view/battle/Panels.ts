@@ -72,6 +72,8 @@ export interface EndStats {
   seconds: number;
   kills: number;
   bestCatalyze: number;
+  skillName: string;
+  skillCasts: number;
 }
 
 export class EndPanel {
@@ -109,7 +111,7 @@ export class EndPanel {
       `Inimigos derrotados: ${s.kills}`,
       `Reações: ${s.reactions}`,
       `Maior combo: ×${s.bestCombo}`,
-      `Melhor Catalisar: ${s.bestCatalyze} reações`,
+      s.skillName === 'Catalisar' ? `Melhor Catalisar: ${s.bestCatalyze} reações` : `${s.skillName}: ${s.skillCasts}×`,
       `Tempo: ${mm}:${ss}`,
     ];
     lines.forEach((l, i) => p.add(uiText(scene, 0, -80 + i * 42, l, 26, i >= 2 && i <= 4 ? '#ffe34d' : PAL.uiText, 6)));

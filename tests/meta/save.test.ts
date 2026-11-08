@@ -55,6 +55,25 @@ describe('save', () => {
     expect(Object.keys(m.stages)).toEqual(['v1']);
   });
 
+  it('heroes unlock by winning stages; locked heroes cannot be selected', () => {
+    const s = new SaveStore(memStorage());
+    expect(s.data.hero).toBe('mage');
+    expect(s.isHeroUnlocked('knight')).toBe(false);
+    s.selectHero('knight');
+    expect(s.data.hero).toBe('mage');
+    s.recordResult('v1', true, 1);
+    expect(s.isHeroUnlocked('knight')).toBe(true);
+    s.selectHero('knight');
+    expect(s.data.hero).toBe('knight');
+  });
+
+  it('v1 saves migrate to v2 with the Arcanista selected', () => {
+    const m = migrate({ version: 1, createdAt: 1, stages: { v1: { stars: 2, wins: 1 } } });
+    expect(m.version).toBe(2);
+    expect(m.hero).toBe('mage');
+    expect(m.stages.v1?.stars).toBe(2);
+  });
+
   it('survives corrupt storage', () => {
     const st = memStorage();
     st.setItem('eter.save', '{not json');

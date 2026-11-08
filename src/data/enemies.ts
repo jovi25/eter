@@ -31,6 +31,7 @@ export interface EnemyDef {
   speed: number; // px/s along the path
   gold: number; // reward on kill
   livesCost: number; // lives lost if it reaches the crystal
+  attack: number; // damage per second dealt to a hero/summon holding it (flyers are never held)
   resist: Resistances;
   rootImmune?: boolean;
   flying: boolean;
@@ -41,20 +42,20 @@ export interface EnemyDef {
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
   // ── Region 1 basics ──
-  slime: { name: 'Gosma', hp: 60, speed: 80, gold: 9, livesCost: 1, resist: {}, flying: false, scalesWithWave: true, radius: 22 },
-  wolf: { name: 'Lobo Ligeiro', hp: 35, speed: 140, gold: 8, livesCost: 1, resist: {}, flying: false, scalesWithWave: true, radius: 20 },
+  slime: { name: 'Gosma', hp: 60, speed: 80, gold: 9, livesCost: 1, attack: 6, resist: {}, flying: false, scalesWithWave: true, radius: 22 },
+  wolf: { name: 'Lobo Ligeiro', hp: 35, speed: 140, gold: 8, livesCost: 1, attack: 5, resist: {}, flying: false, scalesWithWave: true, radius: 20 },
   golem: {
     name: 'Golem de Casca',
     hp: 220,
     speed: 50,
     gold: 20,
-    livesCost: 2,
+    livesCost: 2, attack: 16,
     resist: { physical: 0.4 },
     flying: false,
     scalesWithWave: true,
     radius: 30,
   },
-  bat: { name: 'Morcego Sombrio', hp: 50, speed: 100, gold: 11, livesCost: 1, resist: {}, flying: true, scalesWithWave: true, radius: 20 },
+  bat: { name: 'Morcego Sombrio', hp: 50, speed: 100, gold: 11, livesCost: 1, attack: 0, resist: {}, flying: true, scalesWithWave: true, radius: 20 },
 
   // ── Elemental specialists (stages 2+) ──
   salamander: {
@@ -62,7 +63,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 90,
     speed: 95,
     gold: 12,
-    livesCost: 1,
+    livesCost: 1, attack: 9,
     resist: { fire: 1, ice: -0.5 },
     flying: false,
     scalesWithWave: true,
@@ -73,7 +74,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 130,
     speed: 60,
     gold: 14,
-    livesCost: 1,
+    livesCost: 1, attack: 10,
     resist: { ice: 0.8, fire: -0.5 },
     flying: false,
     scalesWithWave: true,
@@ -84,7 +85,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 80,
     speed: 85,
     gold: 11,
-    livesCost: 1,
+    livesCost: 1, attack: 8,
     resist: { physical: 0.6, nature: 0.5, lightning: -0.5 },
     flying: false,
     scalesWithWave: true,
@@ -95,7 +96,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 110,
     speed: 70,
     gold: 14,
-    livesCost: 1,
+    livesCost: 1, attack: 9,
     resist: { lightning: 0.6, arcane: 0.5, physical: -0.3 },
     flying: false,
     scalesWithWave: true,
@@ -106,7 +107,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 120,
     speed: 65,
     gold: 13,
-    livesCost: 1,
+    livesCost: 1, attack: 8,
     resist: { nature: 0.7, physical: 0.2, fire: -0.4 },
     rootImmune: true,
     flying: false,
@@ -118,7 +119,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 900,
     speed: 38,
     gold: 60,
-    livesCost: 5,
+    livesCost: 5, attack: 35,
     resist: { physical: 0.3, ice: 0.3, lightning: -0.3 },
     flying: false,
     scalesWithWave: false,
@@ -131,7 +132,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     hp: 1300,
     speed: 45,
     gold: 100,
-    livesCost: 20,
+    livesCost: 20, attack: 45,
     resist: { physical: 0.15 },
     flying: false,
     scalesWithWave: false,

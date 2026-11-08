@@ -13,7 +13,8 @@ import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { BuildMenu } from '../battle/BuildMenu';
 import { CatalyzeButton } from '../battle/CatalyzeButton';
-import { HeroView } from '../battle/HeroView';
+import { HeroView, SummonView } from '../battle/HeroView';
+import { HEROES, type HeroClass } from '../../data/heroes';
 import { EnemyLayer } from '../battle/EnemyLayer';
 import { FxLayer } from '../battle/FxLayer';
 import { Hud } from '../battle/Hud';
@@ -29,9 +30,14 @@ const HITSTOP_MS = 70;
 const HITSTOP_COOLDOWN_MS = 350;
 const BOSS_SLOWMO = { factor: 0.2, ms: 500 };
 
+const HERO_COLORS: Record<HeroClass, number> = { mage: 0xb57bff, knight: 0x6a9aff, priest: 0xffd34d, druid: 0x6ad44a };
+
+const a11yDown = (id: number) => (id === -1 ? 'HERÓI CAIU!' : 'URSO CAIU!');
+
 export interface BattleData {
   stage?: StageId;
   seed?: number;
+  hero?: HeroClass;
 }
 
 /** One match: owns the simulation, steps it at a fixed rate and turns its events into visuals and sound. */
@@ -48,6 +54,7 @@ export class BattleScene extends Phaser.Scene {
   private debug!: DebugOverlay;
   private hero!: HeroView;
   private catalyzeBtn!: CatalyzeButton;
+  private summons: SummonView[] = [];
   private pausePanel: PausePanel | null = null;
 
   private speed = 1;
@@ -60,6 +67,7 @@ export class BattleScene extends Phaser.Scene {
   private ended = false;
   private dotAcc = new Map<number, { sum: number; shownAt: number }>();
   private stageId: StageId = 'v1';
+  private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
 
   private toMap(): void {
@@ -93,7 +101,8 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleData): void {
     const seed = data.seed ?? Math.floor(Math.random() * 1e9);
     this.stageId = data.stage ?? 'v1';
-    this.sim = new Simulation({ stage: this.stageId, seed });
+    this.heroClass = data.hero ?? getSave().data.hero ?? 'mage';
+    this.sim = new Simulation({ stage: this.stageId, seed, modifiers: { heroClass: this.heroClass } });
     this.seenTypes = new Set();
     this.clock = new FixedClock();
     this.speed = 1;
@@ -130,14 +139,18 @@ export class BattleScene extends Phaser.Scene {
       upgrade: (id) => this.sim.upgrade(id),
       sell: (id) => this.sim.sell(id),
     });
-    this.catalyzeBtn = new CatalyzeButton(this, GAME_WIDTH - 82, GAME_HEIGHT - 76, this.sim.mods.heroAffinity, () => {
-      if (this.paused || this.ended) return;
-      if (!this.sim.castCatalyze()) {
-        this.catalyzeBtn.denied();
-        playSfx('error');
-      }
-    });
-    this.catalyzeBtn.onReady = () => playSfx('ready');
+    // Skill indicator (heroes cast on their own).
+    const cls = this.sim.mods.heroClass;
+    const skillColor = cls === 'mage' ? ELEMENTS[this.sim.mods.heroAffinity].color : HERO_COLORS[cls];
+    this.catalyzeBtn = new CatalyzeButton(
+      this,
+      GAME_WIDTH - 82,
+      GAME_HEIGHT - 76,
+      skillColor,
+      HEROES[cls].skill.name,
+      cls === 'mage' ? 'icon_catalyze' : HEROES[cls].texture,
+    );
+    this.summons = this.sim.state.summons.map((s) => new SummonView(this, s));
     this.debug = new DebugOverlay(this, () => ({ tick: this.sim.state.tick, seed: this.sim.state.seed }), 8, GAME_HEIGHT - 150, DEPTH.debug);
 
     this.setupInput();
@@ -180,7 +193,7 @@ export class BattleScene extends Phaser.Scene {
     if (on) {
       this.pausePanel = new PausePanel(this, {
         onResume: () => this.setPaused(false),
-        onRestart: () => this.scene.restart({ stage: this.stageId }),
+        onRestart: () => this.scene.restart({ stage: this.stageId, hero: this.heroClass }),
         onExit: () => this.toMap(),
       });
     } else {
@@ -250,6 +263,41 @@ export class BattleScene extends Phaser.Scene {
     });
 
     ev.on('heroFired', () => playSfx('hero_shoot'));
+
+    // Non-mage class skills (the mage's Catalisar has its own handler below).
+    ev.on('heroSkill', (sk) => {
+      this.catalyzeBtn.bump();
+      if (sk.cls === 'mage') return;
+      const color = HERO_COLORS[sk.cls];
+      this.hero.cast();
+      this.fx.shockwave(sk.x, sk.y - 20, color, sk.radius / 54, 450);
+      this.fx.burst(sk.x, sk.y - 40, color, 24);
+      this.fx.popLabel(sk.x, sk.y - 120, `${HEROES[sk.cls].skill.name.toUpperCase()}!`, `#${color.toString(16).padStart(6, '0')}`);
+      playSfx(sk.cls === 'priest' ? 'upgrade' : 'catalyze', sk.cls === 'knight' ? 0.8 : 1);
+      if (sk.cls === 'knight') this.shake(150, 0.006);
+      if (sk.cls === 'priest') {
+        // Sparkle on each blessed tower.
+        for (const t of this.sim.state.towers) if (t.blessTime > 0) this.fx.burst(t.x, t.y - 30, 0xffe680, 10);
+      }
+      vibrate(20);
+    });
+
+    // Melee: the knight / bear land hits; they fall and come back.
+    const unitOf = (id: number) => (id === -1 ? this.hero : this.summons[this.sim.state.summons.findIndex((s) => s.id === id)]);
+    ev.on('blockerAttack', (a) => {
+      unitOf(a.blockerId)?.swing();
+      playSfx('hit', 0.7);
+    });
+    ev.on('blockerDied', (d) => {
+      this.fx.burst(d.x, d.y - 40, 0xffffff, 14);
+      this.fx.popLabel(d.x, d.y - 100, a11yDown(d.blockerId), PAL.redCss);
+      playSfx('leak', 1.4);
+    });
+    ev.on('blockerRespawn', (r) => {
+      const u = unitOf(r.blockerId);
+      if (u) this.fx.shockwave(u.x, u.y, 0xffffff, 1.2);
+      playSfx('ready');
+    });
 
     ev.on('catalyzed', (c) => {
       const color = ELEMENTS[c.element].color;
@@ -386,7 +434,7 @@ export class BattleScene extends Phaser.Scene {
       this.menu.close();
       getSave().recordResult(this.stageId, g.won, g.stars);
       const next = STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
-      const onNext = g.won && next ? () => this.scene.restart({ stage: next }) : undefined;
+      const onNext = g.won && next ? () => this.scene.restart({ stage: next, hero: this.heroClass }) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
         new EndPanel(
@@ -401,8 +449,10 @@ export class BattleScene extends Phaser.Scene {
             seconds: this.sim.state.time,
             kills: this.sim.state.stats.kills,
             bestCatalyze: this.sim.state.stats.bestCatalyzeReactions,
+            skillName: HEROES[this.heroClass].skill.name,
+            skillCasts: this.sim.state.stats.skillCasts,
           },
-          { onReplay: () => this.scene.restart({ stage: this.stageId }), onMap: () => this.toMap(), onNext },
+          { onReplay: () => this.scene.restart({ stage: this.stageId, hero: this.heroClass }), onMap: () => this.toMap(), onNext },
         );
       });
     });
@@ -441,6 +491,7 @@ export class BattleScene extends Phaser.Scene {
         for (let i = 0; i < steps; i++) {
           this.enemies.snapshot(this.sim);
           this.hero.snapshot(this.sim.state.hero);
+          this.sim.state.summons.forEach((sm, i) => this.summons[i]?.snapshot(sm));
           this.projectiles.snapshot(this.sim);
           this.sim.step();
           if (this.sim.state.result !== 'playing') break;
@@ -451,6 +502,7 @@ export class BattleScene extends Phaser.Scene {
     this.enemies.sync(this.sim, alpha, dtMs);
     this.projectiles.sync(this.sim, alpha);
     this.hero.sync(this.sim.state.hero, alpha, dtMs);
+    this.sim.state.summons.forEach((sm, i) => this.summons[i]?.sync(sm, alpha, dtMs));
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
     this.menu.refresh();

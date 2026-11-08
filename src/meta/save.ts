@@ -1,9 +1,10 @@
 // Player progress, saved in localStorage as versioned JSON (with migrations) + manual text backup.
 // Pure TypeScript (no Phaser) so it can be unit-tested.
 
+import { HEROES, type HeroClass } from '../data/heroes';
 import { STAGE_ORDER, type StageId } from '../data/stages';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -15,10 +16,11 @@ export interface SaveData {
   version: number;
   createdAt: number;
   stages: Partial<Record<StageId, StageProgress>>;
+  hero: HeroClass; // last picked hero class (v2+)
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {} };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage' };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -29,8 +31,13 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {} };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage' };
   }
+  if (out.version < 2) {
+    // v2: hero classes. Everyone starts as the Arcanista.
+    out = { ...out, version: 2, hero: 'mage' };
+  }
+  if (!(out.hero in HEROES)) out.hero = 'mage';
   // Sanitize
   const stages: SaveData['stages'] = {};
   for (const id of STAGE_ORDER) {
@@ -83,6 +90,18 @@ export class SaveStore {
 
   totalStars(): number {
     return STAGE_ORDER.reduce((s, id) => s + this.stars(id), 0);
+  }
+
+  /** A hero class is available once its unlock stage has been won. */
+  isHeroUnlocked(cls: HeroClass): boolean {
+    const req = HEROES[cls].unlockAfter;
+    return !req || this.stars(req) > 0;
+  }
+
+  selectHero(cls: HeroClass): void {
+    if (!this.isHeroUnlocked(cls)) return;
+    this.data.hero = cls;
+    this.persist();
   }
 
   /** Record a finished match. Returns true if this was the first win of the stage. */

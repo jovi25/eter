@@ -51,6 +51,10 @@ export const ASSETS = {
   fire_zone: P,
   // hero
   hero_arcanist: P,
+  hero_knight: P,
+  hero_priest: P,
+  hero_druid: P,
+  summon_bear: P,
   hero_orb: P,
   move_marker: P,
   icon_catalyze: P,

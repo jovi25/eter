@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
+import { HERO_ORDER, HEROES } from '../../data/heroes';
 import { STAGE_ORDER, STAGES, type StageId } from '../../data/stages';
 import { getSave } from '../../meta/save';
 import { playSfx } from '../audio/sfx';
@@ -122,7 +123,7 @@ export class WorldMapScene extends Phaser.Scene {
 
   private card: Phaser.GameObjects.Container | null = null;
 
-  /** Small panel with the stage description and a big JOGAR button. */
+  /** Panel with the stage description, the hero picker and a big JOGAR button. */
   private showStageCard(id: StageId): void {
     this.card?.destroy();
     const st = STAGES[id];
@@ -135,16 +136,51 @@ export class WorldMapScene extends Phaser.Scene {
     });
     const g = this.add.graphics();
     g.fillStyle(PAL.ink, 1);
-    g.fillRoundedRect(-280, -200, 560, 400, 30);
+    g.fillRoundedRect(-320, -330, 640, 660, 30);
     g.fillStyle(0x2a1a4d, 1);
-    g.fillRoundedRect(-275, -195, 550, 390, 26);
+    g.fillRoundedRect(-315, -325, 630, 650, 26);
     c.add([shade, g]);
-    c.add(uiText(this, 0, -150, st.name, 34, '#f3e9ff', 7));
-    c.add(uiText(this, 0, -100, st.subtitle, 22, PAL.uiDim, 5).setWordWrapWidth(500));
-    for (let s = 0; s < 3; s++) c.add(this.add.image((s - 1) * 70, -30, s < save.stars(id) ? 'star' : 'starEmpty').setScale(0.75));
-    c.add(uiText(this, 0, 40, '10 ondas', 24, PAL.uiText, 5));
+    c.add(uiText(this, 0, -282, st.name, 34, '#f3e9ff', 7));
+    c.add(uiText(this, 0, -236, st.subtitle, 21, PAL.uiDim, 5).setWordWrapWidth(560));
+    for (let s = 0; s < 3; s++) c.add(this.add.image((s - 1) * 64, -178, s < save.stars(id) ? 'star' : 'starEmpty').setScale(0.6));
+
+    // Hero picker
+    c.add(uiText(this, 0, -122, 'Escolha o herói', 24, PAL.uiText, 5));
+    const role = uiText(this, 0, 92, HEROES[save.data.hero].role, 18, PAL.uiDim, 4).setWordWrapWidth(560);
+    c.add(role);
+    HERO_ORDER.forEach((cls, i) => {
+      const def = HEROES[cls];
+      const x = (i - 1.5) * 146;
+      const unlocked = save.isHeroUnlocked(cls);
+      const selected = save.data.hero === cls;
+      const slot = this.add.container(x, -10);
+      const bg = this.add.graphics();
+      bg.fillStyle(selected ? 0xffd34d : PAL.ink, 1);
+      bg.fillRoundedRect(-64, -78, 128, 160, 18);
+      bg.fillStyle(unlocked ? 0x3d2a6a : 0x241a3a, 1);
+      bg.fillRoundedRect(-59, -73, 118, 150, 15);
+      const img = this.add.image(0, -6, def.texture).setScale(0.62);
+      if (!unlocked) img.setTint(0x111111).setAlpha(0.6);
+      slot.add([bg, img, uiText(this, 0, 62, def.name, 16, unlocked ? PAL.uiText : PAL.uiDim, 4)]);
+      if (!unlocked && def.unlockAfter) {
+        const n = STAGE_ORDER.indexOf(def.unlockAfter) + 1;
+        slot.add(uiText(this, 0, -10, `🔒\nVença a\nfase ${n}`, 15, '#ffffff', 4));
+      }
+      slot.setSize(128, 160).setInteractive({ useHandCursor: true });
+      slot.on('pointerdown', () => {
+        if (!unlocked) {
+          playSfx('error');
+          return;
+        }
+        playSfx('ui');
+        save.selectHero(cls);
+        this.showStageCard(id);
+      });
+      c.add(slot);
+    });
+
     c.add(
-      new Button(this, 0, 120, {
+      new Button(this, 0, 222, {
         width: 360,
         height: 90,
         label: 'JOGAR',
@@ -152,7 +188,7 @@ export class WorldMapScene extends Phaser.Scene {
         color: 0x3aa655,
         onClick: () => {
           this.cameras.main.fadeOut(220, 11, 7, 22);
-          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { stage: id }));
+          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { stage: id, hero: getSave().data.hero }));
         },
       }),
     );

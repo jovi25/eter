@@ -2,6 +2,7 @@ import { SIM_DT } from '../data/config';
 import { ECONOMY, DIFFICULTY, STARS, WAVE_TIMING } from '../data/economy';
 import { ENEMIES, type EnemyId } from '../data/enemies';
 import { HERO } from '../data/hero';
+import { BEAR, DRUID_FURY, HEROES, KNIGHT_SPIN, PRIEST, type BlockerStats, type HeroDef } from '../data/heroes';
 import type { Element } from '../data/elements';
 import type { Vec2 } from '../data/maps';
 import { MAPS } from '../data/maps';
@@ -13,7 +14,7 @@ import { MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } f
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
 import { Rng } from './rng';
-import type { EnemyState, HitSpec, ProjectileState, SimState, TowerState } from './types';
+import type { BlockerState, EnemyState, HeroState, HitSpec, ProjectileState, SimState, TowerState } from './types';
 
 export interface SimOptions {
   stage: StageId;
@@ -85,16 +86,24 @@ export class Simulation {
       zones: [],
       combo: { count: 0, mult: 1, timer: 0 },
       hero: {
+        id: -1,
+        cls: this.mods.heroClass,
         x: map.heroStart.x,
         y: map.heroStart.y,
         targetX: map.heroStart.x,
         targetY: map.heroStart.y,
+        hp: HEROES[this.mods.heroClass].blocker?.hp ?? 0,
+        maxHp: HEROES[this.mods.heroClass].blocker?.hp ?? 0,
+        alive: true,
+        respawnTimer: 0,
+        blocking: [],
         attackCooldown: 0,
         catalyzeCooldown: 0,
-        catalyzeMax: HERO.catalyze.cooldown,
+        catalyzeMax: HEROES[this.mods.heroClass].skill.cooldown,
         facing: 1,
         moving: false,
       },
+      summons: [],
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
@@ -103,26 +112,55 @@ export class Simulation {
         heroDamage: 0,
         catalyzeCasts: 0,
         bestCatalyzeReactions: 0,
+        skillCasts: 0,
       },
     };
+    if (this.mods.heroClass === 'druid') {
+      this.state.summons.push({
+        id: this.nextId++,
+        kind: 'bear',
+        x: map.heroStart.x + 40,
+        y: map.heroStart.y + 10,
+        postX: map.heroStart.x + 40,
+        postY: map.heroStart.y + 10,
+        hp: BEAR.hp,
+        maxHp: BEAR.hp,
+        alive: true,
+        respawnTimer: 0,
+        blocking: [],
+        attackCooldown: 0,
+        facing: 1,
+        moving: false,
+      });
+    }
   }
 
   // ───────────────────────────── hero commands ─────────────────────────────
 
-  /** Walk the hero to a spot (clamped to the playfield). */
+  get heroDef(): HeroDef {
+    return HEROES[this.mods.heroClass];
+  }
+
+  /** Walk the hero to a spot (clamped to the playfield). For melee heroes this is also their post. */
   moveHero(x: number, y: number): void {
     const b = HERO.bounds;
     const h = this.state.hero;
     h.targetX = Math.max(b.minX, Math.min(b.maxX, x));
     h.targetY = Math.max(b.minY, Math.min(b.maxY, y));
+    const bear = this.state.summons.find((s) => s.kind === 'bear');
+    if (bear) {
+      // The bear guards a spot just in front of the druid.
+      bear.postX = h.targetX + 40;
+      bear.postY = h.targetY + 10;
+    }
   }
 
   catalyzeReady(): boolean {
-    return this.state.result === 'playing' && this.state.hero.catalyzeCooldown <= 0;
+    return this.state.result === 'playing' && this.state.hero.alive && this.state.hero.catalyzeCooldown <= 0;
   }
 
   /**
-   * Catalisar: hit every enemy around the hero with the affinity element.
+   * Catalisar (Arcanista): hit every enemy around the hero with the affinity element.
    * Enemies carrying a matching aura react; the rest get the element's aura.
    */
   castCatalyze(): boolean {
@@ -147,8 +185,10 @@ export class Simulation {
     }
     const reactions = this.totalReactions() - before;
     this.state.stats.catalyzeCasts++;
+    this.state.stats.skillCasts++;
     this.state.stats.bestCatalyzeReactions = Math.max(this.state.stats.bestCatalyzeReactions, reactions);
     this.events.emit('catalyzed', { x: h.x, y: h.y, radius: c.radius, element, hits, reactions });
+    this.events.emit('heroSkill', { cls: 'mage', x: h.x, y: h.y, radius: c.radius, hits, reactions });
     return true;
   }
 
@@ -157,30 +197,110 @@ export class Simulation {
     return r.wildfire + r.melt + r.thornfrost + r.shatter;
   }
 
+  private enemiesNear(x: number, y: number, radius: number): EnemyState[] {
+    const r2 = radius * radius;
+    return this.state.enemies.filter((e) => e.alive && (e.x - x) ** 2 + (e.y - y) ** 2 <= r2);
+  }
+
+  /** The class skill fires on its own when it is ready and worth it. */
+  private tryAutoSkill(): void {
+    const h = this.state.hero;
+    if (!this.catalyzeReady()) return;
+    const sk = this.heroDef.skill;
+    const cls = this.mods.heroClass;
+    if (cls === 'priest') {
+      // Bless when enemies are within reach of the towers around her.
+      const towers = this.towersNear(h.x, h.y, sk.radius);
+      const busy = towers.some((t) => this.findTarget(t));
+      if (!busy) return;
+      for (const t of towers) t.blessTime = PRIEST.blessDuration;
+      this.skillDone(h, sk.radius, towers.length, 0);
+      return;
+    }
+    const near = this.enemiesNear(h.x, h.y, sk.radius);
+    if (near.length < sk.minTargets) return;
+    if (cls === 'mage') {
+      this.castCatalyze();
+      return;
+    }
+    const before = this.totalReactions();
+    if (cls === 'knight') {
+      for (const e of near) this.applyHit(e, { element: 'physical', damage: KNIGHT_SPIN.damage * this.mods.heroDamageMult, hero: true });
+    } else if (cls === 'druid') {
+      for (const e of near) {
+        this.applyHit(e, { element: 'nature', damage: DRUID_FURY.damage * this.mods.heroDamageMult, hero: true });
+        if (e.alive && this.canBeRooted(e)) this.root(e, DRUID_FURY.rootDuration);
+      }
+      const bear = this.state.summons.find((s) => s.kind === 'bear' && s.alive);
+      if (bear) bear.hp = Math.min(bear.maxHp, bear.hp + bear.maxHp * 0.3);
+    }
+    this.skillDone(h, sk.radius, near.length, this.totalReactions() - before);
+  }
+
+  private skillDone(h: HeroState, radius: number, hits: number, reactions: number): void {
+    h.catalyzeCooldown = h.catalyzeMax;
+    this.state.stats.skillCasts++;
+    this.events.emit('heroSkill', { cls: this.mods.heroClass, x: h.x, y: h.y, radius, hits, reactions });
+  }
+
+  private towersNear(x: number, y: number, radius: number): TowerState[] {
+    const r2 = radius * radius;
+    return this.state.towers.filter((t) => (t.x - x) ** 2 + (t.y - y) ** 2 <= r2);
+  }
+
+  /** Towers near the Sacerdotisa attack faster. */
+  private towerRateMult(t: TowerState): number {
+    if (this.mods.heroClass !== 'priest' || !this.state.hero.alive) return 1;
+    const h = this.state.hero;
+    return (t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= PRIEST.auraRadius ** 2 ? PRIEST.auraRateMult : 1;
+  }
+
+  private blessMult(t: TowerState): number {
+    return t.blessTime > 0 ? PRIEST.blessDamageMult : 1;
+  }
+
   private updateHero(): void {
     const h = this.state.hero;
     if (h.catalyzeCooldown > 0) h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - DT);
-    const dx = h.targetX - h.x;
-    const dy = h.targetY - h.y;
-    const d = Math.hypot(dx, dy);
-    const stepLen = HERO.speed * DT;
-    if (d > 0.01) {
-      if (Math.abs(dx) > 1) h.facing = dx > 0 ? 1 : -1;
-      if (d <= stepLen) {
-        h.x = h.targetX;
-        h.y = h.targetY;
-      } else {
-        h.x += (dx / d) * stepLen;
-        h.y += (dy / d) * stepLen;
-      }
-      h.moving = true;
+    const def = this.heroDef;
+    if (def.blocker) {
+      // Knight: the hero itself holds the line around its post.
+      this.updateBlocker(h, def.blocker, h.targetX, h.targetY, true);
     } else {
-      h.moving = false;
+      this.walkTo(h, h.targetX, h.targetY, HERO.speed);
+      this.heroRangedAttack();
     }
-    // Auto-attack the nearest enemy in range (also while walking).
+    for (const s of this.state.summons) this.updateBlocker(s, BEAR, s.postX, s.postY, false);
+    if (h.alive) this.tryAutoSkill();
+  }
+
+  private walkTo(b: BlockerState, x: number, y: number, speed: number): boolean {
+    const dx = x - b.x;
+    const dy = y - b.y;
+    const d = Math.hypot(dx, dy);
+    const stepLen = speed * DT;
+    if (d <= 0.01) {
+      b.moving = false;
+      return true;
+    }
+    if (Math.abs(dx) > 1) b.facing = dx > 0 ? 1 : -1;
+    if (d <= stepLen) {
+      b.x = x;
+      b.y = y;
+    } else {
+      b.x += (dx / d) * stepLen;
+      b.y += (dy / d) * stepLen;
+    }
+    b.moving = true;
+    return false;
+  }
+
+  /** Ranged auto-attack of the Arcanista / Druida / Sacerdotisa: nearest enemy in range. */
+  private heroRangedAttack(): void {
+    const h = this.state.hero;
     if (h.attackCooldown > 0) h.attackCooldown = Math.max(0, h.attackCooldown - DT);
     if (h.attackCooldown > 0) return;
-    const a = HERO.attack;
+    const a = this.heroDef.attack;
     let best: EnemyState | null = null;
     let bestD = a.range * a.range;
     for (const e of this.state.enemies) {
@@ -192,6 +312,7 @@ export class Simulation {
       }
     }
     if (!best) return;
+    const element = a.element === 'affinity' ? this.mods.heroAffinity : a.element;
     this.state.projectiles.push({
       id: this.nextId++,
       towerId: 0,
@@ -201,18 +322,94 @@ export class Simulation {
       tx: best.x,
       ty: best.y,
       speed: a.projectileSpeed,
-      damage: a.damage * this.mods.heroDamageMult,
-      element: 'arcane',
+      damage: a.damage * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
+      element,
       crit: false,
       splashRadius: 0,
       splashFactor: 0,
-      burnDps: 0,
-      rootChance: 0,
-      chillStacks: 0,
+      burnDps: a.burnDps ?? 0,
+      rootChance: a.rootChance ?? 0,
+      chillStacks: 1,
       alive: true,
     });
+    h.facing = best.x >= h.x ? 1 : -1;
     h.attackCooldown = 1 / (a.rate * this.mods.heroAttackSpeedMult);
     this.events.emit('heroFired', { targetId: best.id });
+  }
+
+  /**
+   * Melee holder (Knight hero or bear): grabs up to N ground enemies near its post, they stop and hit back.
+   * Falls when out of hp, frees what it was holding, comes back after a while.
+   */
+  private updateBlocker(b: BlockerState, stats: BlockerStats, postX: number, postY: number, isHero: boolean): void {
+    if (!b.alive) {
+      b.respawnTimer -= DT;
+      if (b.respawnTimer <= 0) {
+        b.alive = true;
+        b.hp = b.maxHp;
+        b.x = postX;
+        b.y = postY;
+        this.events.emit('blockerRespawn', { blockerId: b.id });
+      }
+      return;
+    }
+    // Drop enemies that died, leaked or got away.
+    b.blocking = b.blocking.filter((id) => {
+      const e = this.enemyById.get(id);
+      return !!e && e.alive && e.blockedBy === b.id;
+    });
+    // Grab new ones near the post.
+    if (b.blocking.length < stats.maxBlock) {
+      const r2 = stats.aggroRadius ** 2;
+      const free = this.state.enemies
+        .filter((e) => e.alive && !e.flying && e.blockedBy === 0 && (e.x - postX) ** 2 + (e.y - postY) ** 2 <= r2)
+        .sort((a, c) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2 - ((c.x - b.x) ** 2 + (c.y - b.y) ** 2));
+      for (const e of free) {
+        if (b.blocking.length >= stats.maxBlock) break;
+        e.blockedBy = b.id;
+        b.blocking.push(e.id);
+      }
+    }
+    const target = b.blocking.length ? this.enemyById.get(b.blocking[0]!) : undefined;
+    if (target) {
+      // Walk up to the first one and fight.
+      const dx = target.x - b.x;
+      const dy = target.y - b.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 34) this.walkTo(b, target.x - (dx / d) * 30, target.y - (dy / d) * 30, stats.speed);
+      else {
+        b.moving = false;
+        b.facing = dx >= 0 ? 1 : -1;
+      }
+      if (b.attackCooldown > 0) b.attackCooldown = Math.max(0, b.attackCooldown - DT);
+      if (d <= 52 && b.attackCooldown <= 0) {
+        b.attackCooldown = 1 / stats.rate;
+        const dmg = stats.damage * (isHero ? this.mods.heroDamageMult : 1);
+        this.applyHit(target, { element: 'physical', damage: dmg, hero: isHero });
+        this.events.emit('blockerAttack', { blockerId: b.id, targetId: target.id });
+      }
+      // Held enemies that are close enough hit back.
+      let incoming = 0;
+      for (const id of b.blocking) {
+        const e = this.enemyById.get(id);
+        if (e && e.alive && (e.x - b.x) ** 2 + (e.y - b.y) ** 2 <= 70 * 70) incoming += ENEMIES[e.type].attack;
+      }
+      b.hp -= incoming * DT;
+      if (b.hp <= 0) {
+        b.hp = 0;
+        b.alive = false;
+        b.respawnTimer = stats.respawn;
+        for (const id of b.blocking) {
+          const e = this.enemyById.get(id);
+          if (e) e.blockedBy = 0;
+        }
+        b.blocking = [];
+        this.events.emit('blockerDied', { blockerId: b.id, x: b.x, y: b.y });
+      }
+    } else {
+      this.walkTo(b, postX, postY, stats.speed);
+      b.hp = Math.min(b.maxHp, b.hp + b.maxHp * stats.regen * DT);
+    }
   }
 
   // ───────────────────────────── player commands ─────────────────────────────
@@ -242,7 +439,7 @@ export class Simulation {
     if (!this.mods.unlockedTowers.includes(type)) return null;
     const cost = TOWERS[type].levels[0].cost;
     if (s.gold < cost) return null;
-    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0 };
+    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0 };
     s.towers.push(tower);
     this.addGold(-cost);
     this.events.emit('towerBuilt', { towerId: tower.id, slot, type });
@@ -402,6 +599,7 @@ export class Simulation {
       isBoss: !!def.boss,
       flying: def.flying,
       gold: Math.round(def.gold * (opts.goldMult ?? 1)),
+      blockedBy: 0,
       burnTime: 0,
       burnDps: 0,
       burnTickTimer: 0,
@@ -432,7 +630,7 @@ export class Simulation {
       this.tickStatuses(e);
       if (!e.alive) continue;
       if (e.isBoss) this.tickBoss(e);
-      if (e.rootTime > 0 || e.frozenTime > 0) continue;
+      if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const def = ENEMIES[e.type];
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
       e.dist += def.speed * (1 - slow) * DT;
@@ -559,7 +757,8 @@ export class Simulation {
 
   private updateTowers(): void {
     for (const t of this.state.towers) {
-      if (t.cooldown > 0) t.cooldown = Math.max(0, t.cooldown - DT);
+      if (t.blessTime > 0) t.blessTime = Math.max(0, t.blessTime - DT);
+      if (t.cooldown > 0) t.cooldown = Math.max(0, t.cooldown - DT * this.towerRateMult(t));
       if (t.cooldown > 0) continue;
       const target = this.findTarget(t);
       if (!target) continue;
@@ -583,7 +782,7 @@ export class Simulation {
       this.events.emit('towerAbility', { towerId: t.id, ability: 'supercharge', x: t.x, y: t.y });
     }
     const jump2 = (lvl.chainRange ?? 0) ** 2;
-    const base = lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element];
+    const base = lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * this.blessMult(t);
     const points = [{ x: t.x, y: t.y }];
     const hit = new Set<number>();
     let current: EnemyState | null = target;
@@ -648,7 +847,7 @@ export class Simulation {
     const ab = this.abilityOf(t);
     const crit = lvl.critChance ? this.rng.chance(lvl.critChance) : false;
     const damage =
-      lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * (crit ? (lvl.critMult ?? 2) : 1);
+      lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * this.blessMult(t) * (crit ? (lvl.critMult ?? 2) : 1);
     const p: ProjectileState = {
       id: this.nextId++,
       towerId: t.id,

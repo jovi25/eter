@@ -1,5 +1,6 @@
 import type { Element } from '../data/elements';
 import type { EnemyId } from '../data/enemies';
+import type { HeroClass } from '../data/heroes';
 import type { ReactionId } from '../data/reactions';
 import type { TowerAbility, TowerId } from '../data/towers';
 
@@ -8,6 +9,7 @@ export interface EnemyState {
   type: EnemyId;
   wave: number; // 1-based wave it belongs to
   pathIndex: number; // which map path it walks
+  blockedBy: number; // 0 = free; -1 = held by the hero; >0 = held by that summon
   hp: number;
   maxHp: number;
   dist: number; // distance walked along the path
@@ -42,6 +44,7 @@ export interface TowerState {
   cooldown: number;
   invested: number;
   shots: number; // attacks fired (drives every-Nth-shot abilities)
+  blessTime: number; // Sacerdotisa blessing: +damage while > 0
 }
 
 export interface ProjectileState {
@@ -88,6 +91,7 @@ export interface MatchStats {
   heroDamage: number;
   catalyzeCasts: number;
   bestCatalyzeReactions: number; // most reactions from a single Catalisar
+  skillCasts: number;
 }
 
 export interface SimState {
@@ -105,21 +109,39 @@ export interface SimState {
   towers: TowerState[];
   projectiles: ProjectileState[];
   zones: ZoneState[];
+  summons: SummonState[];
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;
 }
 
-export interface HeroState {
+/** Anything that holds enemies in melee (Knight hero, Druid's bear). */
+export interface BlockerState {
+  id: number; // -1 for the hero, >0 for summons
   x: number;
   y: number;
-  targetX: number; // where it is walking to
-  targetY: number;
+  hp: number;
+  maxHp: number;
+  alive: boolean;
+  respawnTimer: number;
+  blocking: number[]; // enemy ids held right now
   attackCooldown: number;
-  catalyzeCooldown: number; // seconds until Catalisar is ready (0 = ready)
-  catalyzeMax: number;
   facing: 1 | -1;
   moving: boolean;
+}
+
+export interface HeroState extends BlockerState {
+  cls: HeroClass;
+  targetX: number; // where it walks to / its post
+  targetY: number;
+  catalyzeCooldown: number; // seconds until the class skill is ready (0 = ready) — name kept from Phase 3
+  catalyzeMax: number;
+}
+
+export interface SummonState extends BlockerState {
+  kind: 'bear';
+  postX: number;
+  postY: number;
 }
 
 /** One hit on one enemy. Towers, splash, the hero and reactions all go through this. */

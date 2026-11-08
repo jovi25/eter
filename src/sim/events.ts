@@ -1,5 +1,6 @@
 import type { Element } from '../data/elements';
 import type { EnemyId } from '../data/enemies';
+import type { HeroClass } from '../data/heroes';
 import type { ReactionId } from '../data/reactions';
 import type { TowerId } from '../data/towers';
 
@@ -22,6 +23,11 @@ export interface SimEvents {
   towerAbility: { towerId: number; ability: 'volley' | 'firefield' | 'deepfreeze' | 'entangle' | 'supercharge'; x: number; y: number };
   zoneCreated: { zoneId: number; x: number; y: number; radius: number; duration: number };
   heroFired: { targetId: number };
+  /** The class skill went off by itself. */
+  heroSkill: { cls: HeroClass; x: number; y: number; radius: number; hits: number; reactions: number };
+  blockerAttack: { blockerId: number; targetId: number };
+  blockerDied: { blockerId: number; x: number; y: number };
+  blockerRespawn: { blockerId: number };
   /** Catalisar went off: everything within radius was hit with the affinity element. */
   catalyzed: { x: number; y: number; radius: number; element: Element; hits: number; reactions: number };
   waveStarted: { wave: number; early: boolean; bonus: number };

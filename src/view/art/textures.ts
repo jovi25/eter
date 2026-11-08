@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { ASSETS, type AssetKey } from '../../assets/manifest';
 import {
-  animeEyes,
   blush,
   circle,
   ellipse,
@@ -21,6 +20,7 @@ import {
   star,
   type Ctx,
 } from './paint';
+import { CHIBI_STYLES, drawBear, drawChibi } from './chibi';
 
 type Drawer = { w: number; h: number; draw: (ctx: Ctx, cx: number, cy: number) => void };
 
@@ -872,172 +872,11 @@ const DRAW: Record<AssetKey, Drawer> = {
   },
 
   // ─────────── hero ───────────
-  hero_arcanist: {
-    w: 112,
-    h: 144,
-    draw: (c) => {
-      // Original anime-chibi mage: spiky brown hair, long cream coat with brown/gold trim,
-      // red scarf, dark tunic, boots, golden staff. Staff head (orb socket) at texture (96, 22).
-      const fy = 136; // feet line
-      const hx = 52; // head center
-      const hy = 46;
-      const skin = radial(c, hx - 6, hy - 4, 30, [[0, '#fff4ea'], [0.7, '#fde0c8'], [1, '#f2c4a0']]);
-      const hairG = (y0: number, y1: number) => linear(c, 0, y0, 0, y1, [[0, '#7a4a2a'], [0.5, '#5a3218'], [1, '#3a200e']]);
-      const coat = linear(c, 20, 0, 92, 0, [[0, '#fbf3e2'], [0.55, '#e8d9bb'], [1, '#c4ad85']]);
-
-      // staff (behind body)
-      c.lineCap = 'round';
-      c.strokeStyle = INK;
-      c.lineWidth = 8;
-      c.beginPath(); c.moveTo(84, fy - 4); c.lineTo(96, 30); c.stroke();
-      c.strokeStyle = linear(c, 0, 30, 0, fy, [[0, '#f0c050'], [0.5, '#c8902a'], [1, '#8a5a1a']]);
-      c.lineWidth = 4.5;
-      c.stroke();
-      // ornate head: two golden wings cradling the orb socket
-      for (const s of [-1, 1]) {
-        shape(c, (k) => {
-          k.moveTo(96, 32);
-          k.quadraticCurveTo(96 + s * 18, 30, 96 + s * 14, 12);
-          k.quadraticCurveTo(96 + s * 8, 22, 96 + s * 3, 22);
-          k.closePath();
-        }, linear(c, 0, 10, 0, 34, [[0, '#fff1a8'], [1, '#c8902a']]), INK, 2);
-      }
-      shape(c, circle(96, 32, 4), '#c8902a', INK, 1.5);
-
-      // back hair mass
-      shape(c, (k) => {
-        k.moveTo(hx - 30, hy + 8);
-        k.lineTo(hx - 36, hy - 4);
-        k.lineTo(hx - 30, hy - 14);
-        k.lineTo(hx - 34, hy - 24);
-        k.lineTo(hx - 22, hy - 30);
-        k.lineTo(hx - 18, hy - 40);
-        k.lineTo(hx - 4, hy - 36);
-        k.lineTo(hx + 6, hy - 44);
-        k.lineTo(hx + 14, hy - 34);
-        k.lineTo(hx + 28, hy - 36);
-        k.lineTo(hx + 28, hy - 22);
-        k.lineTo(hx + 36, hy - 14);
-        k.lineTo(hx + 30, hy - 2);
-        k.lineTo(hx + 30, hy + 10);
-        k.quadraticCurveTo(hx, hy + 18, hx - 30, hy + 8);
-        k.closePath();
-      }, hairG(hy - 44, hy + 14), INK, 3);
-
-      // boots
-      for (const s of [-1, 1]) {
-        shape(c, roundRect(hx + s * 9 - 6, fy - 14, 13, 14, 4), linear(c, 0, fy - 14, 0, fy, [[0, '#6b4426'], [1, '#3a2210']]), INK, 2.5);
-        shape(c, ellipse(hx + s * 9 + s * 2, fy - 1, 8, 3.5), '#2a1a0c', INK, 1.5);
-      }
-      // coat (long, flared, open front)
-      shape(c, (k) => {
-        k.moveTo(hx - 14, hy + 22);
-        k.quadraticCurveTo(hx - 30, hy + 50, hx - 32, fy - 10);
-        k.lineTo(hx - 8, fy - 14);
-        k.lineTo(hx, hy + 40);
-        k.lineTo(hx + 8, fy - 14);
-        k.lineTo(hx + 32, fy - 10);
-        k.quadraticCurveTo(hx + 30, hy + 50, hx + 14, hy + 22);
-        k.closePath();
-      }, coat, INK, 3);
-      // coat trim (brown band + gold piping)
-      c.strokeStyle = '#7a4a24';
-      c.lineWidth = 4;
-      c.beginPath();
-      c.moveTo(hx - 31, fy - 12); c.lineTo(hx - 8, fy - 16);
-      c.moveTo(hx + 8, fy - 16); c.lineTo(hx + 31, fy - 12);
-      c.stroke();
-      c.strokeStyle = '#e8b84a';
-      c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(hx - 30, fy - 16); c.lineTo(hx - 8, fy - 19);
-      c.moveTo(hx + 8, fy - 19); c.lineTo(hx + 30, fy - 16);
-      c.stroke();
-      // inner dark tunic + belt
-      shape(c, poly([[hx - 9, hy + 26], [hx + 9, hy + 26], [hx + 7, fy - 16], [hx - 7, fy - 16]]), linear(c, 0, hy + 26, 0, fy, [[0, '#4a3020'], [1, '#2a1a10']]), INK, 2);
-      shape(c, roundRect(hx - 11, hy + 44, 22, 5, 2), '#7a4a24', INK, 1.5);
-      shape(c, roundRect(hx - 3, hy + 43, 6, 7, 1.5), '#f0c050', INK, 1.2);
-      // lapels with gold buttons
-      for (const s of [-1, 1]) {
-        shape(c, poly([[hx + s * 12, hy + 22], [hx + s * 3, hy + 38], [hx + s * 10, hy + 40]]), '#d8c49c', INK, 1.5);
-        shape(c, circle(hx + s * 10, hy + 48, 2), '#f0c050', INK, 1);
-        shape(c, circle(hx + s * 11, hy + 56, 2), '#f0c050', INK, 1);
-      }
-      // sleeves + hands (right hand on the staff)
-      shape(c, (k) => {
-        k.moveTo(hx + 12, hy + 24);
-        k.quadraticCurveTo(hx + 30, hy + 34, hx + 34, hy + 50);
-        k.lineTo(hx + 26, hy + 54);
-        k.quadraticCurveTo(hx + 20, hy + 40, hx + 10, hy + 34);
-        k.closePath();
-      }, coat, INK, 2.5);
-      shape(c, circle(hx + 32, hy + 54, 5.5), '#fde0c8', INK, 2);
-      shape(c, (k) => {
-        k.moveTo(hx - 12, hy + 24);
-        k.quadraticCurveTo(hx - 26, hy + 36, hx - 26, hy + 52);
-        k.lineTo(hx - 18, hy + 54);
-        k.quadraticCurveTo(hx - 16, hy + 40, hx - 8, hy + 34);
-        k.closePath();
-      }, coat, INK, 2.5);
-      shape(c, circle(hx - 22, hy + 56, 5), '#fde0c8', INK, 2);
-      // red scarf
-      shape(c, (k) => {
-        k.moveTo(hx - 15, hy + 18);
-        k.quadraticCurveTo(hx, hy + 26, hx + 15, hy + 18);
-        k.lineTo(hx + 14, hy + 25);
-        k.quadraticCurveTo(hx, hy + 32, hx - 14, hy + 25);
-        k.closePath();
-      }, linear(c, 0, hy + 18, 0, hy + 32, [[0, '#e0504a'], [1, '#9a2a2a']]), INK, 2);
-      shape(c, poly([[hx + 8, hy + 26], [hx + 15, hy + 27], [hx + 17, hy + 42], [hx + 10, hy + 40]]), linear(c, 0, hy + 26, 0, hy + 42, [[0, '#d04440'], [1, '#8a2424']]), INK, 1.8);
-
-      // head
-      shape(c, (k) => {
-        k.moveTo(hx - 22, hy - 6);
-        k.quadraticCurveTo(hx - 23, hy + 12, hx - 8, hy + 20);
-        k.quadraticCurveTo(hx, hy + 24, hx + 8, hy + 20);
-        k.quadraticCurveTo(hx + 23, hy + 12, hx + 22, hy - 6);
-        k.quadraticCurveTo(hx, hy - 22, hx - 22, hy - 6);
-      }, skin, INK, 2.5);
-      for (const s of [-1, 1]) shape(c, ellipse(hx + s * 22, hy + 4, 3.5, 5.5), '#f6cfae', INK, 1.5);
-      animeEyes(c, hx, hy + 9, 10, 7.4, 0x7a4220);
-      // nose + mouth + cheeks
-      c.strokeStyle = 'rgba(160,90,60,0.7)';
-      c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(hx + 1, hy + 15); c.lineTo(hx, hy + 16.5); c.stroke();
-      c.strokeStyle = INK;
-      c.lineWidth = 1.8;
-      c.beginPath(); c.moveTo(hx - 3, hy + 19.5); c.quadraticCurveTo(hx, hy + 21, hx + 3, hy + 19.5); c.stroke();
-      c.fillStyle = 'rgba(255,130,130,0.35)';
-      for (const s of [-1, 1]) {
-        c.beginPath(); c.ellipse(hx + s * 14, hy + 16, 4, 2, 0, 0, Math.PI * 2); c.fill();
-      }
-      // spiky front bangs
-      shape(c, (k) => {
-        k.moveTo(hx - 25, hy + 6);
-        k.lineTo(hx - 23, hy - 12);
-        k.lineTo(hx - 15, hy - 4);
-        k.lineTo(hx - 12, hy - 12);
-        k.lineTo(hx - 5, hy - 3);
-        k.lineTo(hx - 1, hy - 11);
-        k.lineTo(hx + 5, hy - 3);
-        k.lineTo(hx + 10, hy - 12);
-        k.lineTo(hx + 15, hy - 4);
-        k.lineTo(hx + 22, hy - 11);
-        k.lineTo(hx + 25, hy + 6);
-        k.lineTo(hx + 28, hy - 14);
-        k.quadraticCurveTo(hx + 20, hy - 30, hx, hy - 30);
-        k.quadraticCurveTo(hx - 22, hy - 30, hx - 29, hy - 14);
-        k.closePath();
-      }, hairG(hy - 30, hy + 4), INK, 2.5);
-      c.strokeStyle = 'rgba(255,220,180,0.55)';
-      c.lineWidth = 3;
-      c.beginPath();
-      c.moveTo(hx - 14, hy - 22); c.quadraticCurveTo(hx - 2, hy - 27, hx + 10, hy - 22);
-      c.stroke();
-      // small gem circlet (mage touch)
-      shape(c, poly([[hx - 3, hy - 13], [hx, hy - 17], [hx + 3, hy - 13], [hx, hy - 9]]), linear(c, 0, hy - 17, 0, hy - 9, [[0, '#d8f6ff'], [1, '#4aa3ff']]), INK, 1.2);
-    },
-  },
+  hero_arcanist: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_arcanist) },
+  hero_knight: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_knight) },
+  hero_priest: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_priest) },
+  hero_druid: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_druid) },
+  summon_bear: { w: 100, h: 100, draw: (c) => drawBear(c) },
   hero_orb: {
     w: 40,
     h: 40,

@@ -1,4 +1,5 @@
 import type { Element } from './elements';
+import type { HeroClass } from './heroes';
 import type { TowerId } from './towers';
 
 /**
@@ -18,6 +19,7 @@ export interface SimModifiers {
   heroAffinity: Exclude<Element, 'arcane' | 'physical'>;
   heroDamageMult: number; // equipment / level
   heroAttackSpeedMult: number; // Wolf card
+  heroClass: HeroClass;
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -33,5 +35,6 @@ export function defaultModifiers(): SimModifiers {
     heroAffinity: 'fire',
     heroDamageMult: 1,
     heroAttackSpeedMult: 1,
+    heroClass: 'mage',
   };
 }
