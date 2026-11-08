@@ -44,8 +44,8 @@ export interface TowerState {
 
 export interface ProjectileState {
   id: number;
-  towerId: number;
-  towerType: TowerId;
+  towerId: number; // 0 for the hero
+  towerType?: TowerId; // undefined for the hero
   targetId: number;
   x: number;
   y: number;
@@ -70,6 +70,9 @@ export interface MatchStats {
   damageByTower: Record<TowerId, number>;
   kills: number;
   livesLost: number;
+  heroDamage: number;
+  catalyzeCasts: number;
+  bestCatalyzeReactions: number; // most reactions from a single Catalisar
 }
 
 export interface SimState {
@@ -87,7 +90,20 @@ export interface SimState {
   towers: TowerState[];
   projectiles: ProjectileState[];
   combo: { count: number; mult: number; timer: number };
+  hero: HeroState;
   stats: MatchStats;
+}
+
+export interface HeroState {
+  x: number;
+  y: number;
+  targetX: number; // where it is walking to
+  targetY: number;
+  attackCooldown: number;
+  catalyzeCooldown: number; // seconds until Catalisar is ready (0 = ready)
+  catalyzeMax: number;
+  facing: 1 | -1;
+  moving: boolean;
 }
 
 /** One hit on one enemy. Towers, splash, the hero and reactions all go through this. */
@@ -99,4 +115,5 @@ export interface HitSpec {
   rootChance?: number; // nature: chance to root (1 = always)
   towerId?: number;
   towerType?: TowerId;
+  hero?: boolean; // dealt by the hero (stats)
 }

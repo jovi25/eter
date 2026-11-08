@@ -28,8 +28,8 @@ Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
 - **Aceite:** jogo uma fase completa no celular em ~3 min e vejo INCÊNDIO.
 
 ## Fase 3 — Herói
-- [ ] Arcanista em campo, movimento por toque, ataque automático
-- [ ] Catalisar com redução de cooldown por reação
+- [x] Arcanista em campo, movimento por toque, ataque automático
+- [x] Catalisar com redução de cooldown por reação
 - **Aceite:** sinto o loop "reação → habilidade volta mais rápido".
 
 ## Fase 4 — Meta e relicários

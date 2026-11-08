@@ -20,6 +20,7 @@ export class FxLayer {
   private rings: Phaser.GameObjects.Image[] = [];
   private coins: Phaser.GameObjects.Image[] = [];
   private bolts: Phaser.GameObjects.Graphics[] = [];
+  private orbs: Phaser.GameObjects.Image[] = [];
   private lastBannerAt = -9999;
   private bannerFreeAt = 0;
 
@@ -256,6 +257,40 @@ export class FxLayer {
         },
       });
     }
+  }
+
+  /** A glowing orb flies from (x,y) to (tx,ty) — used to show reactions feeding the Catalisar cooldown. */
+  orbTo(x: number, y: number, tx: number, ty: number, color: number, onArrive: () => void): void {
+    if (this.orbs.filter((o) => o.visible).length >= 8) {
+      onArrive();
+      return;
+    }
+    const o = this.orbs.find((k) => !k.visible) ?? this.newOrb();
+    o.setPosition(x, y).setTint(color).setScale(1.2).setAlpha(1).setVisible(true);
+    const mx = (x + tx) / 2 + (Math.random() - 0.5) * 200;
+    const my = Math.min(y, ty) - 80;
+    const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(x, y), new Phaser.Math.Vector2(mx, my), new Phaser.Math.Vector2(tx, ty));
+    const tmp = new Phaser.Math.Vector2();
+    this.scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 550,
+      ease: 'Cubic.easeIn',
+      onUpdate: (tw) => {
+        curve.getPoint(tw.getValue() ?? 0, tmp);
+        o.setPosition(tmp.x, tmp.y);
+      },
+      onComplete: () => {
+        o.setVisible(false);
+        onArrive();
+      },
+    });
+  }
+
+  private newOrb(): Phaser.GameObjects.Image {
+    const o = this.scene.add.image(0, 0, 'hero_orb').setDepth(DEPTH.hud + 3).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this.orbs.push(o);
+    return o;
   }
 
   private newCoin(): Phaser.GameObjects.Image {

@@ -51,8 +51,8 @@ export class Hud {
     const bottom = scene.add.graphics().setDepth(DEPTH.hud);
     bottom.fillStyle(PAL.panel, 0.88);
     bottom.fillRoundedRect(-20, GAME_HEIGHT - 104, GAME_WIDTH + 40, 140, 24);
-    this.callBtn = new Button(scene, GAME_WIDTH / 2, GAME_HEIGHT - 58, {
-      width: 380,
+    this.callBtn = new Button(scene, 290, GAME_HEIGHT - 58, {
+      width: 400,
       height: 78,
       label: 'COMEÇAR',
       fontSize: 32,
@@ -60,7 +60,7 @@ export class Hud {
       onClick: cb.onCallWave,
     });
     this.callBtn.setDepth(DEPTH.hud);
-    this.callSub = uiText(scene, GAME_WIDTH / 2, GAME_HEIGHT - 116, '', 22, PAL.goldCss, 5).setDepth(DEPTH.hud);
+    this.callSub = uiText(scene, 290, GAME_HEIGHT - 116, '', 20, PAL.goldCss, 5).setDepth(DEPTH.hud);
 
     // combo meter
     this.comboText = uiText(scene, 0, 0, '', 40, '#ffe34d', 8);
@@ -102,11 +102,11 @@ export class Hud {
     const bonus = sim.earlyCallBonus();
     if (s.wavePhase === 'prep') {
       label = 'COMEÇAR';
-      sub = `Começa em ${Math.ceil(s.nextWaveTimer)}s  •  +${bonus} de ouro se chamar já`;
+      sub = `Começa em ${Math.ceil(s.nextWaveTimer)}s • chamar já: +${bonus} ouro`;
       enabled = true;
     } else if (s.wavePhase === 'countdown') {
       label = `CHAMAR ONDA ${s.wave + 1}`;
-      sub = `Chega em ${Math.ceil(s.nextWaveTimer)}s  •  +${bonus} de ouro se chamar já`;
+      sub = `Chega em ${Math.ceil(s.nextWaveTimer)}s • chamar já: +${bonus} ouro`;
       enabled = true;
     } else if (s.wavePhase === 'spawning') {
       label = `ONDA ${s.wave} CHEGANDO...`;

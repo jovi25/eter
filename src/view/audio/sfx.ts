@@ -271,6 +271,27 @@ const SOUNDS = {
       { wave: 'noise', dur: 0.2, vol: 0.2, filter: { type: 'lowpass', freq: 500 } },
     ],
   },
+  hero_shoot: {
+    voices: [
+      { wave: 'sine', freq: 880, freqEnd: 1500, dur: 0.12, vol: 0.12 },
+      { wave: 'triangle', freq: 1760, freqEnd: 2600, dur: 0.1, vol: 0.05, delay: 0.02 },
+    ],
+    reverb: 0.3,
+    jitter: 0.06,
+    gap: 0.08,
+  },
+  catalyze: {
+    voices: [
+      { wave: 'noise', dur: 0.7, vol: 0.5, attack: 0.01, filter: { type: 'bandpass', freq: 400, freqEnd: 5000, q: 1.2 } },
+      { wave: 'sine', freq: 110, freqEnd: 45, dur: 0.5, vol: 0.55 },
+      { wave: 'sawtooth', freq: 220, freqEnd: 880, dur: 0.35, vol: 0.12, detune: [-12, 12], filter: { type: 'lowpass', freq: 2500 } },
+      ...bell(1047, 0.8, 0.1, 0.05),
+      ...bell(1568, 0.8, 0.08, 0.1),
+    ],
+    reverb: 0.6,
+  },
+  cd_tick: { voices: [...bell(2093, 0.18, 0.06)], jitter: 0.08, gap: 0.05 },
+  ready: { voices: [...bell(1319, 0.3, 0.1), ...bell(1976, 0.5, 0.1, 0.08)], reverb: 0.5 },
   error: { voices: [{ wave: 'square', freq: 180, freqEnd: 140, dur: 0.14, vol: 0.08, filter: { type: 'lowpass', freq: 900 } }], gap: 0.1 },
   boss: {
     voices: [

@@ -612,7 +612,104 @@ const DRAW: Record<AssetKey, Drawer> = {
     },
   },
 
+  // ─────────── hero ───────────
+  hero_arcanist: {
+    w: 96,
+    h: 120,
+    draw: (c, cx, cy) => {
+      const by = cy + 18; // body center
+      // staff (behind the arm)
+      c.strokeStyle = INK;
+      c.lineWidth = 7;
+      c.lineCap = 'round';
+      c.beginPath(); c.moveTo(cx + 26, by + 38); c.lineTo(cx + 30, by - 34); c.stroke();
+      c.strokeStyle = linear(c, 0, by - 34, 0, by + 38, [[0, '#c48a52'], [1, '#6b4426']]);
+      c.lineWidth = 4;
+      c.stroke();
+      shape(c, poly([[cx + 22, by - 34], [cx + 30, by - 44], [cx + 38, by - 34], [cx + 30, by - 30]]), '#d6a020', INK, 2);
+      // robe
+      shape(c, (k) => {
+        k.moveTo(cx - 8, by - 16);
+        k.quadraticCurveTo(cx - 30, by + 20, cx - 28, by + 40);
+        k.quadraticCurveTo(cx, by + 46, cx + 28, by + 40);
+        k.quadraticCurveTo(cx + 30, by + 20, cx + 8, by - 16);
+        k.closePath();
+      }, linear(c, cx - 28, 0, cx + 28, 0, [[0, '#8e5cf0'], [0.5, '#6a3bd0'], [1, '#43208f']]), INK, 3.5);
+      c.strokeStyle = '#ffd34d';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(cx - 27, by + 36); c.quadraticCurveTo(cx, by + 42, cx + 27, by + 36);
+      c.stroke();
+      shape(c, roundRect(cx - 3, by - 8, 6, 44, 3), '#ffd34d', INK, 1.5);
+      // sleeves / hands
+      shape(c, ellipse(cx + 22, by + 8, 8, 7), '#ffe0c2', INK, 2.5);
+      shape(c, ellipse(cx - 20, by + 10, 7, 6), '#ffe0c2', INK, 2.5);
+      // head
+      shape(c, circle(cx, by - 26, 19), radial(c, cx, by - 26, 20, [[0, '#fff0e0'], [1, '#f5c9a3']], cx - 6, by - 32), INK, 3);
+      eyes(c, cx, by - 24, 7.5, 5.5, { iris: 0x5a2fc2 });
+      blush(c, cx, by - 16, 12, 3.5);
+      smile(c, cx, by - 13, 5);
+      // hat
+      shape(c, (k) => {
+        k.moveTo(cx - 30, by - 36);
+        k.quadraticCurveTo(cx, by - 46, cx + 30, by - 36);
+        k.quadraticCurveTo(cx + 12, by - 50, cx + 8, by - 62);
+        k.quadraticCurveTo(cx + 2, by - 78, cx - 16, by - 86);
+        k.quadraticCurveTo(cx - 8, by - 66, cx - 14, by - 50);
+        k.closePath();
+      }, linear(c, cx - 30, by - 86, cx + 30, by - 36, [[0, '#a77bff'], [0.6, '#6a3bd0'], [1, '#3a1590']]), INK, 3.5);
+      shape(c, (k) => {
+        k.moveTo(cx - 28, by - 38);
+        k.quadraticCurveTo(cx, by - 47, cx + 28, by - 38);
+        k.quadraticCurveTo(cx, by - 41, cx - 28, by - 38);
+      }, '#ffd34d', INK, 1.5);
+      shape(c, star(c, cx - 2, by - 60, 6, 0.45), '#ffe680', INK, 1.5);
+      gloss(c, cx - 8, by - 66, 6, 3, 0.5, -0.8);
+    },
+  },
+  hero_orb: {
+    w: 40,
+    h: 40,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 20, 0xffffff, 0.8);
+      shape(c, circle(cx, cy, 8), radial(c, cx, cy, 9, [[0, '#ffffff'], [1, '#d8d8d8']], cx - 2, cy - 3), INK, 2);
+    },
+  },
+  move_marker: {
+    w: 64,
+    h: 32,
+    draw: (c, cx, cy) => {
+      c.strokeStyle = 'rgba(255,255,255,0.9)';
+      c.lineWidth = 4;
+      c.beginPath();
+      c.ellipse(cx, cy, 26, 11, 0, 0, Math.PI * 2);
+      c.stroke();
+      c.strokeStyle = 'rgba(180,140,255,0.9)';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.ellipse(cx, cy, 16, 6, 0, 0, Math.PI * 2);
+      c.stroke();
+    },
+  },
+  icon_catalyze: {
+    w: 72,
+    h: 72,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 34, 0xffffff, 0.6);
+      shape(c, star(c, cx, cy, 28, 0.38, 8), radial(c, cx, cy, 28, [[0, '#ffffff'], [1, '#e8e0ff']]), INK, 3);
+      shape(c, circle(cx, cy, 9), '#ffffff', INK, 2);
+    },
+  },
+
   // ─────────── projectiles (pointing right) ───────────
+  proj_arcane: {
+    w: 34,
+    h: 34,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 17, 0xb57bff, 0.9);
+      shape(c, star(c, cx, cy, 8, 0.45, 4), '#f3e9ff', 'rgba(90,47,194,0.9)', 1.5);
+    },
+  },
   proj_physical: {
     w: 40,
     h: 12,

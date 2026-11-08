@@ -14,6 +14,10 @@ export interface SimModifiers {
   vineHitsFlying: boolean; // Bat card
   meltAppliesFragile: boolean; // Herald card
   unlockedTowers: TowerId[];
+  /** Element of the equipped weapon — what Catalisar hits with. Starts as Fire (Cajado de Brasa). */
+  heroAffinity: Exclude<Element, 'arcane' | 'physical'>;
+  heroDamageMult: number; // equipment / level
+  heroAttackSpeedMult: number; // Wolf card
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -26,5 +30,8 @@ export function defaultModifiers(): SimModifiers {
     vineHitsFlying: false,
     meltAppliesFragile: false,
     unlockedTowers: ['archer', 'brazier', 'frost', 'vine', 'storm'],
+    heroAffinity: 'fire',
+    heroDamageMult: 1,
+    heroAttackSpeedMult: 1,
   };
 }

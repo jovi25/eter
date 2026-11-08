@@ -1,6 +1,7 @@
 import { SIM_DT } from '../data/config';
 import { ECONOMY, DIFFICULTY, STARS, WAVE_TIMING } from '../data/economy';
 import { ENEMIES, type EnemyId } from '../data/enemies';
+import { HERO } from '../data/hero';
 import type { Element } from '../data/elements';
 import type { Vec2 } from '../data/maps';
 import { MAPS } from '../data/maps';
@@ -77,13 +78,134 @@ export class Simulation {
       towers: [],
       projectiles: [],
       combo: { count: 0, mult: 1, timer: 0 },
+      hero: {
+        x: HERO.start.x,
+        y: HERO.start.y,
+        targetX: HERO.start.x,
+        targetY: HERO.start.y,
+        attackCooldown: 0,
+        catalyzeCooldown: 0,
+        catalyzeMax: HERO.catalyze.cooldown,
+        facing: 1,
+        moving: false,
+      },
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
         kills: 0,
         livesLost: 0,
+        heroDamage: 0,
+        catalyzeCasts: 0,
+        bestCatalyzeReactions: 0,
       },
     };
+  }
+
+  // ───────────────────────────── hero commands ─────────────────────────────
+
+  /** Walk the hero to a spot (clamped to the playfield). */
+  moveHero(x: number, y: number): void {
+    const b = HERO.bounds;
+    const h = this.state.hero;
+    h.targetX = Math.max(b.minX, Math.min(b.maxX, x));
+    h.targetY = Math.max(b.minY, Math.min(b.maxY, y));
+  }
+
+  catalyzeReady(): boolean {
+    return this.state.result === 'playing' && this.state.hero.catalyzeCooldown <= 0;
+  }
+
+  /**
+   * Catalisar: hit every enemy around the hero with the affinity element.
+   * Enemies carrying a matching aura react; the rest get the element's aura.
+   */
+  castCatalyze(): boolean {
+    if (!this.catalyzeReady()) return false;
+    const h = this.state.hero;
+    const c = HERO.catalyze;
+    const element = this.mods.heroAffinity;
+    h.catalyzeCooldown = h.catalyzeMax;
+    const r2 = c.radius * c.radius;
+    const before = this.totalReactions();
+    let hits = 0;
+    for (const e of this.state.enemies.slice()) {
+      if (!e.alive || (e.x - h.x) ** 2 + (e.y - h.y) ** 2 > r2) continue;
+      hits++;
+      this.applyHit(e, {
+        element,
+        damage: c.damage * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
+        burnDps: c.burnDps,
+        rootChance: c.rootChance,
+        hero: true,
+      });
+    }
+    const reactions = this.totalReactions() - before;
+    this.state.stats.catalyzeCasts++;
+    this.state.stats.bestCatalyzeReactions = Math.max(this.state.stats.bestCatalyzeReactions, reactions);
+    this.events.emit('catalyzed', { x: h.x, y: h.y, radius: c.radius, element, hits, reactions });
+    return true;
+  }
+
+  private totalReactions(): number {
+    const r = this.state.stats.reactions;
+    return r.wildfire + r.melt + r.thornfrost + r.shatter;
+  }
+
+  private updateHero(): void {
+    const h = this.state.hero;
+    if (h.catalyzeCooldown > 0) h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - DT);
+    const dx = h.targetX - h.x;
+    const dy = h.targetY - h.y;
+    const d = Math.hypot(dx, dy);
+    const stepLen = HERO.speed * DT;
+    if (d > 0.01) {
+      if (Math.abs(dx) > 1) h.facing = dx > 0 ? 1 : -1;
+      if (d <= stepLen) {
+        h.x = h.targetX;
+        h.y = h.targetY;
+      } else {
+        h.x += (dx / d) * stepLen;
+        h.y += (dy / d) * stepLen;
+      }
+      h.moving = true;
+    } else {
+      h.moving = false;
+    }
+    // Auto-attack the nearest enemy in range (also while walking).
+    if (h.attackCooldown > 0) h.attackCooldown = Math.max(0, h.attackCooldown - DT);
+    if (h.attackCooldown > 0) return;
+    const a = HERO.attack;
+    let best: EnemyState | null = null;
+    let bestD = a.range * a.range;
+    for (const e of this.state.enemies) {
+      if (!e.alive) continue;
+      const d2 = (e.x - h.x) ** 2 + (e.y - h.y) ** 2;
+      if (d2 <= bestD) {
+        bestD = d2;
+        best = e;
+      }
+    }
+    if (!best) return;
+    this.state.projectiles.push({
+      id: this.nextId++,
+      towerId: 0,
+      targetId: best.id,
+      x: h.x,
+      y: h.y - 40,
+      tx: best.x,
+      ty: best.y,
+      speed: a.projectileSpeed,
+      damage: a.damage * this.mods.heroDamageMult,
+      element: 'arcane',
+      crit: false,
+      splashRadius: 0,
+      splashFactor: 0,
+      burnDps: 0,
+      rootChance: 0,
+      alive: true,
+    });
+    h.attackCooldown = 1 / (a.rate * this.mods.heroAttackSpeedMult);
+    this.events.emit('heroFired', { targetId: best.id });
   }
 
   // ───────────────────────────── player commands ─────────────────────────────
@@ -178,6 +300,7 @@ export class Simulation {
     s.time += DT;
     this.updateWaves();
     this.updateEnemies();
+    this.updateHero();
     this.updateTowers();
     this.updateProjectiles();
     this.updateCombo();
@@ -535,6 +658,7 @@ export class Simulation {
       rootChance: p.rootChance,
       towerId: p.towerId,
       towerType: p.towerType,
+      hero: p.towerId === 0,
     };
     if (target) this.applyHit(target, base);
     if (p.splashRadius > 0) {
@@ -585,6 +709,8 @@ export class Simulation {
       const comboMult = this.bumpCombo();
       mult = REACTIONS[found.reaction].damageMult * comboMult;
       this.state.stats.reactions[found.reaction]++;
+      const h = this.state.hero;
+      h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - HERO.catalyze.cooldownPerReaction);
       this.events.emit('reactionTriggered', {
         enemyId: e.id,
         reaction: found.reaction,
@@ -599,6 +725,7 @@ export class Simulation {
       reaction: found?.reaction,
       towerId: hit.towerId,
       towerType: hit.towerType,
+      hero: hit.hero,
     });
     if (found) this.applyReactionEffects(e, found.reaction);
     else if (e.alive) this.applyAura(e, hit);
@@ -704,7 +831,7 @@ export class Simulation {
     e: EnemyState,
     amount: number,
     element: Element,
-    opts: { crit?: boolean; reaction?: ReactionId; dot?: boolean; towerId?: number; towerType?: TowerId },
+    opts: { crit?: boolean; reaction?: ReactionId; dot?: boolean; towerId?: number; towerType?: TowerId; hero?: boolean },
   ): void {
     if (!e.alive || amount <= 0) return;
     let dmg = amount;
@@ -713,6 +840,7 @@ export class Simulation {
     const final = Math.max(1, Math.round(dmg));
     e.hp -= final;
     if (opts.towerType) this.state.stats.damageByTower[opts.towerType] += final;
+    if (opts.hero) this.state.stats.heroDamage += final;
     this.events.emit('enemyHit', {
       enemyId: e.id,
       x: e.x,

@@ -70,12 +70,13 @@ export interface EndStats {
   bestCombo: number;
   seconds: number;
   kills: number;
+  bestCatalyze: number;
 }
 
 export class EndPanel {
   constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void }) {
     backdrop(scene);
-    const p = panel(scene, 580, 760);
+    const p = panel(scene, 600, 800);
     const title = uiText(scene, 0, -300, s.won ? 'VITÓRIA!' : 'DERROTA', 72, s.won ? PAL.goldCss : PAL.redCss, 12);
     p.add(title);
     scene.tweens.add({ targets: title, scale: { from: 1.08, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -107,9 +108,10 @@ export class EndPanel {
       `Inimigos derrotados: ${s.kills}`,
       `Reações: ${s.reactions}`,
       `Maior combo: ×${s.bestCombo}`,
+      `Melhor Catalisar: ${s.bestCatalyze} reações`,
       `Tempo: ${mm}:${ss}`,
     ];
-    lines.forEach((l, i) => p.add(uiText(scene, 0, -40 + i * 50, l, 30, i === 2 || i === 3 ? '#ffe34d' : PAL.uiText, 6)));
+    lines.forEach((l, i) => p.add(uiText(scene, 0, -60 + i * 46, l, 28, i >= 2 && i <= 4 ? '#ffe34d' : PAL.uiText, 6)));
     p.add(new Button(scene, 0, 300, { width: 420, height: 88, label: s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 34, color: 0x3aa655, onClick: cb.onReplay }));
   }
 }

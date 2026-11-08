@@ -84,6 +84,14 @@ Reações em sequência (janela de 2 s) aumentam o contador: ×1,0 → máx ×1,
 - **Progressão:** nível da conta (XP por partida) dá atributos e libera slots: Arma (nv 1), Armadura (nv 3), Amuleto (nv 5).
 - Tela de herói *paper doll*: personagem no centro, 3 slots ao redor, atributos e afinidade.
 
+### Decisões da Fase 3
+- Arcanista começa no centro do mapa (360, 690); anda a 230 px/s em linha reta até o ponto tocado (pode cruzar o caminho; não bloqueia inimigos).
+- Tocar no chão livre com um menu aberto só fecha o menu (não move o herói).
+- Ataque: 12 de dano arcano, 1,2/s, alcance 150, no inimigo mais próximo (inclui voadores).
+- Catalisar: raio 140 px, 30 de dano do elemento da afinidade; inimigos sem aura reagível recebem a aura (Fogo: Queimando 8/s).
+- Cada reação no mapa (inclusive as do próprio Catalisar) tira 0,5 s da recarga. Visual: uma orbe voa da reação até o botão.
+- 3+ reações num único Catalisar: faixa "CATÁLISE ×N!".
+
 ## 4. Coleção e evolução
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

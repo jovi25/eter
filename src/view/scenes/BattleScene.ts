@@ -3,6 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ECONOMY } from '../../data/economy';
 import { ENEMIES } from '../../data/enemies';
 import { ELEMENTS } from '../../data/elements';
+import { REACTIONS } from '../../data/reactions';
 import type { StageId } from '../../data/stages';
 import { TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
@@ -10,6 +11,8 @@ import { Simulation } from '../../sim/simulation';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { BuildMenu } from '../battle/BuildMenu';
+import { CatalyzeButton } from '../battle/CatalyzeButton';
+import { HeroView } from '../battle/HeroView';
 import { EnemyLayer } from '../battle/EnemyLayer';
 import { FxLayer } from '../battle/FxLayer';
 import { Hud } from '../battle/Hud';
@@ -42,6 +45,8 @@ export class BattleScene extends Phaser.Scene {
   private hud!: Hud;
   private menu!: BuildMenu;
   private debug!: DebugOverlay;
+  private hero!: HeroView;
+  private catalyzeBtn!: CatalyzeButton;
   private pausePanel: PausePanel | null = null;
 
   private speed = 1;
@@ -77,6 +82,7 @@ export class BattleScene extends Phaser.Scene {
     this.enemies = new EnemyLayer(this);
     this.towers = new TowerLayer(this);
     this.projectiles = new ProjectileLayer(this);
+    this.hero = new HeroView(this, this.sim.state.hero, this.sim.mods.heroAffinity);
     this.fx = new FxLayer(this);
     this.enemies.onBurning = (x, y) => this.fx.flame(x, y);
     this.hud = new Hud(this, {
@@ -95,6 +101,14 @@ export class BattleScene extends Phaser.Scene {
       upgrade: (id) => this.sim.upgrade(id),
       sell: (id) => this.sim.sell(id),
     });
+    this.catalyzeBtn = new CatalyzeButton(this, GAME_WIDTH - 82, GAME_HEIGHT - 76, this.sim.mods.heroAffinity, () => {
+      if (this.paused || this.ended) return;
+      if (!this.sim.castCatalyze()) {
+        this.catalyzeBtn.denied();
+        playSfx('error');
+      }
+    });
+    this.catalyzeBtn.onReady = () => playSfx('ready');
     this.debug = new DebugOverlay(this, () => ({ tick: this.sim.state.tick, seed: this.sim.state.seed }), 8, GAME_HEIGHT - 150, DEPTH.debug);
 
     this.setupInput();
@@ -116,8 +130,17 @@ export class BattleScene extends Phaser.Scene {
         else this.menu.openSlot(i);
       });
     });
-    this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (over.length === 0) this.menu.close();
+    // Tap on free ground: closes an open menu, otherwise walks the hero there.
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (over.length > 0 || this.paused || this.ended) return;
+      if (this.menu.isOpen) {
+        this.menu.close();
+        return;
+      }
+      if (p.worldY < 110 || p.worldY > GAME_HEIGHT - 110) return; // HUD bars
+      this.sim.moveHero(p.worldX, p.worldY);
+      const h = this.sim.state.hero;
+      this.hero.showMarker(h.targetX, h.targetY);
     });
   }
 
@@ -186,6 +209,33 @@ export class BattleScene extends Phaser.Scene {
       if (r.comboCount >= 3) vibrate(15);
     });
     ev.on('comboEnded', () => this.hud.endCombo());
+
+    // The loop made visible: every reaction sends an orb to the Catalisar button.
+    ev.on('reactionTriggered', (r) => {
+      if (this.sim.state.hero.catalyzeCooldown <= 0) return;
+      this.fx.orbTo(r.x, r.y - 30, this.catalyzeBtn.x, this.catalyzeBtn.y, REACTIONS[r.reaction].color, () => {
+        this.catalyzeBtn.bump();
+        playSfx('cd_tick');
+      });
+    });
+
+    ev.on('heroFired', () => playSfx('hero_shoot'));
+
+    ev.on('catalyzed', (c) => {
+      const color = ELEMENTS[c.element].color;
+      this.hero.cast();
+      this.fx.shockwave(c.x, c.y - 20, color, c.radius / 54, 450);
+      this.fx.shockwave(c.x, c.y - 20, 0xffffff, (c.radius / 54) * 0.7, 300);
+      this.fx.burst(c.x, c.y - 40, color, 30);
+      playSfx('catalyze');
+      this.shake(200, 0.008);
+      this.hitstopMs = 90;
+      vibrate(30);
+      if (c.reactions >= 3) {
+        this.fx.bigBanner(`CATÁLISE ×${c.reactions}!`, '#ffe34d', 64, 500, true);
+        vibrate([40, 40, 80]);
+      }
+    });
 
     ev.on('enemyKilled', (k) => {
       this.enemies.markDying(k.enemyId, 'kill');
@@ -295,6 +345,7 @@ export class BattleScene extends Phaser.Scene {
             bestCombo: this.bestCombo,
             seconds: this.sim.state.time,
             kills: this.sim.state.stats.kills,
+            bestCatalyze: this.sim.state.stats.bestCatalyzeReactions,
           },
           { onReplay: () => this.scene.restart({ stage: 'v1' }) },
         );
@@ -334,6 +385,7 @@ export class BattleScene extends Phaser.Scene {
         const steps = this.clock.advance((dtMs / 1000) * scale);
         for (let i = 0; i < steps; i++) {
           this.enemies.snapshot(this.sim);
+          this.hero.snapshot(this.sim.state.hero);
           this.projectiles.snapshot(this.sim);
           this.sim.step();
           if (this.sim.state.result !== 'playing') break;
@@ -343,6 +395,8 @@ export class BattleScene extends Phaser.Scene {
     const alpha = this.clock.alpha;
     this.enemies.sync(this.sim, alpha, dtMs);
     this.projectiles.sync(this.sim, alpha);
+    this.hero.sync(this.sim.state.hero, alpha, dtMs);
+    this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
     this.menu.refresh();
     this.debug.update();

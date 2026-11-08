@@ -18,6 +18,9 @@ export interface SimEvents {
   towerFired: { towerId: number; targetId: number };
   /** Lightning bolt path: tower first, then every enemy hit in order. */
   chainLightning: { towerId: number; points: { x: number; y: number }[] };
+  heroFired: { targetId: number };
+  /** Catalisar went off: everything within radius was hit with the affinity element. */
+  catalyzed: { x: number; y: number; radius: number; element: Element; hits: number; reactions: number };
   waveStarted: { wave: number; early: boolean; bonus: number };
   waveCleared: { wave: number; bonus: number };
   bossAbility: { enemyId: number; x: number; y: number };

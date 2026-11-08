@@ -42,7 +42,13 @@ export const ASSETS = {
   tower_vine: P,
   tower_storm: P,
   pip: P,
+  // hero
+  hero_arcanist: P,
+  hero_orb: P,
+  move_marker: P,
+  icon_catalyze: P,
   // projectiles
+  proj_arcane: P,
   proj_physical: P,
   proj_fire: P,
   proj_ice: P,
