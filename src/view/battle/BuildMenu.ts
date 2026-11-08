@@ -15,13 +15,6 @@ interface Option {
   locked: boolean;
 }
 
-const OFFSETS = [
-  { x: -78, y: -78 },
-  { x: 78, y: -78 },
-  { x: -78, y: 78 },
-  { x: 78, y: 78 },
-];
-
 /**
  * Radial menu. Empty slot → 4 towers around it. Built tower → range circle + upgrade / sell.
  * Taps on the options are handled here; the scene closes the menu on a background tap.
@@ -58,13 +51,20 @@ export class BuildMenu {
     this.close();
     const pos = this.sim.slots[slot]!;
     const root = this.makeRoot(pos.x, pos.y);
+    // Options on a circle; near the top of the map the arc is flipped so nothing hides under the HUD.
+    const n = TOWER_IDS.length;
+    const start = pos.y < 320 ? Math.PI / 2 : -Math.PI / 2;
+    const offsets = TOWER_IDS.map((_, i) => {
+      const a = start + (i * Math.PI * 2) / n;
+      return { x: Math.cos(a) * 106, y: Math.sin(a) * 100 };
+    });
     TOWER_IDS.forEach((type, i) => {
-      const off = OFFSETS[i]!;
+      const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
       const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, `tower_${type}`, def.levels[0].cost, locked, () => {
         if (this.sim.state.gold < def.levels[0].cost || locked) {
-          playSfx('leak', 2);
+          playSfx('error');
           this.shake(opt.root);
           return;
         }
@@ -73,7 +73,7 @@ export class BuildMenu {
       });
       root.add(opt.root);
       this.options.push(opt);
-      const name = uiText(this.scene, off.x, off.y - 56, def.name, 18, PAL.uiText, 4);
+      const name = uiText(this.scene, off.x, off.y + 66, def.short, 18, PAL.uiText, 4);
       root.add(name);
     });
     this.refresh();
@@ -95,7 +95,7 @@ export class BuildMenu {
     const up = this.option(0, -96, 0x3aa655, 'icon_play', upCost, false, () => {
       const cost = this.sim.upgradeCost(tower);
       if (cost === null || this.sim.state.gold < cost) {
-        playSfx('leak', 2);
+        playSfx('error');
         this.shake(up.root);
         return;
       }
@@ -132,7 +132,7 @@ export class BuildMenu {
 
   private makeRoot(x: number, y: number): Phaser.GameObjects.Container {
     const root = this.scene.add.container(x, y).setDepth(DEPTH.menu);
-    const ring = this.scene.add.image(0, 0, 'ring').setScale(1.45).setTint(0xffffff).setAlpha(0.35);
+    const ring = this.scene.add.image(0, 0, 'ring').setScale(1.8).setTint(0xffffff).setAlpha(0.3);
     root.add(ring);
     root.setScale(0.4).setAlpha(0);
     this.scene.tweens.add({ targets: root, scale: 1, alpha: 1, duration: 180, ease: 'Back.easeOut' });

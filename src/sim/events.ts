@@ -16,6 +16,8 @@ export interface SimEvents {
   towerUpgraded: { towerId: number; level: number };
   towerSold: { towerId: number; slot: number; refund: number };
   towerFired: { towerId: number; targetId: number };
+  /** Lightning bolt path: tower first, then every enemy hit in order. */
+  chainLightning: { towerId: number; points: { x: number; y: number }[] };
   waveStarted: { wave: number; early: boolean; bonus: number };
   waveCleared: { wave: number; bonus: number };
   bossAbility: { enemyId: number; x: number; y: number };

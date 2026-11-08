@@ -28,6 +28,7 @@ export const REACTIONS: Record<ReactionId, ReactionDef> = {
  */
 export const REACTION_TABLE: ReadonlyArray<{ aura: AuraKey; trigger: Element; reaction: ReactionId }> = [
   { aura: 'frozen', trigger: 'physical', reaction: 'shatter' },
+  { aura: 'frozen', trigger: 'lightning', reaction: 'shatter' },
   { aura: 'frozen', trigger: 'fire', reaction: 'melt' },
   { aura: 'chilled', trigger: 'fire', reaction: 'melt' },
   { aura: 'burning', trigger: 'ice', reaction: 'melt' },

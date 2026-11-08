@@ -79,7 +79,7 @@ export class Simulation {
       combo: { count: 0, mult: 1, timer: 0 },
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0 },
-        damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0 },
+        damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
         kills: 0,
         livesLost: 0,
       },
@@ -429,9 +429,52 @@ export class Simulation {
     }
   }
 
+  /**
+   * Instant chain lightning: hits the target, then jumps to the nearest enemy not yet hit
+   * (within chainRange of the last one), losing damage on every jump.
+   */
+  private fireChain(t: TowerState, target: EnemyState): void {
+    const def = TOWERS[t.type];
+    const lvl = this.levelOf(t);
+    const count = lvl.chainCount ?? 1;
+    const jump2 = (lvl.chainRange ?? 0) ** 2;
+    const base = lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element];
+    const points = [{ x: t.x, y: t.y }];
+    const hit = new Set<number>();
+    let current: EnemyState | null = target;
+    for (let i = 0; i < count && current; i++) {
+      hit.add(current.id);
+      const from: EnemyState = current;
+      points.push({ x: from.x, y: from.y });
+      this.applyHit(from, {
+        element: def.element,
+        damage: base * Math.pow(lvl.chainFalloff ?? 1, i),
+        towerId: t.id,
+        towerType: t.type,
+      });
+      current = null;
+      let best = Infinity;
+      for (const e of this.state.enemies) {
+        if (hit.has(e.id) || !this.canTarget(t, e)) continue;
+        const d2 = (e.x - from.x) ** 2 + (e.y - from.y) ** 2;
+        if (d2 <= jump2 && d2 < best) {
+          best = d2;
+          current = e;
+        }
+      }
+    }
+    t.cooldown = 1 / lvl.rate;
+    this.events.emit('towerFired', { towerId: t.id, targetId: target.id });
+    this.events.emit('chainLightning', { towerId: t.id, points });
+  }
+
   private fire(t: TowerState, target: EnemyState): void {
     const def = TOWERS[t.type];
     const lvl = this.levelOf(t);
+    if (def.projectileSpeed <= 0) {
+      this.fireChain(t, target);
+      return;
+    }
     const crit = lvl.critChance ? this.rng.chance(lvl.critChance) : false;
     const damage =
       lvl.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * (crit ? (lvl.critMult ?? 2) : 1);
@@ -615,6 +658,7 @@ export class Simulation {
         }
         break;
       case 'physical':
+      case 'lightning':
       case 'arcane':
         break;
     }

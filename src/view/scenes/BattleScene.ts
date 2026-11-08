@@ -180,7 +180,7 @@ export class BattleScene extends Phaser.Scene {
       this.bestCombo = Math.max(this.bestCombo, r.comboCount);
       this.fx.reaction(r.x, p.y, r.reaction, r.comboCount);
       this.hud.setCombo(r.comboCount, r.comboMult);
-      playSfx(r.reaction === 'shatter' ? 'shatter' : 'reaction', 1 + Math.min(r.comboCount - 1, 10) * 0.06);
+      playSfx(`reaction_${r.reaction}`, 1 + Math.min(r.comboCount - 1, 10) * 0.04);
       this.hitstop();
       if (r.reaction === 'wildfire' || r.reaction === 'shatter') this.shake(120, 0.004);
       if (r.comboCount >= 3) vibrate(15);
@@ -224,13 +224,18 @@ export class BattleScene extends Phaser.Scene {
     ev.on('bossAbility', (b) => {
       this.fx.shockwave(b.x, b.y - 30, 0x9ff3ff, 2.4, 600);
       this.fx.burst(b.x, b.y - 30, 0xbff4ff, 18);
-      playSfx('shoot_ice', 0.5);
+      playSfx('boss_cast');
     });
 
     ev.on('towerFired', (f) => {
       this.towers.fired(f.towerId);
       const t = this.sim.getTower(f.towerId);
-      if (t) playSfx(`shoot_${TOWERS[t.type].element}` as 'shoot_fire');
+      if (t) playSfx(`shoot_${TOWERS[t.type].element as 'fire'}`);
+    });
+
+    ev.on('chainLightning', (l) => {
+      const pts = l.points.map((p, i) => (i === 0 ? { x: p.x, y: p.y - 70 } : { x: p.x, y: p.y - 22 }));
+      this.fx.lightning(pts);
     });
 
     ev.on('towerBuilt', (b) => {

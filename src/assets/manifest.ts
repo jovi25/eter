@@ -40,6 +40,7 @@ export const ASSETS = {
   tower_brazier: P,
   tower_frost: P,
   tower_vine: P,
+  tower_storm: P,
   pip: P,
   // projectiles
   proj_physical: P,

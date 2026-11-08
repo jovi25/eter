@@ -33,6 +33,7 @@ Estética: 2D fofa de fantasia, *inspirada* em MMOs clássicos. Tudo original ou
 | Braseiro | Fogo | 70 | Projétil com splash pequeno; aplica **Queimando**. |
 | Cristal Gélido | Gelo | 70 | Alvo único; aplica **Resfriado**. |
 | Vinha Ancestral | Natureza | 60 | Alvo único lento; chance de aplicar **Enraizado**. |
+| Torre do Trovão | Raio | 80 | Instantâneo: acerta o alvo e salta para os inimigos mais próximos (3/4/5 alvos, alcance do salto 120–140 px), perdendo ~25–30% de dano por salto. Não aplica aura. Pedido do jogador após a Fase 2. |
 
 ### 2.2 Status (auras)
 
@@ -54,6 +55,7 @@ Um inimigo com aura recebe acerto de *outro* elemento → a aura é consumida e 
 | Resfriado/Congelado | Natureza | **GEADA ESPINHOSA** | Enraizado com duração ×2 (ignora imunidade) + Frágil |
 | Enraizado | Gelo | **GEADA ESPINHOSA** | idem |
 | Congelado | Físico | **ESTILHAÇO** | Dano ×1,5 |
+| Congelado | Raio | **ESTILHAÇO** | Mesmo efeito — a corrente estilhaça grupos congelados |
 
 **Regras de resolução (decisões padrão, ver §10):**
 - O acerto que dispara a reação **não aplica a sua própria aura** (a aura é consumida e o golpe vira reação).
@@ -156,6 +158,12 @@ Decisões que o kickoff não especificou e que tomei (podem ser revistas):
 - Morte do chefe: simulação a 20% por 0,5 s + faixa "MVP!".
 - Faixas grandes (onda, chefe) entram em fila para não se sobrepor.
 - Overlay de debug (fps/tick/seed) fica no canto inferior esquerdo; tocar nele deixa quase transparente.
+
+### Melhorias pós-Fase 2 (pedido do jogador)
+- **Torre do Trovão** (Raio). Decisão: Raio não ganha reações próprias; só **Congelado + Raio = ESTILHAÇO**. Medido: só Trovões perde a fase 1; Trovão dentro de combos vence 3★.
+- **Arte** repintada com Canvas2D (degradês, brilho, contornos suaves, sombras), fundo do mapa pintado. Teto conhecido: para "2D fofo de MMO" de verdade, sprites desenhados (CC0) via manifesto.
+- **Sons** refeitos: vozes em camadas com desafinação, filtros com varredura, FM para metal/eletricidade, reverb por convolução, compressor e variação de tom por disparo. Cada reação tem som próprio.
+- Menu radial em círculo para 5 torres, com nomes curtos.
 
 ## 11. Balanceamento — notas da Fase 1
 Medido com um jogador-robô que constrói nos melhores espaços e melhora as torres em ordem:

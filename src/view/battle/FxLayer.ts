@@ -19,6 +19,7 @@ export class FxLayer {
   private bannerIdx = 0;
   private rings: Phaser.GameObjects.Image[] = [];
   private coins: Phaser.GameObjects.Image[] = [];
+  private bolts: Phaser.GameObjects.Graphics[] = [];
   private lastBannerAt = -9999;
   private bannerFreeAt = 0;
 
@@ -83,6 +84,57 @@ export class FxLayer {
           .setVisible(false),
       );
     }
+  }
+
+  /** Jagged chain-lightning bolt through the given points, with glow, flicker and fade. */
+  lightning(points: { x: number; y: number }[]): void {
+    if (points.length < 2) return;
+    const g = this.bolts.find((b) => !b.visible) ?? this.newBolt();
+    const drawBolt = () => {
+      g.clear();
+      const path: { x: number; y: number }[] = [points[0]!];
+      for (let i = 1; i < points.length; i++) {
+        const a = points[i - 1]!;
+        const b = points[i]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len;
+        const ny = dx / len;
+        const steps = Math.max(3, Math.round(len / 22));
+        for (let s = 1; s < steps; s++) {
+          const t = s / steps;
+          const off = (Math.random() - 0.5) * Math.min(26, len * 0.25);
+          path.push({ x: a.x + dx * t + nx * off, y: a.y + dy * t + ny * off });
+        }
+        path.push(b);
+      }
+      for (const [w, color, alpha] of [
+        [12, 0xffe95c, 0.28],
+        [6, 0xfff3a0, 0.75],
+        [2.5, 0xffffff, 1],
+      ] as const) {
+        g.lineStyle(w, color, alpha);
+        g.beginPath();
+        g.moveTo(path[0]!.x, path[0]!.y);
+        for (const p of path.slice(1)) g.lineTo(p.x, p.y);
+        g.strokePath();
+      }
+    };
+    drawBolt();
+    g.setAlpha(1).setVisible(true);
+    this.scene.time.delayedCall(60, () => g.visible && drawBolt());
+    this.scene.tweens.add({ targets: g, alpha: 0, delay: 90, duration: 160, onComplete: () => g.setVisible(false).clear() });
+    for (const p of points.slice(1)) {
+      this.sparks.setParticleTint(0xffe95c);
+      this.sparks.explode(4, p.x, p.y);
+    }
+  }
+
+  private newBolt(): Phaser.GameObjects.Graphics {
+    const g = this.scene.add.graphics().setDepth(DEPTH.fx + 1).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this.bolts.push(g);
+    return g;
   }
 
   /** Tiny, short spark for ordinary hits (kept subtle so many towers don't white-out the screen). */
@@ -165,7 +217,7 @@ export class FxLayer {
     this.burst(x, y, def.color, 14);
     this.shockwave(x, y, def.color, reaction === 'wildfire' ? 1.3 : 1.0);
     const now = this.scene.time.now;
-    if (now - this.lastBannerAt < 380) return;
+    if (now - this.lastBannerAt < 700) return;
     this.lastBannerAt = now;
     const b = this.banners[this.bannerIdx]!;
     this.bannerIdx = (this.bannerIdx + 1) % this.banners.length;

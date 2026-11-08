@@ -1,4 +1,4 @@
-export type Element = 'physical' | 'fire' | 'ice' | 'nature' | 'arcane';
+export type Element = 'physical' | 'fire' | 'ice' | 'nature' | 'lightning' | 'arcane';
 
 export interface ElementDef {
   name: string; // UI (pt-BR)
@@ -10,5 +10,6 @@ export const ELEMENTS: Record<Element, ElementDef> = {
   fire: { name: 'Fogo', color: 0xff7a2e },
   ice: { name: 'Gelo', color: 0x6fe6ff },
   nature: { name: 'Natureza', color: 0x6ad44a },
+  lightning: { name: 'Raio', color: 0xffe95c },
   arcane: { name: 'Arcano', color: 0xb57bff },
 };

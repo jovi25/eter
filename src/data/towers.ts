@@ -1,6 +1,6 @@
 import type { Element } from './elements';
 
-export type TowerId = 'archer' | 'brazier' | 'frost' | 'vine';
+export type TowerId = 'archer' | 'brazier' | 'frost' | 'vine' | 'storm';
 
 export interface TowerLevel {
   cost: number; // build cost (level 1) or upgrade cost (levels 2-3)
@@ -13,12 +13,16 @@ export interface TowerLevel {
   splashFactor?: number; // damage share for enemies hit by splash
   burnDps?: number;
   rootChance?: number;
+  chainCount?: number; // lightning: total enemies hit (target + jumps)
+  chainRange?: number; // lightning: max jump distance between enemies
+  chainFalloff?: number; // lightning: damage × this per jump
 }
 
 export interface TowerDef {
   name: string;
+  short: string; // label in the radial menu
   element: Element;
-  projectileSpeed: number; // px/s
+  projectileSpeed: number; // px/s; 0 = instant hit (lightning)
   hitsFlying: boolean;
   levels: [TowerLevel, TowerLevel, TowerLevel];
 }
@@ -26,6 +30,7 @@ export interface TowerDef {
 export const TOWERS: Record<TowerId, TowerDef> = {
   archer: {
     name: 'Arqueiro',
+    short: 'Arqueiro',
     element: 'physical',
     projectileSpeed: 900,
     hitsFlying: true,
@@ -37,6 +42,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   },
   brazier: {
     name: 'Braseiro',
+    short: 'Braseiro',
     element: 'fire',
     projectileSpeed: 500,
     hitsFlying: true,
@@ -48,6 +54,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   },
   frost: {
     name: 'Cristal Gélido',
+    short: 'Gélido',
     element: 'ice',
     projectileSpeed: 700,
     hitsFlying: true,
@@ -59,6 +66,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   },
   vine: {
     name: 'Vinha Ancestral',
+    short: 'Vinha',
     element: 'nature',
     projectileSpeed: 600,
     hitsFlying: false,
@@ -66,6 +74,18 @@ export const TOWERS: Record<TowerId, TowerDef> = {
       { cost: 60, damage: 26, rate: 0.6, range: 170, rootChance: 0.3 },
       { cost: 70, damage: 38, rate: 0.65, range: 175, rootChance: 0.35 },
       { cost: 100, damage: 54, rate: 0.7, range: 185, rootChance: 0.4 },
+    ],
+  },
+  storm: {
+    name: 'Torre do Trovão',
+    short: 'Trovão',
+    element: 'lightning',
+    projectileSpeed: 0, // instant chain
+    hitsFlying: true,
+    levels: [
+      { cost: 80, damage: 13, rate: 0.65, range: 165, chainCount: 3, chainRange: 120, chainFalloff: 0.7 },
+      { cost: 90, damage: 19, rate: 0.7, range: 170, chainCount: 4, chainRange: 130, chainFalloff: 0.72 },
+      { cost: 120, damage: 28, rate: 0.75, range: 180, chainCount: 5, chainRange: 140, chainFalloff: 0.75 },
     ],
   },
 };
