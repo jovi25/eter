@@ -364,12 +364,21 @@ const DRAW: Record<AssetKey, Drawer> = {
       }
       shape(c, roundRect(cx - 32, cy - 28, 64, 10, 5), linear(c, 0, cy - 28, 0, cy - 18, [[0, '#ffe680'], [1, '#d6a020']]), INK, 2.5);
       glow(c, cx, cy - 23, 5, 0x6fe6ff, 1);
-      c.fillStyle = '#0b1a3a';
+      // Big dark eye sockets with icy glowing pupils and angry brows (readable against the pale body).
       for (const s of [-1, 1]) {
+        shape(c, ellipse(cx + s * 14, cy + 6, 10, 8, s * 0.25), '#0b1a3a', INK, 2);
+        glow(c, cx + s * 14, cy + 7, 7, 0x3fd8ff, 1);
+        c.fillStyle = '#ffffff';
         c.beginPath();
-        c.ellipse(cx + s * 14, cy + 6, 9, 7, s * 0.25, 0, Math.PI * 2);
+        c.arc(cx + s * 14 - 2, cy + 4, 2.2, 0, Math.PI * 2);
         c.fill();
-        glow(c, cx + s * 14, cy + 6, 8, 0x7ff6ff, 1);
+        c.strokeStyle = INK;
+        c.lineWidth = 4;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(cx + s * 24, cy - 6);
+        c.lineTo(cx + s * 6, cy - 1);
+        c.stroke();
       }
       c.strokeStyle = INK;
       c.lineWidth = 3;
@@ -377,6 +386,230 @@ const DRAW: Record<AssetKey, Drawer> = {
       c.moveTo(cx - 8, cy + 24); c.quadraticCurveTo(cx, cy + 20, cx + 8, cy + 24);
       c.stroke();
       gloss(c, cx - 16, cy - 8, 14, 7, 0.7);
+    },
+  },
+
+  // ─────────── stage 2+ specialists ───────────
+  enemy_salamander: {
+    w: 84,
+    h: 76,
+    draw: (c, cx, cy) => {
+      // flame tail
+      shape(c, (k) => {
+        k.moveTo(cx + 18, cy + 18);
+        k.quadraticCurveTo(cx + 40, cy + 16, cx + 38, cy - 6);
+        k.quadraticCurveTo(cx + 34, cy + 6, cx + 26, cy + 4);
+        k.quadraticCurveTo(cx + 30, cy - 2, cx + 26, cy - 10);
+        k.quadraticCurveTo(cx + 20, cy + 6, cx + 14, cy + 8);
+        k.closePath();
+      }, linear(c, cx + 14, cy - 10, cx + 38, cy + 18, [[0, '#ffe27a'], [0.5, '#ff9d2e'], [1, '#ff4a1a']]), INK, 2.5);
+      // horns
+      for (const s of [-1, 1]) {
+        shape(c, (k) => {
+          k.moveTo(cx + s * 10, cy - 14);
+          k.quadraticCurveTo(cx + s * 22, cy - 22, cx + s * 20, cy - 34);
+          k.quadraticCurveTo(cx + s * 14, cy - 24, cx + s * 4, cy - 18);
+          k.closePath();
+        }, linear(c, 0, cy - 34, 0, cy - 14, [[0, '#fff3d6'], [1, '#c9a46a']]), INK, 2.5);
+      }
+      shape(c, ellipse(cx, cy + 6, 27, 25), bodyGrad(c, cx, cy + 6, 27, 0xe0442a), INK, 3.5);
+      // ember belly
+      c.fillStyle = radial(c, cx, cy + 16, 14, [[0, 'rgba(255,230,120,0.95)'], [1, 'rgba(255,120,40,0)']]);
+      c.beginPath();
+      c.ellipse(cx, cy + 16, 14, 10, 0, 0, Math.PI * 2);
+      c.fill();
+      eyes(c, cx, cy + 2, 10, 6, { angry: true, iris: 0x5a1a08 });
+      c.strokeStyle = INK;
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.arc(cx, cy + 12, 6, 0.2 * Math.PI, 0.8 * Math.PI);
+      c.stroke();
+      c.fillStyle = '#fff';
+      c.beginPath();
+      c.moveTo(cx - 3, cy + 16); c.lineTo(cx - 1, cy + 20); c.lineTo(cx + 1, cy + 16); c.closePath();
+      c.fill();
+      gloss(c, cx - 11, cy - 6, 9, 5, 0.6);
+    },
+  },
+  enemy_yeti: {
+    w: 88,
+    h: 84,
+    draw: (c, cx, cy) => {
+      // shaggy frosty body
+      const fur = (k: Ctx) => {
+        const n = 14;
+        for (let i = 0; i <= n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          const r = i % 2 === 0 ? 34 : 29;
+          const x = cx + Math.cos(a) * r;
+          const y = cy + 6 + Math.sin(a) * r * 0.92;
+          if (i === 0) k.moveTo(x, y);
+          else k.lineTo(x, y);
+        }
+        k.closePath();
+      };
+      shape(c, fur, radial(c, cx, cy + 6, 38, [[0, '#ffffff'], [0.6, '#cdeefb'], [1, '#7fb8d6']], cx - 10, cy - 10), INK, 3.5);
+      // icicles on the head
+      for (const [x, h] of [[-14, 12], [-4, 16], [8, 13], [18, 10]] as const) {
+        shape(c, poly([[cx + x - 4, cy - 22], [cx + x + 4, cy - 22], [cx + x, cy - 22 - h]]), linear(c, 0, cy - 22 - h, 0, cy - 22, [[0, '#ffffff'], [1, '#8fdcff']]), INK, 2);
+      }
+      // face patch
+      shape(c, ellipse(cx, cy + 8, 19, 15), radial(c, cx, cy + 8, 19, [[0, '#a8c8e0'], [1, '#7aa2c4']]), INK, 2.5);
+      eyes(c, cx, cy + 4, 8, 5, { iris: 0x1a5a8a });
+      // droopy lids
+      c.fillStyle = '#7aa2c4';
+      for (const s of [-1, 1]) {
+        c.beginPath();
+        c.ellipse(cx + s * 8, cy + 0.5, 5, 2.4, 0, Math.PI, 0);
+        c.fill();
+      }
+      c.strokeStyle = INK;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(cx - 6, cy + 15); c.lineTo(cx + 6, cy + 15);
+      c.moveTo(cx - 3, cy + 13); c.lineTo(cx - 3, cy + 17);
+      c.moveTo(cx + 3, cy + 13); c.lineTo(cx + 3, cy + 17);
+      c.stroke();
+      gloss(c, cx - 14, cy - 10, 10, 5, 0.7);
+    },
+  },
+  enemy_skeleton: {
+    w: 80,
+    h: 84,
+    draw: (c, cx, cy) => {
+      // little ribcage body
+      shape(c, roundRect(cx - 14, cy + 6, 28, 26, 9), linear(c, cx - 14, 0, cx + 14, 0, [[0, '#f5f1e6'], [1, '#c9c2ad']]), INK, 3);
+      c.strokeStyle = 'rgba(29,21,48,0.6)';
+      c.lineWidth = 2;
+      for (const y of [13, 19, 25]) {
+        c.beginPath();
+        c.moveTo(cx - 10, cy + y); c.quadraticCurveTo(cx, cy + y + 3, cx + 10, cy + y);
+        c.stroke();
+      }
+      // big skull
+      shape(c, (k) => {
+        k.arc(cx, cy - 6, 24, Math.PI * 0.85, Math.PI * 2.15);
+        k.lineTo(cx + 14, cy + 12);
+        k.lineTo(cx - 14, cy + 12);
+        k.closePath();
+      }, radial(c, cx, cy - 8, 28, [[0, '#ffffff'], [0.7, '#ece6d4'], [1, '#bdb49a']], cx - 8, cy - 18), INK, 3.5);
+      for (const s of [-1, 1]) {
+        shape(c, ellipse(cx + s * 10, cy - 4, 7.5, 8.5), '#2a1f45', INK, 0);
+        glow(c, cx + s * 10, cy - 3, 5, 0x7ff6ff, 1);
+      }
+      shape(c, poly([[cx - 3, cy + 6], [cx + 3, cy + 6], [cx, cy + 1]]), '#2a1f45', INK, 0);
+      c.strokeStyle = INK;
+      c.lineWidth = 2;
+      for (const x of [-6, -2, 2, 6]) {
+        c.beginPath();
+        c.moveTo(cx + x, cy + 9); c.lineTo(cx + x, cy + 13);
+        c.stroke();
+      }
+      gloss(c, cx - 10, cy - 18, 9, 5, 0.8);
+    },
+  },
+  enemy_shaman: {
+    w: 88,
+    h: 92,
+    draw: (c, cx, cy) => {
+      // feathers
+      for (const [a, col] of [[-0.6, '#e8504a'], [-0.2, '#ffd34d'], [0.2, '#5cbf3f'], [0.6, '#4aa3ff']] as const) {
+        c.save();
+        c.translate(cx, cy - 22);
+        c.rotate(a);
+        shape(c, ellipse(0, -16, 5, 15), col, INK, 2);
+        c.restore();
+      }
+      shape(c, roundRect(cx - 24, cy - 26, 48, 10, 5), linear(c, 0, cy - 26, 0, cy - 16, [[0, '#c48a52'], [1, '#7a5028']]), INK, 2.5);
+      // body/head
+      shape(c, ellipse(cx, cy + 8, 28, 27), bodyGrad(c, cx, cy + 8, 28, 0x6aa84f), INK, 3.5);
+      // tusks
+      for (const s of [-1, 1]) {
+        shape(c, poly([[cx + s * 6, cy + 16], [cx + s * 11, cy + 16], [cx + s * 10, cy + 6]]), '#fff6e0', INK, 1.8);
+      }
+      eyes(c, cx, cy + 2, 10, 5.5, { angry: true, iris: 0xb3261e });
+      // bone necklace
+      c.strokeStyle = '#7a5028';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(cx, cy + 14, 20, 0.2 * Math.PI, 0.8 * Math.PI);
+      c.stroke();
+      for (const a of [0.3, 0.5, 0.7]) {
+        const x = cx + Math.cos(a * Math.PI) * 20;
+        const y = cy + 14 + Math.sin(a * Math.PI) * 20;
+        shape(c, ellipse(x, y + 2, 3, 4.5), '#fff6e0', INK, 1.5);
+      }
+      blush(c, cx, cy + 12, 16, 4);
+      gloss(c, cx - 12, cy - 6, 9, 5, 0.5);
+    },
+  },
+  enemy_mudling: {
+    w: 84,
+    h: 72,
+    draw: (c, cx, cy) => {
+      const body = (k: Ctx) => {
+        k.moveTo(cx - 32, cy + 22);
+        k.bezierCurveTo(cx - 36, cy - 4, cx - 22, cy - 22, cx, cy - 22);
+        k.bezierCurveTo(cx + 22, cy - 22, cx + 36, cy - 4, cx + 32, cy + 22);
+        // drippy bottom
+        k.quadraticCurveTo(cx + 26, cy + 30, cx + 20, cy + 22);
+        k.quadraticCurveTo(cx + 12, cy + 32, cx + 4, cy + 24);
+        k.quadraticCurveTo(cx - 6, cy + 32, cx - 12, cy + 24);
+        k.quadraticCurveTo(cx - 22, cy + 30, cx - 32, cy + 22);
+      };
+      shape(c, body, bodyGrad(c, cx, cy, 34, 0x8a6a42), INK, 3.5);
+      // bubbles
+      for (const [x, y, r] of [[-16, -8, 4], [14, -12, 3], [20, 4, 2.5]] as const) {
+        shape(c, circle(cx + x, cy + y, r), 'rgba(200,170,120,0.8)', 'rgba(29,21,48,0.6)', 1.2);
+      }
+      // twig with a leaf
+      c.strokeStyle = INK;
+      c.lineWidth = 4;
+      c.lineCap = 'round';
+      c.beginPath(); c.moveTo(cx + 4, cy - 20); c.lineTo(cx + 10, cy - 34); c.stroke();
+      c.strokeStyle = '#6b4426';
+      c.lineWidth = 2;
+      c.stroke();
+      shape(c, ellipse(cx + 16, cy - 32, 6, 3, -0.4), '#6ad44a', INK, 1.5);
+      eyes(c, cx, cy + 2, 10, 6.5, { iris: 0x3a2410 });
+      smile(c, cx, cy + 15, 7);
+      gloss(c, cx - 14, cy - 8, 10, 5, 0.45);
+    },
+  },
+  enemy_colossus: {
+    w: 128,
+    h: 128,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy + 8, 62, 0x6ad44a, 0.25);
+      // arms
+      for (const s of [-1, 1]) {
+        shape(c, ellipse(cx + s * 46, cy + 22, 14, 22, s * 0.25), bodyGrad(c, cx + s * 46, cy + 22, 22, 0x3f6b3a), INK, 3.5);
+      }
+      // hulking cloaked body
+      shape(c, (k) => {
+        k.moveTo(cx - 44, cy + 50);
+        k.quadraticCurveTo(cx - 52, cy - 10, cx - 24, cy - 36);
+        k.quadraticCurveTo(cx, cy - 52, cx + 24, cy - 36);
+        k.quadraticCurveTo(cx + 52, cy - 10, cx + 44, cy + 50);
+        k.closePath();
+      }, linear(c, cx - 44, cy - 50, cx + 44, cy + 50, [[0, '#5f9e4a'], [0.5, '#3f6b3a'], [1, '#22401f']]), INK, 4);
+      // moss + mushrooms
+      for (const [x, y] of [[-26, -24], [18, -30], [30, 4]] as const) {
+        shape(c, ellipse(cx + x, cy + y, 9, 5), '#8fd36a', INK, 1.8);
+      }
+      shape(c, ellipse(cx - 30, cy - 34, 7, 4), '#ff6b6b', INK, 1.8);
+      // hood shadow + glowing eyes
+      c.fillStyle = radial(c, cx, cy - 6, 30, [[0, 'rgba(10,20,10,0.9)'], [1, 'rgba(10,20,10,0)']]);
+      c.beginPath();
+      c.ellipse(cx, cy - 6, 30, 22, 0, 0, Math.PI * 2);
+      c.fill();
+      for (const s of [-1, 1]) glow(c, cx + s * 12, cy - 8, 9, 0xffe34d, 1);
+      c.strokeStyle = 'rgba(255,227,77,0.8)';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(cx - 8, cy + 8); c.quadraticCurveTo(cx, cy + 4, cx + 8, cy + 8);
+      c.stroke();
+      gloss(c, cx - 20, cy - 26, 14, 6, 0.3);
     },
   },
 
@@ -642,54 +875,90 @@ const DRAW: Record<AssetKey, Drawer> = {
     w: 96,
     h: 120,
     draw: (c, cx, cy) => {
-      const by = cy + 18; // body center
-      // staff (behind the arm)
+      // Chibi mage: big head, sparkly eyes, wide-brim hat, cape, little boots, crescent staff.
+      // Staff tip sits at texture (78, 36) where the view puts the affinity orb.
+      const fy = cy + 52; // feet line
+      const hx = cx - 4; // head center x
+      const hy = cy - 4; // head center y
+      softShadow(c, cx, fy + 2, 26, 6, 0.0);
+      // cape (behind)
+      shape(c, (k) => {
+        k.moveTo(hx - 14, hy + 16);
+        k.quadraticCurveTo(cx - 34, fy - 18, cx - 30, fy - 2);
+        k.quadraticCurveTo(cx - 4, fy + 4, cx + 20, fy - 4);
+        k.quadraticCurveTo(cx + 22, fy - 22, hx + 14, hy + 16);
+        k.closePath();
+      }, linear(c, 0, hy + 16, 0, fy, [[0, '#3a1f7a'], [1, '#22104f']]), INK, 3);
+      // staff
+      c.lineCap = 'round';
       c.strokeStyle = INK;
       c.lineWidth = 7;
-      c.lineCap = 'round';
-      c.beginPath(); c.moveTo(cx + 26, by + 38); c.lineTo(cx + 30, by - 34); c.stroke();
-      c.strokeStyle = linear(c, 0, by - 34, 0, by + 38, [[0, '#c48a52'], [1, '#6b4426']]);
+      c.beginPath(); c.moveTo(cx + 24, fy - 2); c.lineTo(78, 46); c.stroke();
+      c.strokeStyle = linear(c, 0, 46, 0, fy, [[0, '#d9a066'], [1, '#7a4a24']]);
       c.lineWidth = 4;
       c.stroke();
-      shape(c, poly([[cx + 22, by - 34], [cx + 30, by - 44], [cx + 38, by - 34], [cx + 30, by - 30]]), '#d6a020', INK, 2);
-      // robe
+      // crescent holder around the orb
       shape(c, (k) => {
-        k.moveTo(cx - 8, by - 16);
-        k.quadraticCurveTo(cx - 30, by + 20, cx - 28, by + 40);
-        k.quadraticCurveTo(cx, by + 46, cx + 28, by + 40);
-        k.quadraticCurveTo(cx + 30, by + 20, cx + 8, by - 16);
+        k.arc(78, 36, 12, Math.PI * 0.15, Math.PI * 1.05, false);
+        k.arc(80, 34, 8, Math.PI * 1.05, Math.PI * 0.15, true);
         k.closePath();
-      }, linear(c, cx - 28, 0, cx + 28, 0, [[0, '#8e5cf0'], [0.5, '#6a3bd0'], [1, '#43208f']]), INK, 3.5);
+      }, linear(c, 66, 24, 90, 48, [[0, '#fff1a8'], [1, '#d6a020']]), INK, 2);
+      // boots
+      for (const s of [-1, 1]) shape(c, ellipse(cx + s * 9 - 2, fy - 3, 8, 5), linear(c, 0, fy - 8, 0, fy + 2, [[0, '#8a5a34'], [1, '#4a2e18']]), INK, 2.5);
+      // robe (short, bell shaped)
+      shape(c, (k) => {
+        k.moveTo(hx - 12, hy + 18);
+        k.quadraticCurveTo(cx - 24, fy - 18, cx - 22, fy - 6);
+        k.quadraticCurveTo(cx - 2, fy - 1, cx + 18, fy - 6);
+        k.quadraticCurveTo(cx + 18, fy - 18, hx + 12, hy + 18);
+        k.closePath();
+      }, linear(c, cx - 22, 0, cx + 18, 0, [[0, '#9a6bff'], [0.55, '#7044e0'], [1, '#4a24a8']]), INK, 3);
       c.strokeStyle = '#ffd34d';
-      c.lineWidth = 3;
+      c.lineWidth = 2.5;
       c.beginPath();
-      c.moveTo(cx - 27, by + 36); c.quadraticCurveTo(cx, by + 42, cx + 27, by + 36);
+      c.moveTo(cx - 21, fy - 9); c.quadraticCurveTo(cx - 2, fy - 4, cx + 17, fy - 9);
       c.stroke();
-      shape(c, roundRect(cx - 3, by - 8, 6, 44, 3), '#ffd34d', INK, 1.5);
-      // sleeves / hands
-      shape(c, ellipse(cx + 22, by + 8, 8, 7), '#ffe0c2', INK, 2.5);
-      shape(c, ellipse(cx - 20, by + 10, 7, 6), '#ffe0c2', INK, 2.5);
-      // head
-      shape(c, circle(cx, by - 26, 19), radial(c, cx, by - 26, 20, [[0, '#fff0e0'], [1, '#f5c9a3']], cx - 6, by - 32), INK, 3);
-      eyes(c, cx, by - 24, 7.5, 5.5, { iris: 0x5a2fc2 });
-      blush(c, cx, by - 16, 12, 3.5);
-      smile(c, cx, by - 13, 5);
-      // hat
+      shape(c, roundRect(cx - 18, fy - 22, 32, 5, 2.5), '#ffd34d', INK, 1.5);
+      shape(c, circle(cx - 2, fy - 19.5, 3.5), '#6fe6ff', INK, 1.2);
+      // hands
+      shape(c, circle(cx + 22, fy - 18, 5.5), '#ffe0c8', INK, 2);
+      shape(c, circle(cx - 22, fy - 16, 5), '#ffe0c8', INK, 2);
+      // hair behind the face
+      shape(c, ellipse(hx, hy + 4, 25, 22), linear(c, 0, hy - 18, 0, hy + 26, [[0, '#ffd6f0'], [1, '#c78ae6']]), INK, 3);
+      // face
+      shape(c, ellipse(hx, hy + 6, 20, 18), radial(c, hx, hy + 6, 22, [[0, '#fff3e8'], [1, '#f7d3b4']], hx - 6, hy), INK, 2.5);
+      // fringe
       shape(c, (k) => {
-        k.moveTo(cx - 30, by - 36);
-        k.quadraticCurveTo(cx, by - 46, cx + 30, by - 36);
-        k.quadraticCurveTo(cx + 12, by - 50, cx + 8, by - 62);
-        k.quadraticCurveTo(cx + 2, by - 78, cx - 16, by - 86);
-        k.quadraticCurveTo(cx - 8, by - 66, cx - 14, by - 50);
+        k.moveTo(hx - 21, hy + 2);
+        k.quadraticCurveTo(hx - 16, hy - 12, hx - 4, hy - 8);
+        k.quadraticCurveTo(hx - 2, hy + 1, hx + 2, hy - 7);
+        k.quadraticCurveTo(hx + 14, hy - 14, hx + 21, hy + 2);
+        k.quadraticCurveTo(hx + 20, hy - 18, hx, hy - 18);
+        k.quadraticCurveTo(hx - 20, hy - 18, hx - 21, hy + 2);
+      }, linear(c, 0, hy - 18, 0, hy + 2, [[0, '#ffe2f4'], [1, '#d99cf0']]), INK, 2);
+      eyes(c, hx, hy + 8, 8, 6, { iris: 0x6a3bd0 });
+      blush(c, hx, hy + 16, 13, 3.5);
+      smile(c, hx, hy + 18, 4);
+      // wide-brim hat
+      shape(c, ellipse(hx, hy - 14, 34, 8, -0.06), linear(c, 0, hy - 22, 0, hy - 6, [[0, '#8e5cf0'], [1, '#43208f']]), INK, 3);
+      shape(c, (k) => {
+        k.moveTo(hx - 20, hy - 16);
+        k.quadraticCurveTo(hx - 14, hy - 40, hx + 2, hy - 46);
+        k.quadraticCurveTo(hx + 18, hy - 54, hx + 30, hy - 46);
+        k.quadraticCurveTo(hx + 14, hy - 44, hx + 12, hy - 34);
+        k.quadraticCurveTo(hx + 18, hy - 22, hx + 20, hy - 16);
+        k.quadraticCurveTo(hx, hy - 12, hx - 20, hy - 16);
+      }, linear(c, hx - 20, hy - 50, hx + 24, hy - 14, [[0, '#b590ff'], [0.55, '#7044e0'], [1, '#43208f']]), INK, 3);
+      shape(c, (k) => {
+        k.moveTo(hx - 19, hy - 19);
+        k.quadraticCurveTo(hx, hy - 15, hx + 19, hy - 19);
+        k.lineTo(hx + 18, hy - 24);
+        k.quadraticCurveTo(hx, hy - 20, hx - 18, hy - 24);
         k.closePath();
-      }, linear(c, cx - 30, by - 86, cx + 30, by - 36, [[0, '#a77bff'], [0.6, '#6a3bd0'], [1, '#3a1590']]), INK, 3.5);
-      shape(c, (k) => {
-        k.moveTo(cx - 28, by - 38);
-        k.quadraticCurveTo(cx, by - 47, cx + 28, by - 38);
-        k.quadraticCurveTo(cx, by - 41, cx - 28, by - 38);
       }, '#ffd34d', INK, 1.5);
-      shape(c, star(c, cx - 2, by - 60, 6, 0.45), '#ffe680', INK, 1.5);
-      gloss(c, cx - 8, by - 66, 6, 3, 0.5, -0.8);
+      shape(c, star(c, hx + 1, hy - 21.5, 5, 0.45), '#fff6c2', INK, 1.2);
+      glow(c, hx + 30, hy - 47, 5, 0xffe680, 1);
+      gloss(c, hx - 6, hy - 34, 6, 3, 0.55, -0.9);
     },
   },
   hero_orb: {

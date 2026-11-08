@@ -30,6 +30,12 @@ export const ASSETS = {
   enemy_golem: P,
   enemy_bat: P,
   enemy_herald: P,
+  enemy_salamander: P,
+  enemy_yeti: P,
+  enemy_skeleton: P,
+  enemy_shaman: P,
+  enemy_mudling: P,
+  enemy_colossus: P,
   // statuses
   status_roots: P,
   status_ice: P,

@@ -5,8 +5,7 @@ import { STAGE_ORDER, STAGES, type StageId } from '../../data/stages';
 import { getSave } from '../../meta/save';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
-import { animKey, ENEMY_SPRITES } from '../art/sprites';
-import { paintTileBackground } from '../battle/MapView';
+import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
 
 const NODES: Record<StageId, { x: number; y: number; enemy: EnemyId }> = {
@@ -37,7 +36,8 @@ export class WorldMapScene extends Phaser.Scene {
 
   create(): void {
     const save = getSave();
-    paintTileBackground(this, [TRAIL], Object.values(NODES), 'world_tiles');
+    paintMapBackground(this, [TRAIL], 'world_bg');
+    placeDecor(this, [TRAIL], Object.values(NODES).flatMap((n) => [n, { x: n.x + (n.x < GAME_WIDTH / 2 ? 110 : -110), y: n.y }]), 99, 26);
 
     // Header
     const head = this.add.graphics();
@@ -75,7 +75,7 @@ export class WorldMapScene extends Phaser.Scene {
     const n = NODES[id];
     const st = STAGES[id];
     const boss = id === 'v5';
-    const c = this.add.container(n.x, n.y);
+    const c = this.add.container(n.x, n.y).setDepth(40);
     const g = this.add.graphics();
     const r = boss ? 62 : 52;
     const color = !unlocked ? 0x5c5772 : stars > 0 ? 0x3aa655 : 0xe0862f;
@@ -91,16 +91,15 @@ export class WorldMapScene extends Phaser.Scene {
     c.add(uiText(this, 0, -2, unlocked ? `${index + 1}` : '🔒', boss ? 52 : 44, '#ffffff', 8));
 
     // Featured monster next to the node.
-    const spr = ENEMY_SPRITES[n.enemy];
     const side = n.x < GAME_WIDTH / 2 ? 1 : -1;
-    const mon = this.add.sprite(n.x + side * (r + 52), n.y + 24, 'dungeon', `${spr.frames}0`).setOrigin(0.5, 1).setScale(spr.scale);
-    mon.play(animKey(spr.frames));
-    if (spr.tint) mon.setTint(spr.tint);
+    const mon = this.add.image(n.x + side * (r + 56), n.y + 10, `enemy_${n.enemy}`).setScale(boss ? 0.9 : 1);
+    mon.setDepth(39);
     if (!unlocked) mon.setTint(0x222222).setAlpha(0.7);
+    else this.tweens.add({ targets: mon, scaleY: mon.scaleY * 1.06, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     mon.setFlipX(side < 0);
 
     // Label + stars
-    const label = this.add.container(n.x, n.y + r + 34);
+    const label = this.add.container(n.x, n.y + r + 34).setDepth(41);
     const lg = this.add.graphics();
     lg.fillStyle(PAL.ink, 0.85);
     lg.fillRoundedRect(-150, -22, 300, 44, 16);

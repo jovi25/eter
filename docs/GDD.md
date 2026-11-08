@@ -121,9 +121,9 @@ Mapas alinhados a uma grade de 48 px (ladrilhos de 16 px ×3). Grupos de ondas p
 Cada inimigo tem uma tabela: 0,4 = toma 40% menos; −0,5 = toma 50% a mais; 1 = imune. Reações usam a resistência do elemento que disparou. Números na tela: "IMUNE", "▲" (fraco), "▼" (resiste). Na primeira aparição de cada inimigo especial, um cartão "NOVO INIMIGO" mostra fraquezas.
 | Inimigo | Resistências / fraquezas |
 |---|---|
-| Gosma, Goblin Ligeiro | neutros |
-| Golem Musgoso | Físico −40% |
-| Diabrete Alado | voa |
+| Gosma, Lobo Ligeiro | neutros |
+| Golem de Casca | Físico −40% |
+| Morcego Sombrio | voa |
 | Chifrudo de Brasa | **imune a Fogo** (ainda recebe a aura → combos), fraco a Gelo |
 | Zumbi Gélido | resiste 80% a Gelo, fraco a Fogo |
 | Esqueleto | resiste Físico 60% e Natureza 50%, fraco a Raio |
@@ -134,11 +134,11 @@ Cada inimigo tem uma tabela: 0,4 = toma 40% menos; −0,5 = toma 50% a mais; 1 =
 ### Dificuldade (medida por robô, `npm run balance`)
 Fase 1: tudo vence. Fases 2–5: só Arqueiros perde; estratégias de combo/foco vencem com cada vez menos vidas. Teste fixo: a fase 5 não é vencível só com Arqueiros, mas um build de combo vence.
 
-### Arte (pixel art CC0)
-- Personagens e monstros animados: **0x72 DungeonTileset II** (CC0). Cenário: **Kenney Tiny Town** (CC0). Créditos em `public/assets/CREDITS.txt`.
-- Torres e espaço de construção: pixel art gerada por código no mesmo estilo (contorno automático), ×3.
-- Interface e efeitos continuam suaves (botões, textos, partículas).
-- Mapeamento de sprites: `src/view/art/sprites.ts` (trocar sprite = mudar uma linha).
+### Arte
+- Testamos pixel art CC0 (0x72 + Kenney) e **o jogador preferiu o estilo pintado anterior** — voltamos a ele. Pacotes de pixel art removidos do projeto.
+- Tudo é pintado por código (Canvas2D: degradês, brilho, contorno suave): inimigos novos (Chifrudo de Brasa, Zumbi Gélido, Esqueleto, Xamã Orc, Lamacento, Colosso do Pântano) e **herói redesenhado** (chibi: cabeça grande, cabelo lilás, chapéu de aba larga, capa, cajado de lua crescente).
+- Mapa pintado suporta vários caminhos (estradas se fundem nas junções); mapa-mundo usa o mesmo estilo.
+- Nomes originais voltaram para combinar com a arte: Lobo Ligeiro, Golem de Casca, Morcego Sombrio.
 
 ### Progresso
 - Save versionado em localStorage (`eter.save`, com migrações) + backup em texto (copiar/restaurar no mapa-mundo).

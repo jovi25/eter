@@ -3,8 +3,6 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { unlockAudio } from '../audio/sfx';
 import { PAL } from '../art/palette';
-import { generatePixelTowers } from '../art/pixelTowers';
-import { animKey, ENEMY_SPRITES, HERO_SPRITE, preloadPixelArt, setupPixelArt } from '../art/sprites';
 import { generateTextures, preloadImages } from '../art/textures';
 import { Button, uiText } from '../ui/Button';
 
@@ -16,13 +14,10 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     preloadImages(this);
-    preloadPixelArt(this);
   }
 
   create(): void {
     generateTextures(this);
-    setupPixelArt(this);
-    generatePixelTowers(this);
     const cx = GAME_WIDTH / 2;
 
     const bg = this.add.graphics();
@@ -47,12 +42,11 @@ export class BootScene extends Phaser.Scene {
     uiText(this, cx, 770, 'Defenda o Cristal com combos elementais', 28, PAL.uiDim, 5);
 
     // The hero facing a little parade of monsters.
-    const hero = this.add.sprite(130, 1010, 'dungeon', `${HERO_SPRITE.idle}0`).setOrigin(0.5, 1).setScale(4);
-    hero.play(animKey(HERO_SPRITE.idle));
+    const hero = this.add.image(120, 1030, 'hero_arcanist').setOrigin(0.5, 0.9).setScale(1.25);
+    this.tweens.add({ targets: hero, scaleY: 1.29, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     (['slime', 'wolf', 'skeleton', 'salamander'] as EnemyId[]).forEach((id, i) => {
-      const s = ENEMY_SPRITES[id];
-      const m = this.add.sprite(300 + i * 110, 1010, 'dungeon', `${s.frames}0`).setOrigin(0.5, 1).setScale(4).setFlipX(true);
-      m.play({ key: animKey(s.frames), startFrame: i });
+      const m = this.add.image(290 + i * 120, 1020, `enemy_${id}`).setOrigin(0.5, 0.85).setScale(1.25).setFlipX(true);
+      this.tweens.add({ targets: m, y: 1008, scaleY: 1.18, duration: 380 + i * 60, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     });
 
     const play = new Button(this, cx, 1160, {

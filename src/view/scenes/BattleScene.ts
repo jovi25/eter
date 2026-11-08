@@ -315,7 +315,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     ev.on('chainLightning', (l) => {
-      const pts = l.points.map((p, i) => (i === 0 ? { x: p.x, y: p.y - 47 } : { x: p.x, y: p.y - 26 }));
+      const pts = l.points.map((p, i) => (i === 0 ? { x: p.x, y: p.y - 70 } : { x: p.x, y: p.y - 22 }));
       this.fx.lightning(pts);
     });
 

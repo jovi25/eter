@@ -38,7 +38,8 @@ Três moedas separadas: `gold` (partida), `coins` (ganhas jogando), `gems` (prem
 - O PC está numa rede Wi-Fi marcada como pública com o Node bloqueado no firewall, então o teste por `--host` na rede local não funciona; testar pelo link do Pages.
 
 ## Arte de terceiros
-- Só CC0. Pacotes em `public/assets/` com créditos em `public/assets/CREDITS.txt`. Downloads ficam em pasta temporária; só PNG + licença entram no projeto.
+- Estilo oficial: **arte pintada por código** (`src/view/art/textures.ts` + `paint.ts`). O jogador testou pixel art CC0 e preferiu o pintado — não voltar para pixel art sem pedido.
+- Se um dia entrar arte de terceiros: só CC0, com créditos em `public/assets/CREDITS.txt`; downloads em pasta temporária.
 - `npm run balance`: relatório de dificuldade das 5 fases com robôs (60 partidas simuladas).
 
 ## Arquitetura

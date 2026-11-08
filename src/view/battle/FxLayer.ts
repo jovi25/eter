@@ -164,6 +164,17 @@ export class FxLayer {
 
   /** "New enemy" card sliding in under the HUD: name + its weaknesses/resistances. */
   enemyCard(name: string, info: string): void {
+    // One card at a time; the rest wait in line.
+    if (this.cardBusy) {
+      this.cardQueue.push([name, info]);
+      return;
+    }
+    this.cardBusy = true;
+    this.scene.time.delayedCall(3000, () => {
+      this.cardBusy = false;
+      const next = this.cardQueue.shift();
+      if (next) this.enemyCard(next[0], next[1]);
+    });
     const c = this.scene.add.container(GAME_WIDTH / 2, 170).setDepth(DEPTH.hud + 4);
     const g = this.scene.add.graphics();
     g.fillStyle(PAL.ink, 0.92);
@@ -179,8 +190,11 @@ export class FxLayer {
     c.add([g, t1, t2]);
     c.setAlpha(0).setY(130);
     this.scene.tweens.add({ targets: c, alpha: 1, y: 170, duration: 250, ease: 'Back.easeOut' });
-    this.scene.tweens.add({ targets: c, alpha: 0, delay: 3800, duration: 400, onComplete: () => c.destroy() });
+    this.scene.tweens.add({ targets: c, alpha: 0, delay: 2600, duration: 350, onComplete: () => c.destroy() });
   }
+
+  private cardBusy = false;
+  private cardQueue: [string, string][] = [];
 
   /** Tiny, short spark for ordinary hits (kept subtle so many towers don't white-out the screen). */
   hit(x: number, y: number, color: number): void {

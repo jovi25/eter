@@ -3,124 +3,164 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { Vec2 } from '../../data/maps';
 import { Rng } from '../../sim/rng';
 import type { Simulation } from '../../sim/simulation';
-import { PIXEL_SCALE, TOWN } from '../art/sprites';
+import { radial, type Ctx } from '../art/paint';
 import { DEPTH, unitDepth } from './layers';
 
-const T = 16; // source tile size
-const TS = T * PIXEL_SCALE; // 48 px on screen
-
-function distToSegment(px: number, py: number, a: Vec2, b: Vec2): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / (dx * dx + dy * dy || 1)));
-  return Math.hypot(a.x + dx * t - px, a.y + dy * t - py);
-}
-
-/**
- * Static scenery in pixel art: a 16 px tile map (Kenney Tiny Town, CC0) painted on a small canvas and
- * shown ×3 with nearest filtering; dirt road auto-tiled from the map paths; decor; portal, crystal, slots.
- */
+/** Static scenery: painted grass + dirt roads background, decorations, portals, crystal and build slots. */
 export class MapView {
   readonly crystal: Phaser.GameObjects.Image;
   readonly portals: Phaser.GameObjects.Image[] = [];
   readonly slotImages: Phaser.GameObjects.Image[] = [];
 
   constructor(scene: Phaser.Scene, sim: Simulation) {
-    paintTileBackground(scene, sim.paths.map((p) => p.points as Vec2[]), sim.slots, 'map_tiles').setDepth(DEPTH.ground);
+    const paths = sim.paths.map((p) => p.points as Vec2[]);
+    paintMapBackground(scene, paths, 'map_bg').setDepth(DEPTH.ground);
+    placeDecor(scene, paths, sim.slots, 2024);
 
+    // One portal per distinct road start.
     const starts = new Map<string, Vec2>();
-    for (const p of sim.paths) starts.set(`${p.points[0]!.x},${p.points[0]!.y}`, p.points[0]!);
+    for (const p of paths) starts.set(`${p[0]!.x},${p[0]!.y}`, p[0]!);
     for (const start of starts.values()) {
-      const portal = scene.add.image(start.x, start.y + 10, 'portal').setDepth(DEPTH.decor).setScale(0.8);
+      const portal = scene.add.image(start.x, start.y + 10, 'portal').setDepth(DEPTH.decor).setScale(0.85);
       scene.tweens.add({ targets: portal, angle: 360, duration: 5000, repeat: -1 });
-      scene.tweens.add({ targets: portal, scale: 0.88, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      scene.tweens.add({ targets: portal, scale: 0.92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.portals.push(portal);
     }
 
-    const end = sim.paths[0]!.points.at(-1)!;
+    const end = paths[0]!.at(-1)!;
     const glowImg = scene.add.image(end.x, end.y - 10, 'spark').setDepth(DEPTH.decor).setScale(7).setTint(0xa77bff).setAlpha(0.35);
     glowImg.setBlendMode(Phaser.BlendModes.ADD);
     scene.tweens.add({ targets: glowImg, alpha: 0.6, scale: 8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    this.crystal = scene.add.image(end.x, end.y - 24, 'crystal').setDepth(unitDepth(end.y)).setScale(0.62);
+    this.crystal = scene.add.image(end.x, end.y - 24, 'crystal').setDepth(unitDepth(end.y)).setScale(0.68);
     scene.tweens.add({ targets: this.crystal, y: end.y - 34, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     sim.slots.forEach((s) => {
-      const img = scene.add.image(s.x, s.y + 6, 'pslot').setDepth(DEPTH.slot).setScale(PIXEL_SCALE);
-      this.slotImages.push(img);
+      this.slotImages.push(scene.add.image(s.x, s.y, 'slot').setDepth(DEPTH.slot));
     });
   }
 }
 
-/** Paint a grass + dirt-road tile map for the given roads; returns the ×3 image (origin top-left). */
-export function paintTileBackground(scene: Phaser.Scene, paths: Vec2[][], slots: readonly Vec2[], key: string): Phaser.GameObjects.Image {
-  const cols = Math.ceil(GAME_WIDTH / TS);
-  const rows = Math.ceil(GAME_HEIGHT / TS);
-  // Road mask: a tile is dirt if its center is within ~1 tile of any path segment (roads are 2 tiles wide).
-  const dirt: boolean[][] = [];
-  for (let r = 0; r < rows; r++) {
-    dirt.push([]);
-    for (let c = 0; c < cols; c++) {
-      const cx = c * TS + TS / 2;
-      const cy = r * TS + TS / 2;
-      let near = false;
-      for (const p of paths) {
-        for (let i = 1; i < p.length && !near; i++) if (distToSegment(cx, cy, p[i - 1]!, p[i]!) <= 34) near = true;
-        if (near) break;
-      }
-      dirt[r]!.push(near);
-    }
-  }
-  const isDirt = (c: number, r: number) => (r < 0 || r >= rows || c < 0 || c >= cols ? false : dirt[r]![c]!);
-
+/** Paint grass + every road into one canvas texture; returns the full-screen image. */
+export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: string): Phaser.GameObjects.Image {
   if (scene.textures.exists(key)) scene.textures.remove(key);
-  const tex = scene.textures.createCanvas(key, cols * T, rows * T)!;
-  const ctx = tex.getContext();
-  ctx.imageSmoothingEnabled = false;
-  const src = scene.textures.get('town').getSourceImage() as HTMLImageElement;
-  const draw = (frame: number, c: number, r: number) => ctx.drawImage(src, (frame % 12) * T, Math.floor(frame / 12) * T, T, T, c * T, r * T, T, T);
-  const rng = new Rng(4242);
-  const D = TOWN.dirt;
+  const tex = scene.textures.createCanvas(key, GAME_WIDTH, GAME_HEIGHT)!;
+  const c = tex.getContext();
+  const rng = new Rng(77);
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      draw(TOWN.grass[rng.int(0, TOWN.grass.length - 1)]!, c, r);
-      if (!isDirt(c, r)) continue;
-      const n = isDirt(c, r - 1);
-      const s = isDirt(c, r + 1);
-      const w = isDirt(c - 1, r);
-      const e = isDirt(c + 1, r);
-      let f = D.c;
-      if (!n && !w) f = D.tl;
-      else if (!n && !e) f = D.tr;
-      else if (!s && !w) f = D.bl;
-      else if (!s && !e) f = D.br;
-      else if (!n) f = D.t;
-      else if (!s) f = D.b;
-      else if (!w) f = D.l;
-      else if (!e) f = D.r;
-      else if (!isDirt(c - 1, r - 1)) f = D.itl;
-      else if (!isDirt(c + 1, r - 1)) f = D.itr;
-      else if (!isDirt(c + 1, r + 1)) f = D.ibr;
-      else if (!isDirt(c - 1, r + 1)) f = D.ibl;
-      draw(f, c, r);
-    }
+  // Grass: base gradient + soft blotches + blades.
+  const base = c.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+  base.addColorStop(0, '#5fa64a');
+  base.addColorStop(1, '#4b9140');
+  c.fillStyle = base;
+  c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  for (let i = 0; i < 90; i++) {
+    const x = rng.int(0, GAME_WIDTH);
+    const y = rng.int(0, GAME_HEIGHT);
+    const r = rng.int(40, 130);
+    const light = rng.chance(0.5);
+    c.fillStyle = radial(c, x, y, r, [
+      [0, light ? 'rgba(140,205,95,0.35)' : 'rgba(40,100,45,0.3)'],
+      [1, 'rgba(0,0,0,0)'],
+    ]);
+    c.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 420; i++) {
+    const x = rng.int(0, GAME_WIDTH);
+    const y = rng.int(0, GAME_HEIGHT);
+    const h = rng.int(5, 11);
+    c.strokeStyle = rng.chance(0.5) ? 'rgba(45,110,50,0.75)' : 'rgba(150,215,100,0.6)';
+    c.lineWidth = 2;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(x, y);
+    c.quadraticCurveTo(x - 1, y - h * 0.6, x - 3, y - h);
+    c.moveTo(x + 3, y);
+    c.quadraticCurveTo(x + 4, y - h * 0.5, x + 6, y - h * 0.9);
+    c.stroke();
   }
 
-  // Decor on free grass: away from roads, slots and the HUD bands.
-  const blocked = (c: number, r: number) => {
-    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (isDirt(c + dc, r + dr)) return true;
-    const cx = c * TS + TS / 2;
-    const cy = r * TS + TS / 2;
-    for (const sl of slots) if (Math.abs(sl.x - cx) < 72 && Math.abs(sl.y - cy) < 60) return true;
-    return r < 2 || r >= rows - 3;
+  // Roads: each layer is drawn for all roads before the next, so junctions merge cleanly.
+  const layer = (width: number, style: string, dy = 0) => {
+    c.strokeStyle = style;
+    c.lineWidth = width;
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    for (const pts of paths) {
+      c.beginPath();
+      c.moveTo(pts[0]!.x, pts[0]!.y + dy);
+      for (const p of pts.slice(1)) c.lineTo(p.x, p.y + dy);
+      c.stroke();
+    }
   };
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (blocked(c, r) || !rng.chance(0.18)) continue;
-      draw(TOWN.decor[rng.int(0, TOWN.decor.length - 1)]!, c, r);
+  layer(92, 'rgba(20,50,20,0.35)', 6);
+  layer(86, '#7d5c33');
+  layer(74, '#c9a46a');
+  layer(44, 'rgba(232,200,140,0.55)');
+  layer(16, 'rgba(250,225,170,0.35)');
+  for (const pts of paths) pebbles(c, pts, rng);
+
+  // Vignette.
+  c.fillStyle = radial(c, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_HEIGHT * 0.75, [
+    [0.55, 'rgba(0,0,0,0)'],
+    [1, 'rgba(10,20,10,0.45)'],
+  ]);
+  c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  tex.refresh();
+  return scene.add.image(0, 0, key).setOrigin(0);
+}
+
+function pebbles(c: Ctx, pts: readonly Vec2[], rng: Rng): void {
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    for (let d = 0; d < len; d += 22) {
+      const t = d / len;
+      const x = a.x + (b.x - a.x) * t + rng.int(-26, 26);
+      const y = a.y + (b.y - a.y) * t + rng.int(-26, 26);
+      const r = rng.int(2, 5);
+      c.fillStyle = 'rgba(120,85,45,0.55)';
+      c.beginPath();
+      c.ellipse(x, y + 1, r, r * 0.75, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = 'rgba(240,215,170,0.6)';
+      c.beginPath();
+      c.ellipse(x - 0.5, y - 0.5, r * 0.6, r * 0.45, 0, 0, Math.PI * 2);
+      c.fill();
     }
   }
-  tex.refresh();
-  tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
-  return scene.add.image(0, 0, key).setOrigin(0).setScale(PIXEL_SCALE);
+}
+
+/** Trees, rocks and flowers on free grass (away from roads and the given spots). */
+export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: readonly Vec2[], seed: number, max = 30): void {
+  const rng = new Rng(seed);
+  const clearOf = (x: number, y: number, r: number) => {
+    for (const s of keepClear) if (Math.hypot(s.x - x, s.y - y) < 72 + r) return false;
+    for (const pts of paths) {
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1]!;
+        const b = pts[i]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
+        if (Math.hypot(a.x + dx * t - x, a.y + dy * t - y) < 50 + r) return false;
+      }
+    }
+    return y > 120 && y < 1170;
+  };
+  let placed = 0;
+  for (let tries = 0; tries < 600 && placed < max; tries++) {
+    const x = rng.int(20, GAME_WIDTH - 20);
+    const y = rng.int(130, 1160);
+    const kind = rng.next();
+    const r = kind < 0.42 ? 34 : kind < 0.65 ? 20 : 8;
+    if (!clearOf(x, y, r)) continue;
+    const k = kind < 0.42 ? 'tree' : kind < 0.65 ? 'rock' : 'flower';
+    const img = scene.add.image(x, y, k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
+    if (k === 'tree') {
+      img.setScale(0.78 + rng.next() * 0.35);
+      scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.03, duration: 1800 + rng.int(0, 900), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    placed++;
+  }
 }

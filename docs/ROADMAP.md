@@ -36,7 +36,7 @@ Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
 - [x] 5 fases com mapas e estratégias diferentes; caminhos múltiplos
 - [x] Resistências/fraquezas por elemento + 6 inimigos novos
 - [x] Dificuldade crescente medida por robô (`npm run balance`)
-- [x] Pixel art CC0 (0x72 + Kenney) e torres em pixel
+- [x] Arte: pixel art testada e descartada pelo jogador; estilo pintado mantido, com 6 inimigos novos e herói redesenhado
 - [x] Mapa-mundo, estrelas, save versionado + backup em texto
 
 ## Fase 4b — Classes de herói (proposta, aguardando aprovação)

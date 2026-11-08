@@ -42,9 +42,9 @@ export interface EnemyDef {
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
   // ── Region 1 basics ──
   slime: { name: 'Gosma', hp: 60, speed: 80, gold: 9, livesCost: 1, resist: {}, flying: false, scalesWithWave: true, radius: 22 },
-  wolf: { name: 'Goblin Ligeiro', hp: 35, speed: 140, gold: 8, livesCost: 1, resist: {}, flying: false, scalesWithWave: true, radius: 20 },
+  wolf: { name: 'Lobo Ligeiro', hp: 35, speed: 140, gold: 8, livesCost: 1, resist: {}, flying: false, scalesWithWave: true, radius: 20 },
   golem: {
-    name: 'Golem Musgoso',
+    name: 'Golem de Casca',
     hp: 220,
     speed: 50,
     gold: 20,
@@ -54,7 +54,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     scalesWithWave: true,
     radius: 30,
   },
-  bat: { name: 'Diabrete Alado', hp: 50, speed: 100, gold: 11, livesCost: 1, resist: {}, flying: true, scalesWithWave: true, radius: 20 },
+  bat: { name: 'Morcego Sombrio', hp: 50, speed: 100, gold: 11, livesCost: 1, resist: {}, flying: true, scalesWithWave: true, radius: 20 },
 
   // ── Elemental specialists (stages 2+) ──
   salamander: {
