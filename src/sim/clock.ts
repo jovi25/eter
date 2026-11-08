@@ -8,6 +8,11 @@ export class FixedClock {
   private accumulator = 0;
   tick = 0;
 
+  /** How far (0..1) we are between the last tick and the next — used to interpolate drawing. */
+  get alpha(): number {
+    return Math.min(1, this.accumulator / SIM_DT);
+  }
+
   /** @param elapsedSeconds real time since last frame, already multiplied by game speed */
   advance(elapsedSeconds: number): number {
     this.accumulator += elapsedSeconds;

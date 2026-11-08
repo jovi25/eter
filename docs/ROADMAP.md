@@ -21,10 +21,10 @@ Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
 - **Aceite:** `npm test` verde.
 
 ## Fase 2 — Partida jogável
-- [ ] Renderização procedural, input por toque, menu radial
-- [ ] HUD (ouro, vidas, onda, 2×, chamar onda)
-- [ ] 10 ondas + Chefe MVP, vitória/derrota com estrelas
-- [ ] Juice da seção 6 do GDD
+- [x] Renderização procedural, input por toque, menu radial
+- [x] HUD (ouro, vidas, onda, 2×, chamar onda)
+- [x] 10 ondas + Chefe MVP, vitória/derrota com estrelas
+- [x] Juice da seção 6 do GDD
 - **Aceite:** jogo uma fase completa no celular em ~3 min e vejo INCÊNDIO.
 
 ## Fase 3 — Herói

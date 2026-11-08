@@ -147,6 +147,16 @@ Decisões que o kickoff não especificou e que tomei (podem ser revistas):
 - Uma onda só pode ser chamada antes da hora depois que a anterior terminou de entrar no mapa.
 - Primeira onda começa sozinha após 20 s de preparação; intervalo de 8 s entre ondas.
 
+### Decisões da Fase 2 (partida jogável)
+- **As 4 torres estão liberadas** na partida até a Fase 4 existir; aí o Cristal Gélido passa a vir do primeiro relicário.
+- Construir é **um toque** na opção do menu radial (sem confirmação). Torre construída: tocar abre alcance + melhorar/vender.
+- Nome de reação na tela tem intervalo mínimo de 0,38 s; as demais reações do mesmo instante mostram só faíscas e número colorido (legibilidade).
+- Dano de Queimando é somado e exibido **uma vez por segundo** por inimigo.
+- Hitstop de 70 ms nas reações, no máximo a cada 0,35 s. Tremor leve em INCÊNDIO/ESTILHAÇO, forte ao perder vida.
+- Morte do chefe: simulação a 20% por 0,5 s + faixa "MVP!".
+- Faixas grandes (onda, chefe) entram em fila para não se sobrepor.
+- Overlay de debug (fps/tick/seed) fica no canto inferior esquerdo; tocar nele deixa quase transparente.
+
 ## 11. Balanceamento — notas da Fase 1
 Medido com um jogador-robô que constrói nos melhores espaços e melhora as torres em ordem:
 - Só Arqueiros: perde na onda 10. Build com combos (Vinha + Braseiro + Gelo): vence 3★ em ~3 min 08 s, com 25–70 reações.
