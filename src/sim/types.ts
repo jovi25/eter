@@ -1,0 +1,102 @@
+import type { Element } from '../data/elements';
+import type { EnemyId } from '../data/enemies';
+import type { ReactionId } from '../data/reactions';
+import type { TowerId } from '../data/towers';
+
+export interface EnemyState {
+  id: number;
+  type: EnemyId;
+  wave: number; // 1-based wave it belongs to
+  hp: number;
+  maxHp: number;
+  dist: number; // distance walked along the path
+  x: number;
+  y: number;
+  alive: boolean;
+  isBoss: boolean;
+  flying: boolean;
+  gold: number;
+  // statuses (seconds remaining; 0 = inactive)
+  burnTime: number;
+  burnDps: number;
+  burnTickTimer: number;
+  chillStacks: number;
+  chillTime: number;
+  frozenTime: number;
+  rootTime: number;
+  rootImmuneTime: number;
+  fragileTime: number;
+  // boss only
+  bossCycleTimer: number;
+  chillImmuneTime: number;
+}
+
+export interface TowerState {
+  id: number;
+  slot: number;
+  type: TowerId;
+  level: number; // 1..3
+  x: number;
+  y: number;
+  cooldown: number;
+  invested: number;
+}
+
+export interface ProjectileState {
+  id: number;
+  towerId: number;
+  towerType: TowerId;
+  targetId: number;
+  x: number;
+  y: number;
+  tx: number; // last known target position
+  ty: number;
+  speed: number;
+  damage: number;
+  element: Element;
+  crit: boolean;
+  splashRadius: number;
+  splashFactor: number;
+  burnDps: number;
+  rootChance: number;
+  alive: boolean;
+}
+
+export type WavePhase = 'prep' | 'spawning' | 'countdown' | 'done';
+export type MatchResult = 'playing' | 'won' | 'lost';
+
+export interface MatchStats {
+  reactions: Record<ReactionId, number>;
+  damageByTower: Record<TowerId, number>;
+  kills: number;
+  livesLost: number;
+}
+
+export interface SimState {
+  tick: number;
+  time: number; // seconds of simulated time
+  seed: number;
+  gold: number;
+  lives: number;
+  wave: number; // waves started so far (0 before the first)
+  totalWaves: number;
+  wavePhase: WavePhase;
+  nextWaveTimer: number; // seconds until the next wave starts by itself
+  result: MatchResult;
+  enemies: EnemyState[];
+  towers: TowerState[];
+  projectiles: ProjectileState[];
+  combo: { count: number; mult: number; timer: number };
+  stats: MatchStats;
+}
+
+/** One hit on one enemy. Towers, splash, the hero and reactions all go through this. */
+export interface HitSpec {
+  element: Element;
+  damage: number;
+  crit?: boolean;
+  burnDps?: number; // fire: dps of the burn it applies
+  rootChance?: number; // nature: chance to root (1 = always)
+  towerId?: number;
+  towerType?: TowerId;
+}

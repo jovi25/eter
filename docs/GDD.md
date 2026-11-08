@@ -138,3 +138,17 @@ Decisões que o kickoff não especificou e que tomei (podem ser revistas):
 - Venda devolve 70% do **total investido** (construção + melhorias).
 - Combo: +0,05 por reação encadeada, teto ×1,5.
 - Simulação a 30 ticks/s; coordenadas da simulação em pixels do mundo 720×1280.
+- **Resfriado** dá −30% fixo (não −30% por acúmulo); os acúmulos só contam para virar Congelado. Golpe de Gelo em inimigo Congelado não faz nada.
+- **INCÊNDIO** espalha Queimando (8 de dano/s) para os *vizinhos*, não para o próprio alvo (a aura dele foi consumida).
+- Dano de Queimando é dano puro: nunca dispara reação.
+- Ao entrar na imunidade a Resfriado, o Arauto também se livra do frio que tinha.
+- **Gosmas invocadas pelo Arauto** têm a vida base (60), sem a escala da onda; antes elas viravam um escudo de ~210 de vida cada na frente do chefe.
+- Torres miram no inimigo que está **mais à frente** no caminho.
+- Uma onda só pode ser chamada antes da hora depois que a anterior terminou de entrar no mapa.
+- Primeira onda começa sozinha após 20 s de preparação; intervalo de 8 s entre ondas.
+
+## 11. Balanceamento — notas da Fase 1
+Medido com um jogador-robô que constrói nos melhores espaços e melhora as torres em ordem:
+- Só Arqueiros: perde na onda 10. Build com combos (Vinha + Braseiro + Gelo): vence 3★ em ~3 min 08 s, com 25–70 reações.
+- O teste `design check` em `tests/sim/match.test.ts` trava essa intenção: combos vencem a fase 1 em 150–240 s.
+- Ajustes feitos a partir dos valores do kickoff: recompensa de abate maior (Gosma 9, Lobo 8, Golem 20, Morcego 11), bônus de onda 20 + 4×onda, torres elementais com dano próprio comparável ao Arqueiro, Arauto com 1300 de vida.

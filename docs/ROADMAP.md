@@ -14,10 +14,10 @@ Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
 - **Aceite:** abro o link no celular e vejo uma tela 9:16 com fps.
 
 ## Fase 1 — Simulação
-- [ ] `src/sim/`: caminho, ondas, inimigos, torres, mira, projéteis
-- [ ] Status, tabela de reações, combo
-- [ ] Ouro e vidas
-- [ ] Testes: cada reação, imunidade de Enraizado, determinismo por seed
+- [x] `src/sim/`: caminho, ondas, inimigos, torres, mira, projéteis
+- [x] Status, tabela de reações, combo
+- [x] Ouro e vidas
+- [x] Testes: cada reação, imunidade de Enraizado, determinismo por seed
 - **Aceite:** `npm test` verde.
 
 ## Fase 2 — Partida jogável
