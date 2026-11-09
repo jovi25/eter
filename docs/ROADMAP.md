@@ -39,9 +39,11 @@ Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
 - [x] Arte: pixel art testada e descartada pelo jogador; estilo pintado mantido, com 6 inimigos novos e herói redesenhado
 - [x] Mapa-mundo, estrelas, save versionado + backup em texto
 
-## Fase 4b — Classes de herói (proposta, aguardando aprovação)
-- [ ] Mago, Sacerdote, Cavaleiro, Druida — escolha antes de cada fase
-- [ ] Inimigos que param para lutar com unidades corpo a corpo (urso, cavaleiro)
+## Fase 4b — Classes de herói (feita)
+- [x] Arcanista, Cavaleiro, Druida, Sacerdotisa — escolha antes de cada fase
+- [x] Ataques e habilidades automáticos (sem botão)
+- [x] Inimigos que param para lutar com unidades corpo a corpo (urso, cavaleiro)
+- [x] Espaços de construção revisados em todas as fases
 
 ## Fase 4c — Meta e relicários
 - [ ] Save versionado + exportar/importar

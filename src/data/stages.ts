@@ -50,7 +50,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Campos de Vellmora II',
     subtitle: 'Duas entradas — chifrudos imunes a fogo',
     map: 'twin',
-    hpMult: 0.8,
+    hpMult: 0.77,
     startGold: 150,
     waves: [
       { groups: [g('slime', 5, 1.1, 0, 0), g('slime', 5, 1.1, 0.5, 1)] },
@@ -69,7 +69,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Pântano de Vellmora',
     subtitle: 'O Anel — gelo e lama',
     map: 'ring',
-    hpMult: 0.95,
+    hpMult: 1.05,
     startGold: 170,
     waves: [
       { groups: [g('slime', 10, 0.8)] },

@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { GAME_WIDTH } from '../../data/config';
 import { ELEMENTS } from '../../data/elements';
 import { MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
 import type { Simulation } from '../../sim/simulation';
@@ -50,7 +51,7 @@ export class BuildMenu {
   openSlot(slot: number): void {
     this.close();
     const pos = this.sim.slots[slot]!;
-    const root = this.makeRoot(pos.x, pos.y);
+    const root = this.makeRoot(pos.x, pos.y, 156, pos.y < 320 ? 221 : 240, 995);
     // Options on a circle; near the top of the map the arc is flipped so nothing hides under the HUD.
     const n = TOWER_IDS.length;
     const start = pos.y < 320 ? Math.PI / 2 : -Math.PI / 2;
@@ -82,7 +83,7 @@ export class BuildMenu {
   openTower(tower: TowerState): void {
     this.close();
     this.openTowerId = tower.id;
-    const root = this.makeRoot(tower.x, tower.y);
+    const root = this.makeRoot(tower.x, tower.y, 215, 286, 1026);
     const def = TOWERS[tower.type];
     const lvl = this.sim.levelOf(tower);
     this.range.clear();
@@ -137,9 +138,15 @@ export class BuildMenu {
     }
   }
 
-  private makeRoot(x: number, y: number): Phaser.GameObjects.Container {
-    const root = this.scene.add.container(x, y).setDepth(DEPTH.menu);
-    const ring = this.scene.add.image(0, 0, 'ring').setScale(1.8).setTint(0xffffff).setAlpha(0.3);
+  /**
+   * The menu is kept fully on screen and clear of the HUD: near an edge it slides inward,
+   * while the highlight ring stays on the spot that was tapped.
+   */
+  private makeRoot(x: number, y: number, halfWidth: number, minY: number, maxY: number): Phaser.GameObjects.Container {
+    const cx = Phaser.Math.Clamp(x, halfWidth, GAME_WIDTH - halfWidth);
+    const cy = Phaser.Math.Clamp(y, minY, maxY);
+    const root = this.scene.add.container(cx, cy).setDepth(DEPTH.menu);
+    const ring = this.scene.add.image(x - cx, y - cy, 'ring').setScale(1.8).setTint(0xffffff).setAlpha(0.3);
     root.add(ring);
     root.setScale(0.4).setAlpha(0);
     this.scene.tweens.add({ targets: root, scale: 1, alpha: 1, duration: 180, ease: 'Back.easeOut' });

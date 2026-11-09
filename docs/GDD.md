@@ -144,6 +144,22 @@ Fase 1: tudo vence. Fases 2–5: só Arqueiros perde; estratégias de combo/foco
 - Save versionado em localStorage (`eter.save`, com migrações) + backup em texto (copiar/restaurar no mapa-mundo).
 - Mapa-mundo da Região 1: fases liberadas em sequência, melhores estrelas, "próxima fase" no fim da partida.
 
+## Fase 4b — Classes de herói (pedido do jogador; substitui o Catalisar manual)
+**Nada é ativado à mão.** Cada herói ataca sozinho do jeito da classe e a habilidade dispara sozinha quando vale a pena. O botão virou indicador de recarga ("AUTO"). Tocar no chão continua movendo o herói. Cada reação no mapa tira 0,5 s da recarga, para todas as classes.
+
+| Classe | Ataque automático | Habilidade automática | Liberação |
+|---|---|---|---|
+| Arcanista | Magias do elemento da arma (aplicam aura) | Catalisar (2+ inimigos perto) | Desde o início |
+| Cavaleiro | Corpo a corpo físico; segura até 2 inimigos | Golpe Giratório (2+ perto) | Vencer fase 1 |
+| Druida | Espinhos com chance de enraizar + urso que segura 2 inimigos | Fúria da Natureza: enraíza em volta e cura o urso (3+ perto) | Vencer fase 2 |
+| Sacerdotisa | Ataque fraco; torres perto dela atacam 20% mais rápido | Bênção: torres perto +35% de dano por 5 s | Vencer fase 3 |
+
+**Bloqueio:** Cavaleiro e urso seguram inimigos terrestres perto do seu posto; os inimigos param e revidam (força em `src/data/enemies.ts`). Voadores passam por cima. Quem cai solta os inimigos e volta depois (Cavaleiro 8 s, urso 10 s).
+Heróis pintados em chibi anime **original**, inspirados no estilo de RPGs online clássicos, sem copiar personagens. Números em `src/data/heroes.ts`.
+
+### Espaços de construção (revisão)
+Regra travada por teste: todo espaço alcança pelo menos 250 px de estrada e fica a pelo menos 90 px da borda. O menu de construção desliza para dentro da tela perto das bordas. Vida dos inimigos recalibrada: fase 2 ×0,77, fase 3 ×1,05.
+
 ## 4. Coleção e evolução
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

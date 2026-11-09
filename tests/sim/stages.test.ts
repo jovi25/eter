@@ -77,6 +77,20 @@ describe('maps', () => {
         for (const o of map.slots.slice(i + 1)) expect(Math.hypot(o.x - s.x, o.y - s.y)).toBeGreaterThanOrEqual(96);
       }
     });
+    it(`${id}: every slot is useful and easy to tap (reaches enough road, away from the screen edge)`, () => {
+      const paths = map.paths.map((p) => new Path(p));
+      for (const [i, s] of map.slots.entries()) {
+        const seen = new Set<string>();
+        for (const p of paths) {
+          for (let d = 0; d < p.length; d += 8) {
+            const q = p.pointAt(d);
+            if (Math.hypot(q.x - s.x, q.y - s.y) <= 170) seen.add(`${Math.round(q.x / 8)},${Math.round(q.y / 8)}`);
+          }
+        }
+        expect(seen.size * 8, `slot ${i} reaches too little road`).toBeGreaterThanOrEqual(250);
+        expect(Math.min(s.x, 720 - s.x), `slot ${i} too close to the screen edge`).toBeGreaterThanOrEqual(90);
+      }
+    });
     it(`${id}: all paths end at the same crystal and stay on screen`, () => {
       const end = map.paths[0]!.at(-1)!;
       for (const p of map.paths) {
