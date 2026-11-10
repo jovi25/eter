@@ -36,6 +36,7 @@ export const ASSETS = {
   enemy_shaman: P,
   enemy_mudling: P,
   enemy_colossus: P,
+  enemy_treasure: P,
   // statuses
   status_roots: P,
   status_ice: P,

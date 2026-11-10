@@ -234,6 +234,37 @@ const SOUNDS = {
     ],
     reverb: 0.7,
   },
+  reaction_overload: {
+    voices: [
+      { wave: 'noise', dur: 0.45, vol: 0.5, attack: 0.005, filter: { type: 'bandpass', freq: 5000, freqEnd: 600, q: 1.5 } },
+      { wave: 'sawtooth', freq: 140, freqEnd: 50, dur: 0.35, vol: 0.22, fm: { ratio: 0.51, depth: 5 }, filter: { type: 'lowpass', freq: 2500 } },
+      { wave: 'sine', freq: 80, freqEnd: 35, dur: 0.5, vol: 0.5 },
+    ],
+    reverb: 0.5,
+  },
+  reaction_superconduct: {
+    voices: [
+      ...bell(3136, 0.4, 0.09),
+      ...bell(4186, 0.35, 0.07, 0.04),
+      { wave: 'square', freq: 1800, freqEnd: 300, dur: 0.18, vol: 0.06 },
+      { wave: 'noise', dur: 0.3, vol: 0.25, filter: { type: 'highpass', freq: 5000 } },
+    ],
+    reverb: 0.6,
+  },
+  boon: {
+    voices: [
+      ...bell(784, 0.5, 0.1),
+      ...bell(1175, 0.5, 0.1, 0.08),
+      ...bell(1568, 0.9, 0.12, 0.16),
+      { wave: 'noise', dur: 0.8, vol: 0.14, delay: 0.1, filter: { type: 'highpass', freq: 6000, freqEnd: 10000 } },
+    ],
+    reverb: 0.7,
+  },
+  hero_swing: {
+    voices: [{ wave: 'noise', dur: 0.14, vol: 0.3, attack: 0.02, filter: { type: 'bandpass', freq: 900, freqEnd: 3200, q: 1.2 } }],
+    jitter: 0.1,
+    gap: 0.08,
+  },
 
   build: {
     voices: [

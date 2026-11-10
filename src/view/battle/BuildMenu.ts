@@ -88,9 +88,10 @@ export class BuildMenu {
     const lvl = this.sim.levelOf(tower);
     this.range.clear();
     this.range.fillStyle(ELEMENTS[def.element].color, 0.12);
-    this.range.fillCircle(tower.x, tower.y, lvl.range);
+    const range = lvl.range * this.sim.mods.rangeMult;
+    this.range.fillCircle(tower.x, tower.y, range);
     this.range.lineStyle(3, ELEMENTS[def.element].color, 0.7);
-    this.range.strokeCircle(tower.x, tower.y, lvl.range);
+    this.range.strokeCircle(tower.x, tower.y, range);
 
     const upCost = this.sim.upgradeCost(tower);
     const up = this.option(0, -96, 0x3aa655, 'icon_play', upCost, false, () => {

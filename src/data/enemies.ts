@@ -11,6 +11,7 @@ export type EnemyId =
   | 'shaman'
   | 'mudling'
   | 'colossus'
+  | 'treasure'
   | 'herald';
 
 export interface BossDef {
@@ -125,6 +126,9 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     scalesWithWave: false,
     radius: 36,
   },
+
+  // ── Bonus: runs fast, costs no lives, pays a lot if you catch it ──
+  treasure: { name: 'Gosma Dourada', hp: 110, speed: 135, gold: 45, livesCost: 0, attack: 0, resist: {}, flying: false, scalesWithWave: true, radius: 20 },
 
   // ── Boss ──
   herald: {

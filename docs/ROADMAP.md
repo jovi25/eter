@@ -1,61 +1,69 @@
-# ROADMAP
+# ROADMAP — Plano 2.0
 
-Uma fase por vez. Ao fim de cada fase: testes, build, commit, resumo e instruções de teste no celular. **Parar e esperar feedback.**
+> Reescrito na "carta branca" (nov/2026). O plano antigo empilhava sistemas de MMO (equipamento, refino, encaixes, cartas)
+> antes de o jogo ter motivo para ser rejogado. O Plano 2.0 inverte: **primeiro a vontade de jogar de novo, depois a coleção.**
 
-Prioridade se o tempo apertar: partida divertida > herói > relicário > resto.
+## A pergunta que guia tudo
+**"Por que eu jogaria mais uma partida?"** Cada fase abaixo tem de dar uma resposta nova.
 
-## Fase 0 — Fundação
-- [x] Vite + TypeScript strict + Phaser 4 + Vitest
-- [x] Cena de boot
-- [x] Escala 720×1280, `Scale.FIT`, retrato
-- [x] Overlay de debug (fps, tick, seed)
-- [x] PWA (manifest + service worker via `vite-plugin-pwa`)
-- [x] Instruções para abrir no celular
-- **Aceite:** abro o link no celular e vejo uma tela 9:16 com fps.
+## Os 4 pilares
+1. **Cada partida é diferente** — Bênçãos de Éter (escolha 1 de 3 poderes), Gosma Dourada, herói escolhido.
+2. **Dá para ficar bom** — reações elementais, fraquezas dos inimigos, posicionamento do herói. Habilidade vence número.
+3. **Sempre há um recorde para bater** — Fenda Infinita, estrelas, desafios por fase, desafio diário.
+4. **O que eu ganho muda como eu jogo** — recompensas destravam *opções* (bênçãos novas, heróis, talentos), não só +5% de dano.
 
-## Fase 1 — Simulação
-- [x] `src/sim/`: caminho, ondas, inimigos, torres, mira, projéteis
-- [x] Status, tabela de reações, combo
-- [x] Ouro e vidas
-- [x] Testes: cada reação, imunidade de Enraizado, determinismo por seed
-- **Aceite:** `npm test` verde.
+Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instruções de teste no celular, parar e ouvir o jogador.
 
-## Fase 2 — Partida jogável
-- [x] Renderização procedural, input por toque, menu radial
-- [x] HUD (ouro, vidas, onda, 2×, chamar onda)
-- [x] 10 ondas + Chefe MVP, vitória/derrota com estrelas
-- [x] Juice da seção 6 do GDD
-- **Aceite:** jogo uma fase completa no celular em ~3 min e vejo INCÊNDIO.
+---
 
-## Fase 3 — Herói
-- [x] Arcanista em campo, movimento por toque, ataque automático
-- [x] Catalisar com redução de cooldown por reação
-- **Aceite:** sinto o loop "reação → habilidade volta mais rápido".
+## Feito
+- [x] **Fase 0** — Fundação (Vite, TypeScript, Phaser 4, testes, PWA, GitHub Pages)
+- [x] **Fase 1** — Simulação pura e determinística
+- [x] **Fase 2** — Partida jogável com juice e sons
+- [x] **Fase 3** — Herói em campo
+- [x] **Fase 4a** — Região 1: 5 fases com mapas diferentes, fraquezas/resistências, mapa-mundo, save
+- [x] **Fase 4b** — 4 classes de herói com ataque e habilidade automáticos; bloqueio corpo a corpo; urso
+- [x] **Fase 5 — "Mais uma partida"** *(esta entrega)*
+  - [x] Bênçãos de Éter: a cada 3 ondas, escolha 1 de 3 poderes que se acumulam (17 bênçãos, 3 raridades)
+  - [x] Raio entra nos combos: SOBRECARGA (Queimando + Raio) e SUPERCONDUÇÃO (Resfriado + Raio)
+  - [x] Gosma Dourada: bônus que corre; não tira vida, paga muito ouro
+  - [x] Fenda Infinita: 40 ondas cada vez mais duras, recorde salvo (libera ao vencer a fase 2)
+  - [x] Heróis redesenhados em camadas (capa, corpo, braço com arma), com animação de ataque e deslize
 
-## Fase 4a — Região 1 (feita)
-- [x] 5 fases com mapas e estratégias diferentes; caminhos múltiplos
-- [x] Resistências/fraquezas por elemento + 6 inimigos novos
-- [x] Dificuldade crescente medida por robô (`npm run balance`)
-- [x] Arte: pixel art testada e descartada pelo jogador; estilo pintado mantido, com 6 inimigos novos e herói redesenhado
-- [x] Mapa-mundo, estrelas, save versionado + backup em texto
+## Próximas etapas
 
-## Fase 4b — Classes de herói (feita)
-- [x] Arcanista, Cavaleiro, Druida, Sacerdotisa — escolha antes de cada fase
-- [x] Ataques e habilidades automáticos (sem botão)
-- [x] Inimigos que param para lutar com unidades corpo a corpo (urso, cavaleiro)
-- [x] Espaços de construção revisados em todas as fases
+### Fase 6 — Maestria (dar motivo para rejogar cada fase)
+- [ ] **3 desafios por fase** além das estrelas (ex.: "vença sem Arqueiros", "20 reações", "herói nunca cai"), com medalhas no mapa
+- [ ] **Desafio diário**: mesma seed para todo mundo, herói e bênçãos iniciais sorteados; recorde do dia
+- [ ] **Códice**: página de reações e inimigos descobertos (com fraquezas), preenchida jogando
+- [ ] Tela de estatísticas da partida (dano por torre, reações por tipo) com exportar CSV
+- *Aceite:* depois de vencer a fase 5, ainda tenho objetivos claros em todas as fases.
 
-## Fase 4c — Meta e relicários
-- [ ] Save versionado + exportar/importar
-- [ ] Mapa-mundo com 5 fases; coins
-- [ ] Conquistas e missões diárias
-- [ ] Relicário completo (1º roteirizado)
-- [ ] Coleção de torres com níveis
-- [ ] Equipamentos: ressonância, encaixes, cartas, refino; tela de herói
-- **Aceite:** venço a fase 1, abro o primeiro relicário, ganho o Cristal Gélido e sinto o pico.
+### Fase 7 — Relicários que importam (o pico de dopamina)
+- [ ] Relicário com abertura por toques, escalada de raridade, pré-sorteio salvo, chances visíveis e garantia
+- [ ] Conteúdo que **muda o jogo**: bênçãos novas para o baralho, **bênção inicial** (começa a partida com 1), talentos de herói
+- [ ] `coins` por partida, desafios e recordes da Fenda; loja de relicários por coins
+- [ ] Corte proposto: **sem refino e sem encaixes**. No lugar: 3 **Relíquias** equipáveis com um efeito forte cada
+- *Aceite:* abrir um relicário me faz querer testar uma estratégia nova na partida seguinte.
 
-## Fase 5 — Balanceamento e playtest
-- [ ] Estatísticas da última partida exportáveis em CSV
-- [ ] Ajuste dos números em `src/data/`
-- [ ] `docs/PLAYTEST.md`
-- **Aceite:** dificuldade crescente nas 5 fases; fase 5 exige combos.
+### Fase 8 — Heróis com identidade
+- [ ] 3 talentos por herói (escolhe 1 por nível): mudam o estilo, não só os números
+- [ ] Arma do Arcanista troca o elemento (Brasa, Geada, Trovão, Seiva) → combos diferentes
+- [ ] 2ª habilidade automática por classe em nível alto
+- *Aceite:* dois jogadores com o mesmo herói jogam de formas diferentes.
+
+### Fase 9 — Região 2 e chefes com mecânica
+- [ ] 5 fases novas com um elemento de mapa novo (pontes que abrem/fecham, portal que troca de lado)
+- [ ] 2 chefes com fases (escudo elemental que só quebra com a reação certa)
+- [ ] Torre nova de elemento duplo por fusão
+- *Aceite:* a região 2 exige montar a build pensando no chefe.
+
+### Fase 10 — Polimento e balanceamento
+- [ ] Música gerada por código, mais vozes de inimigos
+- [ ] Tutorial jogável de 60 s (INCÊNDIO guiado)
+- [ ] `npm run balance` cobrindo heróis × bênçãos; `docs/PLAYTEST.md`
+- [ ] Acessibilidade: modo daltônico para elementos, tamanho de texto
+
+## No radar (não agora)
+Co-op, nuvem, Passe de Missões e loja de gems (gems nunca compram nada aleatório), guildas, Capacitor para lojas,
+classificação indicativa e ECA Digital antes de qualquer monetização.

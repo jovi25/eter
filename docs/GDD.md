@@ -160,6 +160,37 @@ Heróis pintados em chibi anime **original**, inspirados no estilo de RPGs onlin
 ### Espaços de construção (revisão)
 Regra travada por teste: todo espaço alcança pelo menos 250 px de estrada e fica a pelo menos 90 px da borda. O menu de construção desliza para dentro da tela perto das bordas. Vida dos inimigos recalibrada: fase 2 ×0,77, fase 3 ×1,05.
 
+## Fase 5 — "Mais uma partida" (carta branca do jogador, nov/2026)
+Objetivo: dar motivo para jogar de novo. Plano completo em `docs/ROADMAP.md` (Plano 2.0).
+
+### Bênçãos de Éter
+- Quando as ondas 2, 5, 8, 11... terminam de entrar, a partida pausa e o jogador escolhe **1 de 3** bênçãos.
+- Elas **se acumulam** e valem só naquela partida. 17 bênçãos em 3 raridades (Comum 6 : Rara 3 : Épica 1 no sorteio).
+- Sorteio com RNG próprio derivado da seed (não mexe nos sorteios de combate). Dados em `src/data/boons.ts`.
+- Exemplos: Zero Absoluto (congela com 1 acúmulo a menos), Coração da Tempestade (+3 saltos de raio), Catalisador Instável (reações +35%).
+
+### Reações de Raio
+| Aura | Acerto | Reação | Efeito |
+|---|---|---|---|
+| Queimando | Raio | **SOBRECARGA** | Dano ×1,5 e explosão: 60% do golpe em quem estiver a até 75 px |
+| Resfriado | Raio | **SUPERCONDUÇÃO** | Dano ×1,25 e Frágil no alvo e nos vizinhos (75 px) |
+| Congelado | Raio | ESTILHAÇO | (já existia) |
+
+### Gosma Dourada
+35% de chance por onda (da 2ª em diante): corre rápido, **não tira vida** se escapar, paga 45 de ouro (escala com bônus).
+
+### Fenda Infinita
+40 ondas geradas por fórmula (iguais para todos), vida ×1,15 por onda, chefes a cada 5 e 10 ondas, bênção a cada 3.
+Libera ao vencer a fase 2. Recorde (onda alcançada) salvo no save v3.
+
+### Heróis em camadas
+Cada herói é pintado em 3 peças (capa, corpo, braço com arma). O braço gira no ombro: ataque à distância (estocada + clarão na ponta),
+corpo a corpo (golpe largo + investida) e habilidade (arma erguida). O herói **desliza** (sem pular), inclina o corpo e a capa fica para trás.
+Proporção esbelta (cabeça ≈ 1/3 da altura), inspirada em sprites de RPG online clássico, com desenhos originais.
+
+### Dificuldade recalibrada
+Como bênçãos deixam o jogador mais forte: fase 2 ×0,9, fase 3 ×1,2, fase 4 ×1,08, fase 5 ×0,9 (robôs já escolhem bênçãos).
+
 ## 4. Coleção e evolução
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

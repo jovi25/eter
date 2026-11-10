@@ -2,7 +2,7 @@
 // Reactions anywhere on the map shorten the skill cooldown (the core loop), for every class.
 
 import type { Element } from './elements';
-import type { StageId } from './stages';
+import type { CampaignStageId } from './stages';
 
 export type HeroClass = 'mage' | 'knight' | 'priest' | 'druid';
 export const HERO_ORDER: HeroClass[] = ['mage', 'knight', 'druid', 'priest'];
@@ -22,7 +22,7 @@ export interface HeroDef {
   name: string;
   role: string; // one-line description for the picker
   texture: string;
-  unlockAfter?: StageId; // win this stage to unlock
+  unlockAfter?: CampaignStageId; // win this stage to unlock
   attack: {
     element: Element | 'affinity'; // 'affinity' = the weapon element (mage)
     damage: number;

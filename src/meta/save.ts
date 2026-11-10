@@ -2,9 +2,9 @@
 // Pure TypeScript (no Phaser) so it can be unit-tested.
 
 import { HEROES, type HeroClass } from '../data/heroes';
-import { STAGE_ORDER, type StageId } from '../data/stages';
+import { RIFT, STAGE_ORDER, type CampaignStageId, type StageId } from '../data/stages';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -17,10 +17,11 @@ export interface SaveData {
   createdAt: number;
   stages: Partial<Record<StageId, StageProgress>>;
   hero: HeroClass; // last picked hero class (v2+)
+  riftBest: number; // best wave reached in the Fenda Infinita (v3+)
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage' };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0 };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -31,13 +32,18 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage' };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0 };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
     out = { ...out, version: 2, hero: 'mage' };
   }
+  if (out.version < 3) {
+    // v3: Fenda Infinita record.
+    out = { ...out, version: 3, riftBest: 0 };
+  }
   if (!(out.hero in HEROES)) out.hero = 'mage';
+  out.riftBest = clampInt(out.riftBest, 0, 999);
   // Sanitize
   const stages: SaveData['stages'] = {};
   for (const id of STAGE_ORDER) {
@@ -79,17 +85,26 @@ export class SaveStore {
   }
 
   isUnlocked(id: StageId): boolean {
+    if (id === 'rift') return this.stars(RIFT.unlockAfter) > 0;
     const i = STAGE_ORDER.indexOf(id);
     if (i <= 0) return true;
     return (this.data.stages[STAGE_ORDER[i - 1]!]?.stars ?? 0) > 0;
   }
 
-  stars(id: StageId): number {
+  stars(id: CampaignStageId): number {
     return this.data.stages[id]?.stars ?? 0;
   }
 
   totalStars(): number {
     return STAGE_ORDER.reduce((s, id) => s + this.stars(id), 0);
+  }
+
+  /** Record how far a Fenda run got. Returns true on a new record. */
+  recordRift(wave: number): boolean {
+    if (wave <= this.data.riftBest) return false;
+    this.data.riftBest = wave;
+    this.persist();
+    return true;
   }
 
   /** A hero class is available once its unlock stage has been won. */
@@ -106,7 +121,7 @@ export class SaveStore {
 
   /** Record a finished match. Returns true if this was the first win of the stage. */
   recordResult(id: StageId, won: boolean, stars: number): boolean {
-    if (!won) return false;
+    if (!won || id === 'rift') return false;
     const prev = this.data.stages[id];
     const first = !prev || prev.wins === 0;
     this.data.stages[id] = { stars: Math.max(prev?.stars ?? 0, stars), wins: (prev?.wins ?? 0) + 1 };

@@ -20,7 +20,7 @@ import {
   star,
   type Ctx,
 } from './paint';
-import { CHIBI_STYLES, drawBear, drawChibi } from './chibi';
+import { drawArm, drawBear, drawBody, drawCape, drawHero, HERO_STYLES, RIG, type HeroTexture } from './chibi';
 
 type Drawer = { w: number; h: number; draw: (ctx: Ctx, cx: number, cy: number) => void };
 
@@ -614,6 +614,27 @@ const DRAW: Record<AssetKey, Drawer> = {
     },
   },
 
+  enemy_treasure: {
+    w: 76,
+    h: 70,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 36, 0xffd34d, 0.5);
+      const body = (k: Ctx) => {
+        k.moveTo(cx - 29, cy + 22);
+        k.bezierCurveTo(cx - 34, cy - 4, cx - 18, cy - 22, cx, cy - 24);
+        k.bezierCurveTo(cx + 18, cy - 22, cx + 34, cy - 4, cx + 29, cy + 22);
+        k.quadraticCurveTo(cx, cy + 30, cx - 29, cy + 22);
+      };
+      shape(c, body, bodyGrad(c, cx, cy, 32, 0xffc21a), INK, 3.5);
+      shape(c, star(c, cx, cy - 26, 9, 0.45), '#fff3a8', INK, 2);
+      gloss(c, cx - 13, cy - 10, 12, 6, 0.9);
+      eyes(c, cx, cy + 3, 10, 7, { iris: 0x7a4a08 });
+      blush(c, cx, cy + 13, 18, 5);
+      smile(c, cx, cy + 16, 7);
+      for (const [x, y] of [[cx - 26, cy - 20], [cx + 28, cy - 8], [cx + 20, cy - 28]] as const) glow(c, x, y, 4, 0xffffff, 1);
+    },
+  },
+
   // ─────────── statuses ───────────
   status_roots: {
     w: 92,
@@ -872,10 +893,11 @@ const DRAW: Record<AssetKey, Drawer> = {
   },
 
   // ─────────── hero ───────────
-  hero_arcanist: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_arcanist) },
-  hero_knight: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_knight) },
-  hero_priest: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_priest) },
-  hero_druid: { w: 112, h: 144, draw: (c) => drawChibi(c, CHIBI_STYLES.hero_druid) },
+  // Full-body portraits (menus). In battle the same hero is drawn in layers: see generateTextures().
+  hero_arcanist: { w: RIG.w, h: RIG.h, draw: (c) => drawHero(c, HERO_STYLES.hero_arcanist) },
+  hero_knight: { w: RIG.w, h: RIG.h, draw: (c) => drawHero(c, HERO_STYLES.hero_knight) },
+  hero_priest: { w: RIG.w, h: RIG.h, draw: (c) => drawHero(c, HERO_STYLES.hero_priest) },
+  hero_druid: { w: RIG.w, h: RIG.h, draw: (c) => drawHero(c, HERO_STYLES.hero_druid) },
   summon_bear: { w: 100, h: 100, draw: (c) => drawBear(c) },
   hero_orb: {
     w: 40,
@@ -991,6 +1013,18 @@ export function generateTextures(scene: Phaser.Scene): void {
     ctx.clearRect(0, 0, d.w, d.h);
     d.draw(ctx, d.w / 2, d.h / 2);
     tex.refresh();
+  }
+  // Hero rigs in layers (cape / body / weapon arm) so battle can animate them.
+  for (const key of Object.keys(HERO_STYLES) as HeroTexture[]) {
+    const parts = { cape: drawCape, body: drawBody, arm: drawArm };
+    for (const [part, draw] of Object.entries(parts)) {
+      const k = `${key}_${part}`;
+      if (scene.textures.exists(k)) continue;
+      const tex = scene.textures.createCanvas(k, RIG.w, RIG.h);
+      if (!tex) continue;
+      draw(tex.getContext(), HERO_STYLES[key]);
+      tex.refresh();
+    }
   }
 }
 

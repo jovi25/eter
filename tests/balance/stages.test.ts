@@ -27,6 +27,7 @@ export function play(stage: StageId, plan: TowerId[], seed: number) {
       const near = sim.state.enemies.filter((e) => (e.x - h.x) ** 2 + (e.y - h.y) ** 2 < HERO.catalyze.radius ** 2).length;
       if (near >= 3) sim.castCatalyze();
     }
+    if (sim.state.boonOffers.length) sim.chooseBoon(0);
     sim.step();
   }
   return sim;
@@ -40,7 +41,7 @@ it('all stages × strategies × seeds', () => {
     combo8: ['vine', 'brazier', 'frost', 'storm', 'brazier', 'vine', 'frost', 'archer'],
     focus5: ['vine', 'brazier', 'frost', 'storm', 'brazier'],
   };
-  const smart: Record<StageId, TowerId[]> = {
+  const smart: Record<(typeof STAGE_ORDER)[number], TowerId[]> = {
     v1: ['vine', 'brazier', 'frost', 'storm', 'brazier', 'vine', 'frost', 'archer'],
     v2: ['frost', 'storm', 'vine', 'frost', 'storm', 'vine', 'archer', 'storm'],
     v3: ['brazier', 'storm', 'brazier', 'frost', 'archer', 'brazier', 'storm', 'vine'],

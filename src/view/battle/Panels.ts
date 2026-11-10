@@ -74,18 +74,25 @@ export interface EndStats {
   bestCatalyze: number;
   skillName: string;
   skillCasts: number;
+  boons: number;
+  rift?: { wave: number; best: number; record: boolean };
 }
 
 export class EndPanel {
   constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void }) {
     backdrop(scene);
     const p = panel(scene, 600, 800);
-    const title = uiText(scene, 0, -300, s.won ? 'VITÓRIA!' : 'DERROTA', 72, s.won ? PAL.goldCss : PAL.redCss, 12);
+    const title = uiText(scene, 0, -300, s.rift ? 'FIM DA FENDA' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
     p.add(title);
     scene.tweens.add({ targets: title, scale: { from: 1.08, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // Stars pop in one by one.
-    for (let i = 0; i < 3; i++) {
+    if (s.rift) {
+      p.add(uiText(scene, 0, -200, `Onda ${s.rift.wave}`, 76, '#ffffff', 12));
+      p.add(uiText(scene, 0, -132, s.rift.record ? '★ NOVO RECORDE! ★' : `Recorde: onda ${s.rift.best}`, 28, s.rift.record ? PAL.goldCss : PAL.uiDim, 6));
+      if (s.rift.record) playSfx('star');
+    }
+    for (let i = 0; i < (s.rift ? 0 : 3); i++) {
       const x = (i - 1) * 140;
       const y = i === 1 ? -170 : -150;
       p.add(scene.add.image(x, y, 'starEmpty').setScale(1.4));
@@ -107,6 +114,7 @@ export class EndPanel {
     const mm = Math.floor(s.seconds / 60);
     const ss = String(Math.floor(s.seconds % 60)).padStart(2, '0');
     const lines = [
+      `Bênçãos escolhidas: ${s.boons}`,
       `Vidas: ${s.lives}/${s.maxLives}`,
       `Inimigos derrotados: ${s.kills}`,
       `Reações: ${s.reactions}`,
@@ -114,7 +122,7 @@ export class EndPanel {
       s.skillName === 'Catalisar' ? `Melhor Catalisar: ${s.bestCatalyze} reações` : `${s.skillName}: ${s.skillCasts}×`,
       `Tempo: ${mm}:${ss}`,
     ];
-    lines.forEach((l, i) => p.add(uiText(scene, 0, -80 + i * 42, l, 26, i >= 2 && i <= 4 ? '#ffe34d' : PAL.uiText, 6)));
+    lines.forEach((l, i) => p.add(uiText(scene, 0, -86 + i * 38, l, 24, i >= 3 && i <= 5 ? '#ffe34d' : PAL.uiText, 6)));
     if (cb.onNext) {
       p.add(new Button(scene, 0, 222, { width: 440, height: 80, label: 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
       p.add(new Button(scene, -112, 320, { width: 216, height: 64, label: 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));

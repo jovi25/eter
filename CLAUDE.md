@@ -42,6 +42,11 @@ Três moedas separadas: `gold` (partida), `coins` (ganhas jogando), `gems` (prem
 - Se um dia entrar arte de terceiros: só CC0, com créditos em `public/assets/CREDITS.txt`; downloads em pasta temporária.
 - `npm run balance`: relatório de dificuldade das 5 fases com robôs (60 partidas simuladas).
 
+## Direção do produto (Plano 2.0)
+- Pergunta-guia: "por que eu jogaria mais uma partida?". Prioridade: rejogabilidade (bênçãos, Fenda, desafios) antes de coleção.
+- O jogador deu carta branca para propor e mudar mecânicas; ele quer ser surpreendido, mas valoriza arte bonita e heróis esbeltos.
+- Heróis: rig em camadas em `src/view/art/chibi.ts` (capa/corpo/braço); animações em `src/view/battle/HeroView.ts`. Nada de pulinhos: deslizar.
+
 ## Arquitetura
 - `src/sim/` — TypeScript puro, **sem Phaser**. Estado, ondas, inimigos, torres, status, reações, economia. Tick fixo (30/s), RNG com seed (determinístico). Emite eventos por um event bus.
 - `src/view/` — Phaser. Só lê o estado da simulação e reage a eventos (`reactionTriggered`, `enemyKilled`, `waveCleared`, `relicOpened`...). Todo o juice vive aqui.

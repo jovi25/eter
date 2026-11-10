@@ -22,12 +22,44 @@ export interface StageDef {
   waves: WaveDef[];
 }
 
-export type StageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5';
-export const STAGE_ORDER: StageId[] = ['v1', 'v2', 'v3', 'v4', 'v5'];
+export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5';
+export type StageId = CampaignStageId | 'rift';
+export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5'];
+
+/** Endless-style mode: how far can you get? Unlocked by winning this stage. */
+export const RIFT = { unlockAfter: 'v2' as CampaignStageId, waves: 40 };
+
+/** Wave N of the Rift, built by formula (no randomness, so everyone faces the same Rift). */
+function riftWave(n: number): WaveDef {
+  const pool: EnemyId[] = ['slime', 'wolf'];
+  if (n >= 3) pool.push('golem', 'bat');
+  if (n >= 5) pool.push('salamander', 'skeleton');
+  if (n >= 8) pool.push('yeti', 'mudling', 'shaman');
+  const count = Math.min(14, 5 + Math.floor(n / 2));
+  const interval = Math.max(0.4, 1.0 - n * 0.02);
+  const groups: SpawnGroup[] = [];
+  const kinds = n >= 6 ? 3 : 2;
+  for (let k = 0; k < kinds; k++) {
+    const enemy = pool[(n * 7 + k * 3) % pool.length]!;
+    const heavy = enemy === 'golem';
+    groups.push({ enemy, count: heavy ? Math.ceil(count / 2) : count, interval: heavy ? interval * 1.8 : interval, delay: k * 2 });
+  }
+  if (n % 5 === 0) groups.push({ enemy: 'colossus', count: Math.floor(n / 10) + 1, interval: 5, delay: 1 });
+  if (n % 10 === 0) groups.push({ enemy: 'herald', count: 1, interval: 0, delay: 3 });
+  return { groups };
+}
 
 const g = (enemy: EnemyId, count: number, interval: number, delay = 0, path?: number): SpawnGroup => ({ enemy, count, interval, delay, path });
 
 export const STAGES: Record<StageId, StageDef> = {
+  rift: {
+    name: 'Fenda Infinita',
+    subtitle: 'Até onde você aguenta? Uma bênção a cada 3 ondas.',
+    map: 'twin',
+    hpMult: 0.9,
+    startGold: 220,
+    waves: Array.from({ length: RIFT.waves }, (_, i) => riftWave(i + 1)),
+  },
   v1: {
     name: 'Campos de Vellmora I',
     subtitle: 'O primeiro portal',
@@ -50,7 +82,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Campos de Vellmora II',
     subtitle: 'Duas entradas — chifrudos imunes a fogo',
     map: 'twin',
-    hpMult: 0.77,
+    hpMult: 0.9,
     startGold: 150,
     waves: [
       { groups: [g('slime', 5, 1.1, 0, 0), g('slime', 5, 1.1, 0.5, 1)] },
@@ -69,7 +101,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Pântano de Vellmora',
     subtitle: 'O Anel — gelo e lama',
     map: 'ring',
-    hpMult: 1.05,
+    hpMult: 1.2,
     startGold: 170,
     waves: [
       { groups: [g('slime', 10, 0.8)] },
@@ -88,7 +120,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Desfiladeiro de Vellmora',
     subtitle: 'Corredor curto — poucos espaços',
     map: 'corridor',
-    hpMult: 0.95,
+    hpMult: 1.08,
     startGold: 200,
     waves: [
       { groups: [g('wolf', 8, 0.7)] },
@@ -107,7 +139,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Trono da Geada',
     subtitle: 'Bifurcação — o Arauto da Geada',
     map: 'fork',
-    hpMult: 0.75,
+    hpMult: 0.9,
     startGold: 200,
     waves: [
       { groups: [g('slime', 10, 0.7)] },

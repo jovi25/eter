@@ -20,6 +20,15 @@ export interface SimModifiers {
   heroDamageMult: number; // equipment / level
   heroAttackSpeedMult: number; // Wolf card
   heroClass: HeroClass;
+  // Run-time knobs changed by Bênçãos (src/data/boons.ts)
+  burnDpsMult: number;
+  chainBonus: number; // extra lightning jumps
+  reactionDamageMult: number;
+  comboWindowBonus: number; // seconds
+  comboMaxBonus: number; // added to the combo multiplier cap
+  goldMult: number; // kill gold
+  upgradeCostMult: number;
+  rangeMult: number;
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -36,5 +45,13 @@ export function defaultModifiers(): SimModifiers {
     heroDamageMult: 1,
     heroAttackSpeedMult: 1,
     heroClass: 'mage',
+    burnDpsMult: 1,
+    chainBonus: 0,
+    reactionDamageMult: 1,
+    comboWindowBonus: 0,
+    comboMaxBonus: 0,
+    goldMult: 1,
+    upgradeCostMult: 1,
+    rangeMult: 1,
   };
 }

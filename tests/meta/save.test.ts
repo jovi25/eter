@@ -67,9 +67,10 @@ describe('save', () => {
     expect(s.data.hero).toBe('knight');
   });
 
-  it('v1 saves migrate to v2 with the Arcanista selected', () => {
+  it('v1 saves migrate to the current version with the Arcanista selected', () => {
     const m = migrate({ version: 1, createdAt: 1, stages: { v1: { stars: 2, wins: 1 } } });
-    expect(m.version).toBe(2);
+    expect(m.version).toBe(SAVE_VERSION);
+    expect(m.riftBest).toBe(0);
     expect(m.hero).toBe('mage');
     expect(m.stages.v1?.stars).toBe(2);
   });

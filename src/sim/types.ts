@@ -1,6 +1,7 @@
 import type { Element } from '../data/elements';
 import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
+import type { BoonId } from '../data/boons';
 import type { ReactionId } from '../data/reactions';
 import type { TowerAbility, TowerId } from '../data/towers';
 
@@ -110,6 +111,8 @@ export interface SimState {
   projectiles: ProjectileState[];
   zones: ZoneState[];
   summons: SummonState[];
+  boonOffers: BoonId[][]; // pending "pick 1 of 3" offers, oldest first
+  boons: BoonId[]; // picked so far (repeats stack)
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;

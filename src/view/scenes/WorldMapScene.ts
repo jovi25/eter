@@ -2,14 +2,14 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
-import { STAGE_ORDER, STAGES, type StageId } from '../../data/stages';
+import { RIFT, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
 import { getSave } from '../../meta/save';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
 
-const NODES: Record<StageId, { x: number; y: number; enemy: EnemyId }> = {
+const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> = {
   v1: { x: 192, y: 1008, enemy: 'slime' },
   v2: { x: 528, y: 864, enemy: 'salamander' },
   v3: { x: 192, y: 672, enemy: 'yeti' },
@@ -48,6 +48,7 @@ export class WorldMapScene extends Phaser.Scene {
     uiText(this, GAME_WIDTH / 2, 92, `★ ${save.totalStars()} / ${STAGE_ORDER.length * 3}`, 28, PAL.goldCss, 6);
 
     STAGE_ORDER.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
+    this.riftNode();
 
     // Footer: backup
     const foot = this.add.graphics();
@@ -72,7 +73,33 @@ export class WorldMapScene extends Phaser.Scene {
     this.cameras.main.fadeIn(250, 11, 7, 22);
   }
 
-  private node(id: StageId, index: number, unlocked: boolean, stars: number): void {
+  /** The Fenda Infinita: a swirling portal off the main trail, with the player's record. */
+  private riftNode(): void {
+    const save = getSave();
+    const unlocked = save.isUnlocked('rift');
+    const x = 588;
+    const y = 1050;
+    const portal = this.add.image(x, y, 'portal').setDepth(40).setScale(0.95);
+    this.tweens.add({ targets: portal, angle: 360, duration: 5000, repeat: -1 });
+    if (!unlocked) portal.setTint(0x555555).setAlpha(0.8);
+    else this.tweens.add({ targets: portal, scale: 1.05, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const label = this.add.container(x - 40, y + 86).setDepth(41);
+    const lg = this.add.graphics();
+    lg.fillStyle(PAL.ink, 0.88);
+    lg.fillRoundedRect(-150, -32, 300, 64, 16);
+    label.add(lg);
+    label.add(uiText(this, 0, -12, 'Fenda Infinita', 22, unlocked ? '#e0c8ff' : PAL.uiDim, 4));
+    const n = STAGE_ORDER.indexOf(RIFT.unlockAfter) + 1;
+    label.add(uiText(this, 0, 14, unlocked ? (save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : 'Até onde você aguenta?') : `🔒 Vença a fase ${n}`, 17, unlocked ? PAL.goldCss : PAL.uiDim, 4));
+    if (!unlocked) return;
+    const zone = this.add.zone(x, y, 150, 150).setDepth(42).setInteractive({ useHandCursor: true });
+    zone.on('pointerdown', () => {
+      playSfx('ui');
+      this.showStageCard('rift');
+    });
+  }
+
+  private node(id: CampaignStageId, index: number, unlocked: boolean, stars: number): void {
     const n = NODES[id];
     const st = STAGES[id];
     const boss = id === 'v5';
@@ -142,7 +169,11 @@ export class WorldMapScene extends Phaser.Scene {
     c.add([shade, g]);
     c.add(uiText(this, 0, -282, st.name, 34, '#f3e9ff', 7));
     c.add(uiText(this, 0, -236, st.subtitle, 21, PAL.uiDim, 5).setWordWrapWidth(560));
-    for (let s = 0; s < 3; s++) c.add(this.add.image((s - 1) * 64, -178, s < save.stars(id) ? 'star' : 'starEmpty').setScale(0.6));
+    if (id === 'rift') {
+      c.add(uiText(this, 0, -178, save.data.riftBest > 0 ? `Seu recorde: onda ${save.data.riftBest}` : 'Sem recorde ainda', 26, PAL.goldCss, 5));
+    } else {
+      for (let s = 0; s < 3; s++) c.add(this.add.image((s - 1) * 64, -178, s < save.stars(id) ? 'star' : 'starEmpty').setScale(0.6));
+    }
 
     // Hero picker
     c.add(uiText(this, 0, -122, 'Escolha o herói', 24, PAL.uiText, 5));

@@ -11,7 +11,9 @@ import { FixedClock } from '../../sim/clock';
 import { Simulation } from '../../sim/simulation';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
+import { BoonPicker } from '../battle/BoonPicker';
 import { BuildMenu } from '../battle/BuildMenu';
+import { BOONS } from '../../data/boons';
 import { CatalyzeButton } from '../battle/CatalyzeButton';
 import { HeroView, SummonView } from '../battle/HeroView';
 import { HEROES, type HeroClass } from '../../data/heroes';
@@ -55,6 +57,7 @@ export class BattleScene extends Phaser.Scene {
   private hero!: HeroView;
   private catalyzeBtn!: CatalyzeButton;
   private summons: SummonView[] = [];
+  private picker: BoonPicker | null = null;
   private pausePanel: PausePanel | null = null;
 
   private speed = 1;
@@ -104,6 +107,7 @@ export class BattleScene extends Phaser.Scene {
     this.heroClass = data.hero ?? getSave().data.hero ?? 'mage';
     this.sim = new Simulation({ stage: this.stageId, seed, modifiers: { heroClass: this.heroClass } });
     this.seenTypes = new Set();
+    this.picker = null;
     this.clock = new FixedClock();
     this.speed = 1;
     this.paused = false;
@@ -165,7 +169,7 @@ export class BattleScene extends Phaser.Scene {
       const zone = this.add.zone(s.x, s.y, 110, 110).setInteractive({ useHandCursor: true });
       zone.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
-        if (this.paused || this.ended) return;
+        if (this.paused || this.ended || this.picker) return;
         const tower = this.sim.towerAt(i);
         playSfx('ui', 0.8);
         if (tower) this.menu.openTower(tower);
@@ -174,7 +178,7 @@ export class BattleScene extends Phaser.Scene {
     });
     // Tap on free ground: closes an open menu, otherwise walks the hero there.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (over.length > 0 || this.paused || this.ended) return;
+      if (over.length > 0 || this.paused || this.ended || this.picker) return;
       if (this.menu.isOpen) {
         this.menu.close();
         return;
@@ -262,7 +266,17 @@ export class BattleScene extends Phaser.Scene {
       });
     });
 
-    ev.on('heroFired', () => playSfx('hero_shoot'));
+    ev.on('heroFired', () => {
+      this.hero.shoot();
+      playSfx('hero_shoot');
+    });
+
+    ev.on('boonChosen', (b) => {
+      const def = BOONS[b.id];
+      this.fx.bigBanner(def.name.toUpperCase(), '#f3e9ff', 50, 700, true);
+      this.fx.burst(this.hero.x, this.hero.y - 60, def.color, 30);
+      this.fx.shockwave(this.hero.x, this.hero.y - 40, def.color, 2.4, 600);
+    });
 
     // Non-mage class skills (the mage's Catalisar has its own handler below).
     ev.on('heroSkill', (sk) => {
@@ -286,7 +300,7 @@ export class BattleScene extends Phaser.Scene {
     const unitOf = (id: number) => (id === -1 ? this.hero : this.summons[this.sim.state.summons.findIndex((s) => s.id === id)]);
     ev.on('blockerAttack', (a) => {
       unitOf(a.blockerId)?.swing();
-      playSfx('hit', 0.7);
+      playSfx('hero_swing');
     });
     ev.on('blockerDied', (d) => {
       this.fx.burst(d.x, d.y - 40, 0xffffff, 14);
@@ -332,6 +346,7 @@ export class BattleScene extends Phaser.Scene {
 
     ev.on('enemyLeaked', (l) => {
       this.enemies.markDying(l.enemyId, 'leak');
+      if (l.livesLost <= 0) return; // Gosma Dourada got away: no harm done
       playSfx('leak');
       this.shake(220, 0.012);
       vibrate(80);
@@ -343,6 +358,10 @@ export class BattleScene extends Phaser.Scene {
 
     ev.on('enemySpawned', (s) => {
       this.introduceEnemy(s.type);
+      if (s.type === 'treasure') {
+        this.fx.bigBanner('GOSMA DOURADA!', PAL.goldCss, 50, 600);
+        playSfx('coin', 1.3);
+      }
       if (!s.isBoss) return;
       this.fx.bigBanner(`CHEFE MVP\n${ENEMIES.herald.name.toUpperCase()}`, '#bff4ff', 52, 1300);
       playSfx('boss');
@@ -433,7 +452,10 @@ export class BattleScene extends Phaser.Scene {
       this.ended = true;
       this.menu.close();
       getSave().recordResult(this.stageId, g.won, g.stars);
-      const next = STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
+      const isRift = this.stageId === 'rift';
+      const riftWave = g.won ? this.sim.state.totalWaves : Math.max(0, this.sim.state.wave - 1);
+      const rift = isRift ? { wave: riftWave, record: getSave().recordRift(riftWave), best: getSave().data.riftBest } : undefined;
+      const next = this.stageId === 'rift' ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
       const onNext = g.won && next ? () => this.scene.restart({ stage: next, hero: this.heroClass }) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
@@ -451,6 +473,8 @@ export class BattleScene extends Phaser.Scene {
             bestCatalyze: this.sim.state.stats.bestCatalyzeReactions,
             skillName: HEROES[this.heroClass].skill.name,
             skillCasts: this.sim.state.stats.skillCasts,
+            boons: this.sim.state.boons.length,
+            rift,
           },
           { onReplay: () => this.scene.restart({ stage: this.stageId, hero: this.heroClass }), onMap: () => this.toMap(), onNext },
         );
@@ -478,7 +502,15 @@ export class BattleScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const dtMs = Math.min(delta, 100);
-    if (!this.paused && this.sim.state.result === 'playing') {
+    // A pending Bênção pauses the match until the player picks a card.
+    if (!this.picker && !this.paused && !this.ended && this.sim.state.boonOffers.length > 0) {
+      this.menu.close();
+      this.picker = new BoonPicker(this, this.sim.state.boonOffers[0]!, (i) => {
+        this.sim.chooseBoon(i);
+        this.picker = null;
+      });
+    }
+    if (!this.paused && !this.picker && this.sim.state.result === 'playing') {
       if (this.hitstopMs > 0) {
         this.hitstopMs -= dtMs;
       } else {

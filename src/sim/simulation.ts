@@ -1,5 +1,6 @@
 import { SIM_DT } from '../data/config';
-import { ECONOMY, DIFFICULTY, STARS, WAVE_TIMING } from '../data/economy';
+import { BONUS, ECONOMY, DIFFICULTY, STARS, WAVE_TIMING } from '../data/economy';
+import { BOON_IDS, BOON_RULES, BOONS, RARITY_WEIGHT, type BoonDef, type BoonId } from '../data/boons';
 import { ENEMIES, type EnemyId } from '../data/enemies';
 import { HERO } from '../data/hero';
 import { BEAR, DRUID_FURY, HEROES, KNIGHT_SPIN, PRIEST, type BlockerStats, type HeroDef } from '../data/heroes';
@@ -7,7 +8,7 @@ import type { Element } from '../data/elements';
 import type { Vec2 } from '../data/maps';
 import { MAPS } from '../data/maps';
 import { defaultModifiers, type SimModifiers } from '../data/modifiers';
-import { COMBO, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
+import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
 import { MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
@@ -53,6 +54,9 @@ export class Simulation {
   readonly mods: SimModifiers;
 
   private readonly rng: Rng;
+  /** Separate streams so boons/bonus spawns never disturb combat rolls. */
+  private readonly boonRng: Rng;
+  private readonly eventRng: Rng;
   private nextId = 1;
   private pending: PendingSpawn[] = [];
   private waveStartTime = 0;
@@ -69,6 +73,8 @@ export class Simulation {
     this.slots = map.slots;
     this.mods = { ...defaultModifiers(), ...opts.modifiers };
     this.rng = new Rng(opts.seed);
+    this.boonRng = new Rng((opts.seed ^ 0x9e3779b9) >>> 0);
+    this.eventRng = new Rng((opts.seed ^ 0x51ed270b) >>> 0);
     this.state = {
       tick: 0,
       time: 0,
@@ -104,8 +110,10 @@ export class Simulation {
         moving: false,
       },
       summons: [],
+      boonOffers: [],
+      boons: [],
       stats: {
-        reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0 },
+        reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
         kills: 0,
         livesLost: 0,
@@ -194,7 +202,7 @@ export class Simulation {
 
   private totalReactions(): number {
     const r = this.state.stats.reactions;
-    return r.wildfire + r.melt + r.thornfrost + r.shatter;
+    return REACTION_IDS.reduce((sum, id) => sum + r[id], 0);
   }
 
   private enemiesNear(x: number, y: number, radius: number): EnemyState[] {
@@ -318,7 +326,7 @@ export class Simulation {
       towerId: 0,
       targetId: best.id,
       x: h.x,
-      y: h.y - 40,
+      y: h.y - 84,
       tx: best.x,
       ty: best.y,
       speed: a.projectileSpeed,
@@ -425,7 +433,7 @@ export class Simulation {
   /** Cost of the next upgrade, or null if maxed. */
   upgradeCost(tower: TowerState): number | null {
     const next = TOWERS[tower.type].levels[tower.level];
-    return next ? next.cost : null;
+    return next ? Math.round(next.cost * this.mods.upgradeCostMult) : null;
   }
 
   sellValue(tower: TowerState): number {
@@ -494,6 +502,43 @@ export class Simulation {
     return 1;
   }
 
+  // ───────────────────────────── Bênçãos de Éter ─────────────────────────────
+
+  /** Roll a "pick 1 of 3" offer (weighted by rarity, no repeats inside one offer). */
+  private offerBoons(): void {
+    const pool = [...BOON_IDS];
+    const options: BoonId[] = [];
+    while (options.length < BOON_RULES.choices && pool.length > 0) {
+      const total = pool.reduce((sum, id) => sum + RARITY_WEIGHT[(BOONS[id] as BoonDef).rarity], 0);
+      let roll = this.boonRng.next() * total;
+      let pick = 0;
+      for (let i = 0; i < pool.length; i++) {
+        roll -= RARITY_WEIGHT[(BOONS[pool[i]!] as BoonDef).rarity];
+        if (roll <= 0) {
+          pick = i;
+          break;
+        }
+      }
+      options.push(pool.splice(pick, 1)[0]!);
+    }
+    this.state.boonOffers.push(options);
+    this.events.emit('boonOffered', { options });
+  }
+
+  /** Take one boon from the oldest pending offer. */
+  chooseBoon(index: number): boolean {
+    const offer = this.state.boonOffers[0];
+    const id = offer?.[index];
+    if (!offer || !id || this.state.result !== 'playing') return false;
+    this.state.boonOffers.shift();
+    this.state.boons.push(id);
+    const livesBefore = this.state.lives;
+    (BOONS[id] as BoonDef).apply({ mods: this.mods, state: this.state, addGold: (n) => this.addGold(n) });
+    if (this.state.lives !== livesBefore) this.events.emit('livesChanged', { lives: this.state.lives, delta: this.state.lives - livesBefore });
+    this.events.emit('boonChosen', { id });
+    return true;
+  }
+
   // ───────────────────────────── main loop ─────────────────────────────
 
   /** Advance exactly one fixed tick. */
@@ -530,6 +575,10 @@ export class Simulation {
         this.pending.push({ at: (g.delay ?? 0) + i * g.interval, enemy: g.enemy, path });
       }
     }
+    // Sometimes a Gosma Dourada sneaks in: no lives at stake, lots of gold if you catch it.
+    if (s.wave >= 2 && s.wave < s.totalWaves && this.eventRng.chance(BONUS.treasureChance)) {
+      this.pending.push({ at: 2 + this.eventRng.next() * 5, enemy: 'treasure', path: this.eventRng.int(0, this.paths.length - 1) });
+    }
     this.pending.sort((a, b) => a.at - b.at);
     if (bonus > 0) this.addGold(bonus);
     this.events.emit('waveStarted', { wave: s.wave, early, bonus });
@@ -552,6 +601,7 @@ export class Simulation {
       if (s.wave < s.totalWaves) {
         s.wavePhase = 'countdown';
         s.nextWaveTimer = WAVE_TIMING.timeBetweenWaves;
+        if (s.wave % BOON_RULES.every === BOON_RULES.offset) this.offerBoons();
       } else {
         s.wavePhase = 'done';
       }
@@ -718,8 +768,9 @@ export class Simulation {
     const s = this.state;
     e.alive = false;
     s.stats.kills++;
-    this.addGold(e.gold);
-    this.events.emit('enemyKilled', { enemyId: e.id, type: e.type, x: e.x, y: e.y, gold: e.gold, isBoss: e.isBoss });
+    const gold = Math.round(e.gold * this.mods.goldMult);
+    this.addGold(gold);
+    this.events.emit('enemyKilled', { enemyId: e.id, type: e.type, x: e.x, y: e.y, gold, isBoss: e.isBoss });
     this.onEnemyGone(e);
   }
 
@@ -742,7 +793,7 @@ export class Simulation {
 
   /** "First" targeting: the enemy in range that walked the furthest. */
   findTarget(t: TowerState): EnemyState | null {
-    const range = this.levelOf(t).range;
+    const range = this.levelOf(t).range * this.mods.rangeMult;
     const r2 = range * range;
     let best: EnemyState | null = null;
     for (const e of this.state.enemies) {
@@ -773,7 +824,7 @@ export class Simulation {
   private fireChain(t: TowerState, target: EnemyState): void {
     const def = TOWERS[t.type];
     const lvl = this.levelOf(t);
-    let count = lvl.chainCount ?? 1;
+    let count = (lvl.chainCount ?? 1) + this.mods.chainBonus;
     let falloff = lvl.chainFalloff ?? 1;
     const ab = this.abilityOf(t);
     if (ab?.id === 'supercharge' && t.shots % ab.every === 0) {
@@ -829,7 +880,7 @@ export class Simulation {
     this.launch(t, target);
     if (ab?.id === 'volley' && t.shots % ab.every === 0) {
       // Rajada: extra arrows at the next-furthest enemies in range.
-      const r2 = lvl.range * lvl.range;
+      const r2 = (lvl.range * this.mods.rangeMult) ** 2;
       const others = this.state.enemies
         .filter((e) => e !== target && this.canTarget(t, e) && (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= r2)
         .sort((a, b) => b.dist - a.dist)
@@ -982,7 +1033,7 @@ export class Simulation {
     if (found) {
       this.consumeAura(e, found.aura);
       const comboMult = this.bumpCombo();
-      mult = REACTIONS[found.reaction].damageMult * comboMult;
+      mult = REACTIONS[found.reaction].damageMult * comboMult * this.mods.reactionDamageMult;
       this.state.stats.reactions[found.reaction]++;
       const h = this.state.hero;
       h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - HERO.catalyze.cooldownPerReaction);
@@ -1002,7 +1053,7 @@ export class Simulation {
       towerType: hit.towerType,
       hero: hit.hero,
     });
-    if (found) this.applyReactionEffects(e, found.reaction);
+    if (found) this.applyReactionEffects(e, found.reaction, hit, mult);
     else if (e.alive) this.applyAura(e, hit);
   }
 
@@ -1024,8 +1075,24 @@ export class Simulation {
     }
   }
 
-  private applyReactionEffects(e: EnemyState, reaction: ReactionId): void {
+  private applyReactionEffects(e: EnemyState, reaction: ReactionId, hit: HitSpec, mult: number): void {
     const def = REACTIONS[reaction];
+    if (def.splashRadius && def.splashFactor) {
+      // SOBRECARGA: the blast also hurts everything around (plain damage, no chain reactions).
+      const r2 = def.splashRadius ** 2;
+      for (const o of this.state.enemies.slice()) {
+        if (o === e || !o.alive) continue;
+        if ((o.x - e.x) ** 2 + (o.y - e.y) ** 2 > r2) continue;
+        this.dealDamage(o, hit.damage * mult * def.splashFactor, hit.element, { towerId: hit.towerId, towerType: hit.towerType, hero: hit.hero });
+      }
+    }
+    if (def.fragileRadius) {
+      const r2 = def.fragileRadius ** 2;
+      for (const o of this.state.enemies) {
+        if (o === e || !o.alive) continue;
+        if ((o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= r2) o.fragileTime = STATUS.fragile.duration;
+      }
+    }
     if (reaction === 'wildfire' && def.spreadRadius) {
       const r2 = def.spreadRadius * def.spreadRadius;
       for (const o of this.state.enemies) {
@@ -1089,8 +1156,9 @@ export class Simulation {
     this.events.emit('statusApplied', { enemyId: e.id, status: 'rooted' });
   }
 
-  private applyBurn(e: EnemyState, dps: number): void {
-    if (dps <= 0) return;
+  private applyBurn(e: EnemyState, baseDps: number): void {
+    if (baseDps <= 0) return;
+    const dps = baseDps * this.mods.burnDpsMult;
     if (e.burnTime <= 0) {
       e.burnTickTimer = STATUS.burning.tickInterval;
       e.burnDps = dps;
@@ -1161,8 +1229,8 @@ export class Simulation {
   private bumpCombo(): number {
     const c = this.state.combo;
     c.count = c.count > 0 && c.timer > 0 ? c.count + 1 : 1;
-    c.mult = Math.min(COMBO.maxMult, 1 + COMBO.perReaction * (c.count - 1));
-    c.timer = COMBO.window;
+    c.mult = Math.min(COMBO.maxMult + this.mods.comboMaxBonus, 1 + COMBO.perReaction * (c.count - 1));
+    c.timer = COMBO.window + this.mods.comboWindowBonus;
     return c.mult;
   }
 

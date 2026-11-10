@@ -18,5 +18,8 @@ export const WAVE_TIMING = {
   timeBetweenWaves: 8, // countdown after a wave finishes spawning
 };
 
+/** Bonus events. */
+export const BONUS = { treasureChance: 0.35 };
+
 /** Stars by lives left at victory. */
 export const STARS = { three: 18, two: 10 };

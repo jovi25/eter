@@ -1,4 +1,5 @@
 import type { Element } from '../data/elements';
+import type { BoonId } from '../data/boons';
 import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
 import type { ReactionId } from '../data/reactions';
@@ -22,6 +23,8 @@ export interface SimEvents {
   /** A max-level tower ability went off. */
   towerAbility: { towerId: number; ability: 'volley' | 'firefield' | 'deepfreeze' | 'entangle' | 'supercharge'; x: number; y: number };
   zoneCreated: { zoneId: number; x: number; y: number; radius: number; duration: number };
+  boonOffered: { options: BoonId[] };
+  boonChosen: { id: BoonId };
   heroFired: { targetId: number };
   /** The class skill went off by itself. */
   heroSkill: { cls: HeroClass; x: number; y: number; radius: number; hits: number; reactions: number };
