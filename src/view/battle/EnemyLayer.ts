@@ -14,8 +14,8 @@ class EnemyView {
   readonly body: Phaser.GameObjects.Image;
   readonly ice: Phaser.GameObjects.Image;
   readonly fragile: Phaser.GameObjects.Image;
-  readonly hpBg: Phaser.GameObjects.Rectangle;
-  readonly hpFill: Phaser.GameObjects.Rectangle;
+  readonly hpBg: Phaser.GameObjects.Image;
+  readonly hpFill: Phaser.GameObjects.Image;
   id = 0;
   prevX = 0;
   prevY = 0;
@@ -32,8 +32,8 @@ class EnemyView {
     this.body = scene.add.image(0, 0, 'enemy_slime');
     this.ice = scene.add.image(0, 0, 'status_ice').setVisible(false);
     this.fragile = scene.add.image(0, 0, 'status_fragile').setVisible(false);
-    this.hpBg = scene.add.rectangle(0, 0, HP_W + 4, 9, PAL.ink).setVisible(false);
-    this.hpFill = scene.add.rectangle(0, 0, HP_W, 5, 0x6ee66e).setOrigin(0, 0.5).setVisible(false);
+    this.hpBg = scene.add.image(0, 0, 'px').setDisplaySize(HP_W + 4, 9).setTint(PAL.ink).setVisible(false);
+    this.hpFill = scene.add.image(0, 0, 'px').setOrigin(0, 0.5).setDisplaySize(HP_W, 5).setTint(0x6ee66e).setVisible(false);
     this.root = scene.add.container(0, 0, [this.shadow, this.roots, this.body, this.ice, this.fragile, this.hpBg, this.hpFill]);
   }
 }
@@ -157,13 +157,12 @@ export class EnemyLayer {
     v.hpFill.setVisible(damaged);
     if (damaged) {
       const pct = Math.max(0, e.hp / e.maxHp);
-      v.hpFill.width = HP_W * pct;
-      v.hpFill.fillColor = pct > 0.5 ? 0x6ee66e : pct > 0.25 ? 0xffd34d : 0xff4d5e;
+      v.hpFill.setDisplaySize(Math.max(1, HP_W * pct), 5).setTint(pct > 0.5 ? 0x6ee66e : pct > 0.25 ? 0xffd34d : 0xff4d5e);
     }
     if (e.burnTime > 0 && this.onBurning) {
       v.fireTimer -= dtMs;
       if (v.fireTimer <= 0) {
-        v.fireTimer = 120;
+        v.fireTimer = 200;
         this.onBurning(v.root.x + (Math.random() - 0.5) * 20, v.root.y + v.bodyY);
       }
     }

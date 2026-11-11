@@ -14,6 +14,7 @@ import { PAL } from '../art/palette';
 import { BoonPicker } from '../battle/BoonPicker';
 import { BuildMenu } from '../battle/BuildMenu';
 import { BOONS } from '../../data/boons';
+import { CHALLENGES, challengeText, dailyScore, dailySetup, evaluateChallenges, type DailySetup } from '../../data/challenges';
 import { CatalyzeButton } from '../battle/CatalyzeButton';
 import { HeroView, SummonView } from '../battle/HeroView';
 import { HEROES, type HeroClass } from '../../data/heroes';
@@ -40,6 +41,7 @@ export interface BattleData {
   stage?: StageId;
   seed?: number;
   hero?: HeroClass;
+  daily?: boolean; // desafio do dia: stage, hero, seed and starting boon come from the date
 }
 
 /** One match: owns the simulation, steps it at a fixed rate and turns its events into visuals and sound. */
@@ -70,6 +72,11 @@ export class BattleScene extends Phaser.Scene {
   private ended = false;
   private dotAcc = new Map<number, { sum: number; shownAt: number }>();
   private stageId: StageId = 'v1';
+  private daily: DailySetup | null = null;
+
+  private again(stage: StageId = this.stageId): BattleData {
+    return this.daily ? { daily: true } : { stage, hero: this.heroClass };
+  }
   private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
 
@@ -102,10 +109,16 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(data: BattleData): void {
-    const seed = data.seed ?? Math.floor(Math.random() * 1e9);
-    this.stageId = data.stage ?? 'v1';
-    this.heroClass = data.hero ?? getSave().data.hero ?? 'mage';
+    this.daily = data.daily ? dailySetup(new Date()) : null;
+    const seed = this.daily?.seed ?? data.seed ?? Math.floor(Math.random() * 1e9);
+    this.stageId = this.daily?.stage ?? data.stage ?? 'v1';
+    this.heroClass = this.daily?.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
     this.sim = new Simulation({ stage: this.stageId, seed, modifiers: { heroClass: this.heroClass } });
+    if (this.daily) {
+      // The daily run starts with one boon already in hand.
+      this.sim.state.boonOffers.unshift([this.daily.boon]);
+      this.sim.chooseBoon(0);
+    }
     this.seenTypes = new Set();
     this.picker = null;
     this.clock = new FixedClock();
@@ -141,6 +154,7 @@ export class BattleScene extends Phaser.Scene {
     this.menu = new BuildMenu(this, this.sim, {
       build: (slot, type) => this.sim.build(slot, type),
       upgrade: (id) => this.sim.upgrade(id),
+      boost: (id) => this.sim.boost(id),
       sell: (id) => this.sim.sell(id),
     });
     // Skill indicator (heroes cast on their own).
@@ -197,7 +211,7 @@ export class BattleScene extends Phaser.Scene {
     if (on) {
       this.pausePanel = new PausePanel(this, {
         onResume: () => this.setPaused(false),
-        onRestart: () => this.scene.restart({ stage: this.stageId, hero: this.heroClass }),
+        onRestart: () => this.scene.restart(this.again()),
         onExit: () => this.toMap(),
       });
     } else {
@@ -412,6 +426,16 @@ export class BattleScene extends Phaser.Scene {
       vibrate(15);
     });
 
+    ev.on('towerBoosted', (u) => {
+      const t = this.sim.getTower(u.towerId);
+      if (!t) return;
+      this.towers.fired(t.id);
+      this.fx.burst(t.x, t.y - 20, 0xffb36b, 18);
+      this.fx.shockwave(t.x, t.y, 0xffb36b, 1.2);
+      this.fx.popLabel(t.x, t.y - 110, `REFORÇO +${u.boost}`, '#ffd9a8');
+      playSfx('upgrade', 1.15);
+    });
+
     ev.on('towerUpgraded', (u) => {
       const t = this.sim.getTower(u.towerId)!;
       this.towers.upgrade(t);
@@ -451,12 +475,27 @@ export class BattleScene extends Phaser.Scene {
     ev.on('gameOver', (g) => {
       this.ended = true;
       this.menu.close();
-      getSave().recordResult(this.stageId, g.won, g.stars);
+      const save = getSave();
       const isRift = this.stageId === 'rift';
+      let challenges: { text: string; done: boolean; fresh: boolean }[] | undefined;
+      let daily: { score: number; best: number; record: boolean } | undefined;
+      if (this.daily) {
+        const score = dailyScore(this.sim.state);
+        const record = save.recordDaily(this.daily.key, score);
+        daily = { score, record, best: save.dailyBest(this.daily.key) };
+      } else {
+        save.recordResult(this.stageId, g.won, g.stars);
+        if (this.stageId !== 'rift') {
+          const id = this.stageId;
+          const fresh = save.recordChallenges(id, evaluateChallenges(id, this.sim.state));
+          const done = save.data.challenges[id] ?? [];
+          challenges = CHALLENGES[id].map((c, i) => ({ text: challengeText(c), done: !!done[i], fresh: !!fresh[i] }));
+        }
+      }
       const riftWave = g.won ? this.sim.state.totalWaves : Math.max(0, this.sim.state.wave - 1);
       const rift = isRift ? { wave: riftWave, record: getSave().recordRift(riftWave), best: getSave().data.riftBest } : undefined;
-      const next = this.stageId === 'rift' ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
-      const onNext = g.won && next ? () => this.scene.restart({ stage: next, hero: this.heroClass }) : undefined;
+      const next = this.stageId === 'rift' || this.daily ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
+      const onNext = g.won && next ? () => this.scene.restart(this.again(next)) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
         new EndPanel(
@@ -475,8 +514,10 @@ export class BattleScene extends Phaser.Scene {
             skillCasts: this.sim.state.stats.skillCasts,
             boons: this.sim.state.boons.length,
             rift,
+            challenges,
+            daily,
           },
-          { onReplay: () => this.scene.restart({ stage: this.stageId, hero: this.heroClass }), onMap: () => this.toMap(), onNext },
+          { onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
         );
       });
     });

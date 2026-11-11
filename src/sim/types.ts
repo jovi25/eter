@@ -46,6 +46,7 @@ export interface TowerState {
   invested: number;
   shots: number; // attacks fired (drives every-Nth-shot abilities)
   blessTime: number; // Sacerdotisa blessing: +damage while > 0
+  boost: number; // Reforços bought after max level
 }
 
 export interface ProjectileState {
@@ -93,6 +94,10 @@ export interface MatchStats {
   catalyzeCasts: number;
   bestCatalyzeReactions: number; // most reactions from a single Catalisar
   skillCasts: number;
+  built: Record<TowerId, number>; // towers built, by type
+  peakTowers: number; // most towers standing at once
+  heroFalls: number;
+  bestCombo: number;
 }
 
 export interface SimState {

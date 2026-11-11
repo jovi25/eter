@@ -15,7 +15,7 @@ export class BoonPicker {
   private objs: Phaser.GameObjects.GameObject[] = [];
   private done = false;
 
-  constructor(scene: Phaser.Scene, options: BoonId[], onPick: (index: number) => void) {
+  constructor(private scene: Phaser.Scene, options: BoonId[], onPick: (index: number) => void) {
     const shade = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0).setDepth(DEPTH.panel).setInteractive();
     scene.tweens.add({ targets: shade, fillAlpha: 0.78, duration: 200 });
     const rays = scene.add.image(GAME_WIDTH / 2, 300, 'spark').setDepth(DEPTH.panel).setScale(24).setTint(0xb57bff).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD);
@@ -75,7 +75,11 @@ export class BoonPicker {
   }
 
   destroy(): void {
-    for (const o of this.objs) o.destroy();
+    for (const o of this.objs) {
+      this.scene.tweens.killTweensOf(o);
+      if (o instanceof Phaser.GameObjects.Container) this.scene.tweens.killTweensOf(o.list);
+      o.destroy();
+    }
     this.objs = [];
   }
 }

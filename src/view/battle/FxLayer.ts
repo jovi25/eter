@@ -3,6 +3,7 @@ import { GAME_WIDTH } from '../../data/config';
 import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTIONS, type ReactionId } from '../../data/reactions';
 import { FONT, PAL } from '../art/palette';
+import { NUM_FONT } from '../art/textures';
 import { DEPTH } from './layers';
 
 const toCss = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
@@ -13,7 +14,7 @@ export class FxLayer {
   private hitSparks: Phaser.GameObjects.Particles.ParticleEmitter;
   private debris: Phaser.GameObjects.Particles.ParticleEmitter;
   private flames: Phaser.GameObjects.Particles.ParticleEmitter;
-  private numbers: Phaser.GameObjects.Text[] = [];
+  private numbers: Phaser.GameObjects.BitmapText[] = [];
   private numberIdx = 0;
   private banners: Phaser.GameObjects.Text[] = [];
   private bannerIdx = 0;
@@ -69,11 +70,7 @@ export class FxLayer {
 
     for (let i = 0; i < 48; i++) {
       this.numbers.push(
-        scene.add
-          .text(0, 0, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '26px', color: '#ffffff', stroke: PAL.inkCss, strokeThickness: 6 })
-          .setOrigin(0.5)
-          .setDepth(DEPTH.numbers)
-          .setVisible(false),
+        scene.add.bitmapText(0, 0, NUM_FONT, '', 32).setLetterSpacing(-7).setOrigin(0.5).setDepth(DEPTH.numbers).setVisible(false),
       );
     }
     for (let i = 0; i < 6; i++) {
@@ -240,44 +237,38 @@ export class FxLayer {
     const t = this.numbers[this.numberIdx]!;
     this.numberIdx = (this.numberIdx + 1) % this.numbers.length;
     this.scene.tweens.killTweensOf(t);
-    let size = 26;
-    let color = element === 'physical' ? '#ffffff' : toCss(ELEMENTS[element].color);
+    let size = 30;
+    let color = element === 'physical' ? 0xffffff : ELEMENTS[element].color;
     let text = `${amount}`;
-    if (opts.dot) size = 20;
-    // Resistances: show it clearly so players learn matchups.
+    if (opts.dot) size = 24;
+    // Resistances: show it clearly so players learn matchups ('<' = weak arrow up, '>' = resisted arrow down).
     const eff = opts.eff ?? 1;
     if (eff === 0) {
       text = 'IMUNE';
-      color = '#9a95b2';
-      size = 22;
+      color = 0x9a95b2;
+      size = 24;
     } else if (eff > 1.05) {
-      text += ' ▲';
+      text += '<';
       size += 4;
     } else if (eff < 0.95) {
-      text += ' ▼';
-      color = '#b9b4cf';
+      text += '>';
+      color = 0xb9b4cf;
       size -= 2;
     }
     if (opts.crit) {
-      size = 38;
-      color = '#ffe34d';
+      size = 44;
+      color = 0xffe34d;
       text = `${amount}!`;
     }
     if (opts.reaction) {
-      size = 42;
-      color = toCss(REACTIONS[opts.reaction].color);
+      size = 48;
+      color = REACTIONS[opts.reaction].color;
     }
     const jitter = (Math.random() - 0.5) * 30;
-    t.setText(text)
-      .setFontSize(size)
-      .setColor(color)
-      .setPosition(x + jitter, y)
-      .setAlpha(1)
-      .setScale(opts.crit || opts.reaction ? 1.6 : 1)
-      .setVisible(true);
-    this.scene.tweens.add({ targets: t, scale: 1, duration: 180, ease: 'Back.easeOut' });
-    this.scene.tweens.add({ targets: t, y: y - (opts.dot ? 34 : 70), duration: 650, ease: 'Cubic.easeOut' });
-    this.scene.tweens.add({ targets: t, x: x + jitter * 2, duration: 650 });
+    const big = !!(opts.crit || opts.reaction);
+    t.setText(text).setFontSize(size).setTint(color).setPosition(x + jitter, y).setAlpha(1).setScale(big ? 1.6 : 1).setVisible(true);
+    if (big) this.scene.tweens.add({ targets: t, scale: 1, duration: 180, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: t, x: x + jitter * 2, y: y - (opts.dot ? 34 : 70), duration: 650, ease: 'Cubic.easeOut' });
     this.scene.tweens.add({ targets: t, alpha: 0, delay: 420, duration: 260, onComplete: () => t.setVisible(false) });
   }
 

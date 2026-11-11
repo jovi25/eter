@@ -191,6 +191,21 @@ Proporção esbelta (cabeça ≈ 1/3 da altura), inspirada em sprites de RPG onl
 ### Dificuldade recalibrada
 Como bênçãos deixam o jogador mais forte: fase 2 ×0,9, fase 3 ×1,2, fase 4 ×1,08, fase 5 ×0,9 (robôs já escolhem bênçãos).
 
+## Fase 6 — Maestria (parcial)
+### Reforço (pedido do jogador: na Fenda o ouro sobrava)
+Torre no nível 3 troca "melhorar" por **Reforço**: +12% de dano por compra, sem limite. Custo 90 × 1,3ⁿ (afetado por Mestre de Obras). Vale em todos os modos.
+
+### Desafios por fase
+3 por fase, só contam em vitória; ficam salvos (save v4). Tipos: nº de reações, reação específica, vidas mínimas, máximo de torres ao mesmo tempo, sem construir uma torre, vencer com um herói. Lista em `src/data/challenges.ts`.
+
+### Desafio do dia
+A data define fase, herói (mesmo os ainda não liberados), bênção inicial e seed — igual para todos. Não conta para o progresso das fases.
+Pontos: vitória +1000, +100 por vida, +10 por reação; em derrota, 60 por onda vencida. Guarda a melhor pontuação do dia.
+
+### Desempenho
+A queda de FPS vinha do custo gráfico de recriar a imagem de cada número de dano (3 vezes por golpe). Agora os números usam uma fonte
+pré-desenhada (bitmap), as barras de vida são imagens em lote, e o contador de debug e o indicador de recarga redesenham poucas vezes por segundo.
+
 ## 4. Coleção e evolução
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

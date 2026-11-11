@@ -76,6 +76,8 @@ export interface EndStats {
   skillCasts: number;
   boons: number;
   rift?: { wave: number; best: number; record: boolean };
+  challenges?: { text: string; done: boolean; fresh: boolean }[];
+  daily?: { score: number; best: number; record: boolean };
 }
 
 export class EndPanel {
@@ -114,15 +116,28 @@ export class EndPanel {
     const mm = Math.floor(s.seconds / 60);
     const ss = String(Math.floor(s.seconds % 60)).padStart(2, '0');
     const lines = [
-      `Bênçãos escolhidas: ${s.boons}`,
-      `Vidas: ${s.lives}/${s.maxLives}`,
-      `Inimigos derrotados: ${s.kills}`,
-      `Reações: ${s.reactions}`,
-      `Maior combo: ×${s.bestCombo}`,
+      `Vidas: ${s.lives}/${s.maxLives}   •   Tempo: ${mm}:${ss}`,
+      `Reações: ${s.reactions}   •   Maior combo: ×${s.bestCombo}`,
       s.skillName === 'Catalisar' ? `Melhor Catalisar: ${s.bestCatalyze} reações` : `${s.skillName}: ${s.skillCasts}×`,
-      `Tempo: ${mm}:${ss}`,
+      `Bênçãos: ${s.boons}   •   Abates: ${s.kills}`,
     ];
-    lines.forEach((l, i) => p.add(uiText(scene, 0, -86 + i * 38, l, 24, i >= 3 && i <= 5 ? '#ffe34d' : PAL.uiText, 6)));
+    lines.forEach((l, i) => p.add(uiText(scene, 0, -88 + i * 34, l, 22, i === 1 ? '#ffe34d' : PAL.uiText, 5)));
+    if (s.daily) {
+      p.add(uiText(scene, 0, 66, 'PONTUAÇÃO DO DIA', 22, PAL.uiDim, 5));
+      p.add(uiText(scene, 0, 108, `${s.daily.score}`, 54, '#ffffff', 9));
+      p.add(uiText(scene, 0, 154, s.daily.record ? '★ MELHOR DE HOJE! ★' : `Melhor de hoje: ${s.daily.best}`, 22, s.daily.record ? PAL.goldCss : PAL.uiDim, 5));
+    } else if (s.challenges) {
+      p.add(uiText(scene, 0, 58, 'DESAFIOS', 22, PAL.uiDim, 5));
+      s.challenges.forEach((c, i) => {
+        const mark = c.done ? '✔' : '○';
+        const t = uiText(scene, 0, 92 + i * 32, `${mark} ${c.text}${c.fresh ? '  NOVO!' : ''}`, 21, c.fresh ? PAL.goldCss : c.done ? '#9be89b' : PAL.uiDim, 5);
+        p.add(t);
+        if (c.fresh) {
+          t.setScale(0);
+          scene.tweens.add({ targets: t, scale: 1, delay: 1700 + i * 300, duration: 300, ease: 'Back.easeOut', onStart: () => playSfx('star', 1.2) });
+        }
+      });
+    }
     if (cb.onNext) {
       p.add(new Button(scene, 0, 222, { width: 440, height: 80, label: 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
       p.add(new Button(scene, -112, 320, { width: 216, height: 64, label: 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));

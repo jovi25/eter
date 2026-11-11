@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH } from '../../data/config';
 import { ELEMENTS } from '../../data/elements';
-import { MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
+import { BOOST, MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
 import type { Simulation } from '../../sim/simulation';
 import type { TowerState } from '../../sim/types';
 import { playSfx } from '../audio/sfx';
@@ -29,7 +29,7 @@ export class BuildMenu {
   constructor(
     private scene: Phaser.Scene,
     private sim: Simulation,
-    private actions: { build: (slot: number, type: TowerId) => void; upgrade: (id: number) => void; sell: (id: number) => void },
+    private actions: { build: (slot: number, type: TowerId) => void; upgrade: (id: number) => void; boost: (id: number) => void; sell: (id: number) => void },
   ) {
     this.range = scene.add.graphics().setDepth(DEPTH.range);
   }
@@ -93,19 +93,23 @@ export class BuildMenu {
     this.range.lineStyle(3, ELEMENTS[def.element].color, 0.7);
     this.range.strokeCircle(tower.x, tower.y, range);
 
-    const upCost = this.sim.upgradeCost(tower);
-    const up = this.option(0, -96, 0x3aa655, 'icon_play', upCost, false, () => {
-      const cost = this.sim.upgradeCost(tower);
+    // Below max level: upgrade. At max level: Reforço (repeatable, pricier each time).
+    const maxed = tower.level >= MAX_LEVEL;
+    const costNow = () => (maxed ? this.sim.boostCost(tower) : this.sim.upgradeCost(tower));
+    const upCost = costNow();
+    const up = this.option(0, -96, maxed ? 0xe0862f : 0x3aa655, 'icon_play', upCost, false, () => {
+      const cost = costNow();
       if (cost === null || this.sim.state.gold < cost) {
         playSfx('error');
         this.shake(up.root);
         return;
       }
-      this.actions.upgrade(tower.id);
+      if (maxed) this.actions.boost(tower.id);
+      else this.actions.upgrade(tower.id);
       this.close();
     });
     (up.root.list[2] as Phaser.GameObjects.Image).setAngle(-90).setScale(1);
-    if (upCost === null) up.cost.setText('MÁX');
+    if (maxed) root.add(uiText(this.scene, 78, -96, `Reforço\n+${Math.round(BOOST.damagePerLevel * 100)}% dano`, 17, '#ffd9a8', 4).setOrigin(0, 0.5).setAlign('left'));
     const sell = this.option(0, 96, 0xc0504a, 'coin', null, false, () => {
       this.actions.sell(tower.id);
       this.close();
@@ -113,7 +117,7 @@ export class BuildMenu {
     sell.cost.setText(`+${this.sim.sellValue(tower)}`).setColor(PAL.goldCss);
     root.add([up.root, sell.root]);
     this.options.push(up);
-    root.add(uiText(this.scene, 0, -172, `${def.name}  nv ${tower.level}`, 22, PAL.uiText, 5));
+    root.add(uiText(this.scene, 0, -172, `${def.name}  nv ${tower.level}${tower.boost > 0 ? `  +${tower.boost}` : ''}`, 22, PAL.uiText, 5));
     // Max-level ability: preview it while upgrading, show it once unlocked.
     const info = def.abilityInfo;
     const unlocked = tower.level >= MAX_LEVEL;

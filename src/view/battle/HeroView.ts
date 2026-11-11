@@ -13,16 +13,15 @@ export const HERO_COLORS: Record<HeroClass, number> = { mage: 0xb57bff, knight: 
 
 /** Small hp bar shown over melee units (knight, bear). */
 class HpBar {
-  readonly bg: Phaser.GameObjects.Rectangle;
-  readonly fill: Phaser.GameObjects.Rectangle;
+  readonly bg: Phaser.GameObjects.Image;
+  readonly fill: Phaser.GameObjects.Image;
   constructor(scene: Phaser.Scene, y: number) {
-    this.bg = scene.add.rectangle(0, y, BAR_W + 4, 9, PAL.ink);
-    this.fill = scene.add.rectangle(-BAR_W / 2, y, BAR_W, 5, 0x6ee66e).setOrigin(0, 0.5);
+    this.bg = scene.add.image(0, y, 'px').setDisplaySize(BAR_W + 4, 9).setTint(PAL.ink);
+    this.fill = scene.add.image(-BAR_W / 2, y, 'px').setOrigin(0, 0.5).setDisplaySize(BAR_W, 5).setTint(0x6ee66e);
   }
   set(b: BlockerState): void {
     const pct = b.maxHp > 0 ? Math.max(0, b.hp / b.maxHp) : 0;
-    this.fill.width = BAR_W * pct;
-    this.fill.fillColor = pct > 0.5 ? 0x6ee66e : pct > 0.25 ? 0xffd34d : 0xff4d5e;
+    this.fill.setDisplaySize(Math.max(1, BAR_W * pct), 5).setTint(pct > 0.5 ? 0x6ee66e : pct > 0.25 ? 0xffd34d : 0xff4d5e);
     const show = b.alive && pct < 0.999;
     this.bg.setVisible(show);
     this.fill.setVisible(show);

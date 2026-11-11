@@ -11,7 +11,7 @@ import { defaultModifiers, type SimModifiers } from '../data/modifiers';
 import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
-import { MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
+import { BOOST, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
 import { Rng } from './rng';
@@ -121,6 +121,10 @@ export class Simulation {
         catalyzeCasts: 0,
         bestCatalyzeReactions: 0,
         skillCasts: 0,
+        built: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
+        peakTowers: 0,
+        heroFalls: 0,
+        bestCombo: 0,
       },
     };
     if (this.mods.heroClass === 'druid') {
@@ -264,7 +268,7 @@ export class Simulation {
   }
 
   private blessMult(t: TowerState): number {
-    return t.blessTime > 0 ? PRIEST.blessDamageMult : 1;
+    return (t.blessTime > 0 ? PRIEST.blessDamageMult : 1) * (1 + BOOST.damagePerLevel * t.boost);
   }
 
   private updateHero(): void {
@@ -412,6 +416,7 @@ export class Simulation {
           if (e) e.blockedBy = 0;
         }
         b.blocking = [];
+        if (isHero) this.state.stats.heroFalls++;
         this.events.emit('blockerDied', { blockerId: b.id, x: b.x, y: b.y });
       }
     } else {
@@ -447,8 +452,10 @@ export class Simulation {
     if (!this.mods.unlockedTowers.includes(type)) return null;
     const cost = TOWERS[type].levels[0].cost;
     if (s.gold < cost) return null;
-    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0 };
+    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, boost: 0 };
     s.towers.push(tower);
+    s.stats.built[type]++;
+    s.stats.peakTowers = Math.max(s.stats.peakTowers, s.towers.length);
     this.addGold(-cost);
     this.events.emit('towerBuilt', { towerId: tower.id, slot, type });
     return tower;
@@ -464,6 +471,26 @@ export class Simulation {
     t.invested += cost;
     this.addGold(-cost);
     this.events.emit('towerUpgraded', { towerId: t.id, level: t.level });
+    return true;
+  }
+
+  /** Cost of the next Reforço, or null while the tower is not at max level. */
+  boostCost(tower: TowerState): number | null {
+    if (tower.level < MAX_LEVEL) return null;
+    return Math.round(BOOST.baseCost * Math.pow(BOOST.growth, tower.boost) * this.mods.upgradeCostMult);
+  }
+
+  /** Reforço: +damage, repeatable, each one pricier than the last. */
+  boost(towerId: number): boolean {
+    const s = this.state;
+    const t = this.getTower(towerId);
+    if (s.result !== 'playing' || !t) return false;
+    const cost = this.boostCost(t);
+    if (cost === null || s.gold < cost) return false;
+    t.boost++;
+    t.invested += cost;
+    this.addGold(-cost);
+    this.events.emit('towerBoosted', { towerId: t.id, boost: t.boost });
     return true;
   }
 
@@ -1231,6 +1258,7 @@ export class Simulation {
     c.count = c.count > 0 && c.timer > 0 ? c.count + 1 : 1;
     c.mult = Math.min(COMBO.maxMult + this.mods.comboMaxBonus, 1 + COMBO.perReaction * (c.count - 1));
     c.timer = COMBO.window + this.mods.comboWindowBonus;
+    this.state.stats.bestCombo = Math.max(this.state.stats.bestCombo, c.count);
     return c.mult;
   }
 

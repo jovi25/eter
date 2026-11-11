@@ -18,6 +18,7 @@ export class CatalyzeButton {
   private secs: Phaser.GameObjects.Text;
   private halo: Phaser.GameObjects.Image;
   private wasReady = true;
+  private lastStep = -2;
   onReady?: () => void;
 
   constructor(private scene: Phaser.Scene, x: number, y: number, color: number, label: string, icon: string) {
@@ -44,13 +45,16 @@ export class CatalyzeButton {
 
   update(hero: HeroState): void {
     const ready = hero.catalyzeCooldown <= 0;
+    const stepKey = ready ? -1 : Math.ceil(hero.catalyzeCooldown * 12);
+    if (stepKey === this.lastStep) return;
+    this.lastStep = stepKey;
     this.pie.clear();
     if (!ready) {
       const frac = hero.catalyzeCooldown / hero.catalyzeMax;
       this.pie.fillStyle(0x0b0716, 0.62);
       this.pie.slice(0, 0, R - 2, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2, false);
       this.pie.fillPath();
-      this.secs.setText(hero.catalyzeCooldown >= 1 ? `${Math.ceil(hero.catalyzeCooldown)}` : hero.catalyzeCooldown.toFixed(1));
+      this.secs.setText(`${Math.ceil(hero.catalyzeCooldown)}`);
     } else {
       this.secs.setText('');
     }

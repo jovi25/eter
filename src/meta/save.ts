@@ -4,7 +4,7 @@
 import { HEROES, type HeroClass } from '../data/heroes';
 import { RIFT, STAGE_ORDER, type CampaignStageId, type StageId } from '../data/stages';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -18,10 +18,12 @@ export interface SaveData {
   stages: Partial<Record<StageId, StageProgress>>;
   hero: HeroClass; // last picked hero class (v2+)
   riftBest: number; // best wave reached in the Fenda Infinita (v3+)
+  challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
+  daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0 };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 } };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -32,7 +34,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0 };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 } };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -42,7 +44,19 @@ export function migrate(raw: unknown): SaveData {
     // v3: Fenda Infinita record.
     out = { ...out, version: 3, riftBest: 0 };
   }
+  if (out.version < 4) {
+    // v4: stage challenges + daily challenge.
+    out = { ...out, version: 4, challenges: {}, daily: { key: '', best: 0, plays: 0 } };
+  }
   if (!(out.hero in HEROES)) out.hero = 'mage';
+  const ch: SaveData['challenges'] = {};
+  for (const id of STAGE_ORDER) {
+    const list = out.challenges?.[id];
+    if (Array.isArray(list)) ch[id] = [0, 1, 2].map((i) => !!list[i]);
+  }
+  out.challenges = ch;
+  const dl = out.daily;
+  out.daily = dl && typeof dl.key === 'string' ? { key: dl.key, best: clampInt(dl.best, 0, 1e9), plays: clampInt(dl.plays, 0, 1e9) } : { key: '', best: 0, plays: 0 };
   out.riftBest = clampInt(out.riftBest, 0, 999);
   // Sanitize
   const stages: SaveData['stages'] = {};
@@ -97,6 +111,34 @@ export class SaveStore {
 
   totalStars(): number {
     return STAGE_ORDER.reduce((s, id) => s + this.stars(id), 0);
+  }
+
+  /** Merge newly met challenges into the save. Returns which ones are new. */
+  recordChallenges(id: CampaignStageId, met: boolean[]): boolean[] {
+    const prev = this.data.challenges[id] ?? [false, false, false];
+    const fresh = met.map((ok, i) => ok && !prev[i]);
+    this.data.challenges[id] = prev.map((ok, i) => ok || !!met[i]);
+    if (fresh.some(Boolean)) this.persist();
+    return fresh;
+  }
+
+  challengesDone(id?: CampaignStageId): number {
+    const count = (s: CampaignStageId) => (this.data.challenges[s] ?? []).filter(Boolean).length;
+    return id ? count(id) : STAGE_ORDER.reduce((sum, s) => sum + count(s), 0);
+  }
+
+  /** Daily challenge: keeps the best score of the given day. Returns true on a new best. */
+  recordDaily(key: string, score: number): boolean {
+    if (this.data.daily.key !== key) this.data.daily = { key, best: 0, plays: 0 };
+    this.data.daily.plays++;
+    const better = score > this.data.daily.best;
+    if (better) this.data.daily.best = score;
+    this.persist();
+    return better;
+  }
+
+  dailyBest(key: string): number {
+    return this.data.daily.key === key ? this.data.daily.best : 0;
   }
 
   /** Record how far a Fenda run got. Returns true on a new record. */

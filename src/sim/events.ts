@@ -16,6 +16,7 @@ export interface SimEvents {
   comboEnded: { count: number };
   towerBuilt: { towerId: number; slot: number; type: TowerId };
   towerUpgraded: { towerId: number; level: number };
+  towerBoosted: { towerId: number; boost: number };
   towerSold: { towerId: number; slot: number; refund: number };
   towerFired: { towerId: number; targetId: number };
   /** Lightning bolt path: tower first, then every enemy hit in order. */

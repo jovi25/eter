@@ -33,8 +33,10 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 ## Próximas etapas
 
 ### Fase 6 — Maestria (dar motivo para rejogar cada fase)
-- [ ] **3 desafios por fase** além das estrelas (ex.: "vença sem Arqueiros", "20 reações", "herói nunca cai"), com medalhas no mapa
-- [ ] **Desafio diário**: mesma seed para todo mundo, herói e bênçãos iniciais sorteados; recorde do dia
+- [x] **3 desafios por fase** além das estrelas, salvos e mostrados no mapa, no cartão da fase e no fim da partida
+- [x] **Desafio diário**: mesma fase, herói, bênção inicial e seed para todo mundo; melhor pontuação do dia
+- [x] **Reforço** de torre após o nível 3 (uso infinito para o ouro; pedido do jogador)
+- [x] Desempenho: números de dano em fonte pré-desenhada, barras de vida em lote, menos redesenhos
 - [ ] **Códice**: página de reações e inimigos descobertos (com fraquezas), preenchida jogando
 - [ ] Tela de estatísticas da partida (dano por torre, reações por tipo) com exportar CSV
 - *Aceite:* depois de vencer a fase 5, ainda tenho objetivos claros em todas as fases.

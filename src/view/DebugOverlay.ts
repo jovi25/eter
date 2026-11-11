@@ -31,7 +31,12 @@ export class DebugOverlay {
     this.text.setAlpha(0.85);
   }
 
+  private nextAt = 0;
+
   update(): void {
+    const now = this.scene.time.now;
+    if (now < this.nextAt) return;
+    this.nextAt = now + 500;
     const { tick, seed } = this.getInfo();
     const fps = this.scene.game.loop.actualFps.toFixed(0);
     this.text.setText(`fps ${fps}  tick ${tick}  seed ${seed}`);

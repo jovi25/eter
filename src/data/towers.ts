@@ -44,6 +44,9 @@ export interface TowerDef {
 
 export const MAX_LEVEL = 3;
 
+/** Reforço: after max level a tower can be reinforced forever (gold sink for long runs). */
+export const BOOST = { baseCost: 90, growth: 1.3, damagePerLevel: 0.12 };
+
 export const TOWERS: Record<TowerId, TowerDef> = {
   archer: {
     name: 'Arqueiro',

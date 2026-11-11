@@ -1014,6 +1014,7 @@ export function generateTextures(scene: Phaser.Scene): void {
     d.draw(ctx, d.w / 2, d.h / 2);
     tex.refresh();
   }
+  generateNumberFont(scene);
   // Hero rigs in layers (cape / body / weapon arm) so battle can animate them.
   for (const key of Object.keys(HERO_STYLES) as HeroTexture[]) {
     const parts = { cape: drawCape, body: drawBody, arm: drawArm };
@@ -1026,6 +1027,59 @@ export function generateTextures(scene: Phaser.Scene): void {
       tex.refresh();
     }
   }
+}
+
+export const NUM_FONT = 'numfont';
+/** Glyphs of the damage-number font. '<' and '>' are drawn as up / down arrows (weak / resisted). */
+const NUM_CHARS = '0123456789!+<>IMUNE';
+const NUM_CELL = { w: 26, h: 40 };
+
+/** Pre-render digits once and register them as a bitmap font (tinted per use). */
+function generateNumberFont(scene: Phaser.Scene): void {
+  if (scene.cache.bitmapFont.exists(NUM_FONT)) return;
+  const tex = scene.textures.createCanvas(NUM_FONT, NUM_CELL.w * NUM_CHARS.length, NUM_CELL.h);
+  if (!tex) return;
+  const c = tex.getContext();
+  c.font = 'bold 30px "Trebuchet MS", "Segoe UI", Roboto, system-ui, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.lineJoin = 'round';
+  [...NUM_CHARS].forEach((ch, i) => {
+    const x = i * NUM_CELL.w + NUM_CELL.w / 2;
+    const y = NUM_CELL.h / 2 + 1;
+    c.strokeStyle = INK;
+    c.lineWidth = 6;
+    c.fillStyle = '#ffffff';
+    if (ch === '<' || ch === '>') {
+      const d = ch === '<' ? -1 : 1;
+      c.beginPath();
+      c.moveTo(x - 8, y - 7 * d);
+      c.lineTo(x + 8, y - 7 * d);
+      c.lineTo(x, y + 8 * d);
+      c.closePath();
+      c.stroke();
+      c.fill();
+    } else {
+      c.strokeText(ch, x, y);
+      c.fillText(ch, x, y);
+    }
+  });
+  tex.refresh();
+  scene.cache.bitmapFont.add(
+    NUM_FONT,
+    Phaser.GameObjects.RetroFont.Parse(scene, {
+      image: NUM_FONT,
+      width: NUM_CELL.w,
+      height: NUM_CELL.h,
+      chars: NUM_CHARS,
+      charsPerRow: NUM_CHARS.length,
+      'offset.x': 0,
+      'offset.y': 0,
+      'spacing.x': 0,
+      'spacing.y': 0,
+      lineSpacing: 0,
+    }),
+  );
 }
 
 /** Image-based assets (none yet). Call from a scene's preload(). */

@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
+import { BOONS } from '../../data/boons';
+import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
 import { RIFT, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
 import { getSave } from '../../meta/save';
@@ -45,7 +47,7 @@ export class WorldMapScene extends Phaser.Scene {
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
     uiText(this, GAME_WIDTH / 2, 44, 'Campos de Vellmora', 40, '#f3e9ff', 8);
-    uiText(this, GAME_WIDTH / 2, 92, `★ ${save.totalStars()} / ${STAGE_ORDER.length * 3}`, 28, PAL.goldCss, 6);
+    uiText(this, GAME_WIDTH / 2, 92, `★ ${save.totalStars()}/${STAGE_ORDER.length * 3}     ✔ ${save.challengesDone()}/${TOTAL_CHALLENGES} desafios`, 28, PAL.goldCss, 6);
 
     STAGE_ORDER.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
     this.riftNode();
@@ -54,22 +56,19 @@ export class WorldMapScene extends Phaser.Scene {
     const foot = this.add.graphics();
     foot.fillStyle(PAL.panel, 0.9);
     foot.fillRoundedRect(-20, GAME_HEIGHT - 100, GAME_WIDTH + 40, 140, 24);
-    new Button(this, 190, GAME_HEIGHT - 52, {
-      width: 300,
-      height: 68,
-      label: 'Copiar backup',
-      fontSize: 24,
-      color: 0x3d7bd9,
-      onClick: () => this.exportSave(),
+    const today = dailySetup(new Date());
+    const best = save.dailyBest(today.key);
+    const dailyBtn = new Button(this, 176, GAME_HEIGHT - 52, {
+      width: 316,
+      height: 72,
+      label: best > 0 ? `Desafio do dia ✔` : 'Desafio do dia',
+      fontSize: 25,
+      color: 0xb0479a,
+      onClick: () => this.showDailyCard(),
     });
-    new Button(this, 530, GAME_HEIGHT - 52, {
-      width: 300,
-      height: 68,
-      label: 'Restaurar backup',
-      fontSize: 24,
-      color: 0x6b6480,
-      onClick: () => this.importSave(),
-    });
+    if (best === 0) this.tweens.add({ targets: dailyBtn, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    new Button(this, 448, GAME_HEIGHT - 52, { width: 190, height: 64, label: 'Backup', fontSize: 22, color: 0x3d7bd9, onClick: () => this.exportSave() });
+    new Button(this, 628, GAME_HEIGHT - 52, { width: 150, height: 64, label: 'Restaurar', fontSize: 20, color: 0x6b6480, onClick: () => this.importSave() });
     this.cameras.main.fadeIn(250, 11, 7, 22);
   }
 
@@ -163,9 +162,9 @@ export class WorldMapScene extends Phaser.Scene {
     });
     const g = this.add.graphics();
     g.fillStyle(PAL.ink, 1);
-    g.fillRoundedRect(-320, -330, 640, 660, 30);
+    g.fillRoundedRect(-320, -330, 640, 720, 30);
     g.fillStyle(0x2a1a4d, 1);
-    g.fillRoundedRect(-315, -325, 630, 650, 26);
+    g.fillRoundedRect(-315, -325, 630, 710, 26);
     c.add([shade, g]);
     c.add(uiText(this, 0, -282, st.name, 34, '#f3e9ff', 7));
     c.add(uiText(this, 0, -236, st.subtitle, 21, PAL.uiDim, 5).setWordWrapWidth(560));
@@ -210,8 +209,16 @@ export class WorldMapScene extends Phaser.Scene {
       c.add(slot);
     });
 
+    // Stage challenges (extra goals on top of the stars).
+    if (id !== 'rift') {
+      const done = save.data.challenges[id] ?? [];
+      CHALLENGES[id].forEach((ch, i) => {
+        c.add(uiText(this, 0, 150 + i * 30, `${done[i] ? '✔' : '○'} ${challengeText(ch)}`, 20, done[i] ? '#9be89b' : PAL.uiText, 4));
+      });
+    }
+
     c.add(
-      new Button(this, 0, 222, {
+      new Button(this, 0, 316, {
         width: 360,
         height: 90,
         label: 'JOGAR',
@@ -220,6 +227,53 @@ export class WorldMapScene extends Phaser.Scene {
         onClick: () => {
           this.cameras.main.fadeOut(220, 11, 7, 22);
           this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { stage: id, hero: getSave().data.hero }));
+        },
+      }),
+    );
+    c.setScale(0.7).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
+    this.card = c;
+  }
+
+  /** Today's challenge: fixed stage, hero, starting boon and seed — the same for everyone. */
+  private showDailyCard(): void {
+    this.card?.destroy();
+    const d = dailySetup(new Date());
+    const save = getSave();
+    const boon = BOONS[d.boon];
+    const hero = HEROES[d.hero];
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(50);
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.6).setInteractive();
+    shade.on('pointerdown', () => {
+      c.destroy();
+      this.card = null;
+    });
+    const g = this.add.graphics();
+    g.fillStyle(PAL.ink, 1);
+    g.fillRoundedRect(-320, -330, 640, 660, 30);
+    g.fillStyle(0x3a1a4a, 1);
+    g.fillRoundedRect(-315, -325, 630, 650, 26);
+    c.add([shade, g]);
+    c.add(uiText(this, 0, -280, 'Desafio do dia', 40, '#ffd9f4', 8));
+    c.add(uiText(this, 0, -232, 'Igual para todo mundo hoje. Quantos pontos você faz?', 20, PAL.uiDim, 4).setWordWrapWidth(560));
+    c.add(this.add.image(-170, -80, hero.texture).setScale(1.25));
+    c.add(uiText(this, 80, -150, `Herói: ${hero.name}`, 26, PAL.uiText, 5));
+    c.add(uiText(this, 80, -108, STAGES[d.stage].name, 22, PAL.goldCss, 5));
+    c.add(uiText(this, 80, -58, `Começa com: ${boon.name}`, 22, '#e0c8ff', 5).setWordWrapWidth(330));
+    c.add(uiText(this, 80, -8, boon.desc, 18, PAL.uiDim, 4).setWordWrapWidth(330));
+    const best = save.dailyBest(d.key);
+    c.add(uiText(this, 0, 96, best > 0 ? `Melhor de hoje: ${best} pontos` : 'Você ainda não jogou hoje', 26, best > 0 ? PAL.goldCss : PAL.uiText, 5));
+    c.add(uiText(this, 0, 140, 'Vitória +1000 • cada vida +100 • cada reação +10', 18, PAL.uiDim, 4));
+    c.add(
+      new Button(this, 0, 240, {
+        width: 360,
+        height: 90,
+        label: 'JOGAR',
+        fontSize: 42,
+        color: 0xb0479a,
+        onClick: () => {
+          this.cameras.main.fadeOut(220, 11, 7, 22);
+          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { daily: true }));
         },
       }),
     );
