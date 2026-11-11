@@ -118,6 +118,8 @@ export interface SimState {
   summons: SummonState[];
   boonOffers: BoonId[][]; // pending "pick 1 of 3" offers, oldest first
   boons: BoonId[]; // picked so far (repeats stack)
+  altarBuys: number; // Altar de Éter purchases this match
+  rerolls: number; // offers re-rolled this match
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;

@@ -191,7 +191,7 @@ Proporção esbelta (cabeça ≈ 1/3 da altura), inspirada em sprites de RPG onl
 ### Dificuldade recalibrada
 Como bênçãos deixam o jogador mais forte: fase 2 ×0,9, fase 3 ×1,2, fase 4 ×1,08, fase 5 ×0,9 (robôs já escolhem bênçãos).
 
-## Fase 6 — Maestria (parcial)
+## Fase 6 — Maestria
 ### Reforço (pedido do jogador: na Fenda o ouro sobrava)
 Torre no nível 3 troca "melhorar" por **Reforço**: +12% de dano por compra, sem limite. Custo 90 × 1,3ⁿ (afetado por Mestre de Obras). Vale em todos os modos.
 
@@ -205,6 +205,24 @@ Pontos: vitória +1000, +100 por vida, +10 por reação; em derrota, 60 por onda
 ### Desempenho
 A queda de FPS vinha do custo gráfico de recriar a imagem de cada número de dano (3 vezes por golpe). Agora os números usam uma fonte
 pré-desenhada (bitmap), as barras de vida são imagens em lote, e o contador de debug e o indicador de recarga redesenham poucas vezes por segundo.
+
+### Altar de Éter (pedido do jogador: na Fenda o ouro ficava parado)
+Medido com robôs: na Fenda tudo chega ao nível 3 por volta da onda 10 e depois sobram ~500 de ouro por onda (5.000 parados na onda 20).
+- **Altar** (só na Fenda, botão na barra de baixo): paga ouro e escolhe 1 de 3 Bênçãos, com mais chance de Rara/Épica
+  (pesos 3/3/2 contra 6/3/1). Custo 300 × 1,25ⁿ. Não oferece bênçãos que dão ouro.
+- **Trocar cartas** (todo modo): na tela de Bênção, paga 40, 80, 120... para trocar as 3 cartas por outras.
+- Decisão do jogador: ouro vira *poder amplo* (Altar), *poder focado* (Reforço) ou *escolha melhor* (Trocar).
+Robôs: o Altar empurra a Fenda de ~onda 20 para ~onda 23–24.
+
+### Códice e estatísticas
+Códice (botão no mapa): 12 inimigos e 6 reações, revelados quando aparecem na partida (save v5). Cada inimigo mostra vida,
+velocidade, fraquezas e resistências; cada reação mostra a receita e o efeito. Fim da partida: "Ver estatísticas" com dano por
+torre/herói e reações por tipo, e "Exportar CSV" (separado por ponto e vírgula, abre no Excel/Planilhas).
+
+### Música
+Composta por código (sem arquivos): pad, baixo, arpejo, melodia de 8 compassos gerada por seed e percussão leve.
+Cada fase tem tom, modo e andamento próprios. Calma entre ondas, cheia durante a onda, intensa com chefe ou na Fenda a partir da onda 20.
+Opção "Música" separada de "Efeitos sonoros" na pausa.
 
 ## 4. Coleção e evolução
 

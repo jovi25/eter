@@ -34,6 +34,7 @@ interface Sound {
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let comp: DynamicsCompressorNode | null = null;
 let reverbIn: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 const lastPlayed = new Map<string, number>();
@@ -48,6 +49,12 @@ function makeImpulse(ac: AudioContext, seconds: number, decay: number): AudioBuf
   return buf;
 }
 
+/** Shared audio graph for the music player (null until audio is unlocked). */
+export function audioNodes(): { ctx: AudioContext; out: AudioNode; reverb: AudioNode | null; noise: AudioBuffer | null } | null {
+  if (!ctx || !comp) return null;
+  return { ctx, out: comp, reverb: reverbIn, noise: noiseBuf };
+}
+
 /** Must be called from a user gesture (tap) before sounds can play on mobile. */
 export function unlockAudio(): void {
   try {
@@ -55,7 +62,7 @@ export function unlockAudio(): void {
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return;
       ctx = new Ctor();
-      const comp = ctx.createDynamicsCompressor();
+      comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -18;
       comp.ratio.value = 4;
       comp.attack.value = 0.003;
@@ -73,6 +80,12 @@ export function unlockAudio(): void {
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = noiseBuf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      // Save battery and avoid stray notes when the game is in the background.
+      document.addEventListener('visibilitychange', () => {
+        if (!ctx) return;
+        if (document.hidden) void ctx.suspend();
+        else void ctx.resume();
+      });
     }
     if (ctx.state === 'suspended') void ctx.resume();
   } catch {

@@ -4,6 +4,7 @@ import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTIONS, type ReactionId } from '../../data/reactions';
 import { FONT, PAL } from '../art/palette';
 import { NUM_FONT } from '../art/textures';
+import { fxCount, quality } from '../quality';
 import { DEPTH } from './layers';
 
 const toCss = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
@@ -121,11 +122,11 @@ export class FxLayer {
     };
     drawBolt();
     g.setAlpha(1).setVisible(true);
-    this.scene.time.delayedCall(60, () => g.visible && drawBolt());
+    if (!quality.low) this.scene.time.delayedCall(60, () => g.visible && drawBolt());
     this.scene.tweens.add({ targets: g, alpha: 0, delay: 90, duration: 160, onComplete: () => g.setVisible(false).clear() });
     for (const p of points.slice(1)) {
       this.sparks.setParticleTint(0xffe95c);
-      this.sparks.explode(4, p.x, p.y);
+      this.sparks.explode(fxCount(4), p.x, p.y);
     }
   }
 
@@ -195,21 +196,26 @@ export class FxLayer {
 
   /** Tiny, short spark for ordinary hits (kept subtle so many towers don't white-out the screen). */
   hit(x: number, y: number, color: number): void {
+    if (quality.low) return;
     this.hitSparks.setParticleTint(color);
     this.hitSparks.explode(2, x, y);
   }
 
   burst(x: number, y: number, color: number, count = 12): void {
     this.sparks.setParticleTint(color);
-    this.sparks.explode(count, x, y);
+    this.sparks.explode(fxCount(count), x, y);
   }
 
   dust(x: number, y: number, color = 0xd8c39a, count = 10): void {
     this.debris.setParticleTint(color);
-    this.debris.explode(count, x, y);
+    this.debris.explode(fxCount(count), x, y);
   }
 
+  private flameFlip = false;
+
   flame(x: number, y: number): void {
+    this.flameFlip = !this.flameFlip;
+    if (quality.low && this.flameFlip) return;
     this.flames.emitParticleAt(x, y, 1);
   }
 
@@ -234,6 +240,12 @@ export class FxLayer {
 
   /** MMO-style bouncing damage number. */
   damage(x: number, y: number, amount: number, element: Element, opts: { crit?: boolean; reaction?: ReactionId; dot?: boolean; eff?: number }): void {
+    // Big moments always show; small ones are capped per frame (and DoT ticks hidden on slow phones).
+    const important = !!(opts.crit || opts.reaction);
+    if (!important) {
+      if (quality.numbersLeft <= 0 || (opts.dot && quality.low)) return;
+      quality.numbersLeft--;
+    }
     const t = this.numbers[this.numberIdx]!;
     this.numberIdx = (this.numberIdx + 1) % this.numbers.length;
     this.scene.tweens.killTweensOf(t);

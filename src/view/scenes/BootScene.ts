@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { unlockAudio } from '../audio/sfx';
+import { refreshMusic } from '../audio/music';
 import { PAL } from '../art/palette';
 import { generateTextures, preloadImages } from '../art/textures';
 import { Button, uiText } from '../ui/Button';
@@ -57,6 +58,7 @@ export class BootScene extends Phaser.Scene {
       color: 0x3aa655,
       onClick: () => {
         unlockAudio();
+        refreshMusic();
         this.cameras.main.fadeOut(250, 11, 7, 22);
         this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap'));
       },

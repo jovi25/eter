@@ -10,6 +10,7 @@ export interface HudCallbacks {
   onSpeed: () => void;
   onPause: () => void;
   onCallWave: () => void;
+  onAltar?: () => void; // Fenda Infinita only
 }
 
 /** Top bar (lives, gold, wave, 2×, pause), combo meter, boss bar, bottom "call wave" button. */
@@ -28,7 +29,9 @@ export class Hud {
   private comboSub: Phaser.GameObjects.Text;
   private boss: Phaser.GameObjects.Container;
   private bossFill: Phaser.GameObjects.Rectangle;
-  private last = { gold: -1, lives: -1, wave: -1, call: '' };
+  private last = { gold: -1, lives: -1, wave: -1, call: '', altar: '' };
+  private altarBtn: Button | null = null;
+  private altarGlow: Phaser.GameObjects.Image | null = null;
 
   constructor(private scene: Phaser.Scene, cb: HudCallbacks) {
     const top = scene.add.graphics().setDepth(DEPTH.hud);
@@ -51,16 +54,24 @@ export class Hud {
     const bottom = scene.add.graphics().setDepth(DEPTH.hud);
     bottom.fillStyle(PAL.panel, 0.88);
     bottom.fillRoundedRect(-20, GAME_HEIGHT - 104, GAME_WIDTH + 40, 140, 24);
-    this.callBtn = new Button(scene, 290, GAME_HEIGHT - 58, {
-      width: 400,
+    const compact = !!cb.onAltar;
+    const callX = compact ? 222 : 290;
+    this.callBtn = new Button(scene, callX, GAME_HEIGHT - 58, {
+      width: compact ? 270 : 400,
       height: 78,
       label: 'COMEÇAR',
-      fontSize: 32,
+      fontSize: compact ? 24 : 32,
       color: 0x3aa655,
       onClick: cb.onCallWave,
     });
     this.callBtn.setDepth(DEPTH.hud);
-    this.callSub = uiText(scene, 290, GAME_HEIGHT - 116, '', 20, PAL.goldCss, 5).setDepth(DEPTH.hud);
+    this.callSub = uiText(scene, callX, GAME_HEIGHT - 116, '', 20, PAL.goldCss, 5).setDepth(DEPTH.hud);
+    if (cb.onAltar) {
+      this.altarGlow = scene.add.image(452, GAME_HEIGHT - 58, 'spark').setScale(5).setTint(0xc77dff).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0).setDepth(DEPTH.hud);
+      this.altarBtn = new Button(scene, 452, GAME_HEIGHT - 58, { width: 150, height: 78, label: 'ALTAR', fontSize: 22, color: 0x8a3fd0, onClick: cb.onAltar });
+      this.altarBtn.setDepth(DEPTH.hud);
+      scene.tweens.add({ targets: this.altarGlow, scale: 6.5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
 
     // combo meter
     this.comboText = uiText(scene, 0, 0, '', 40, '#ffe34d', 8);
@@ -118,6 +129,17 @@ export class Hud {
       this.callBtn.setLabel(label).setEnabled(enabled);
       this.callSub.setText(sub);
       this.last.call = key;
+    }
+
+    const altarCost = sim.altarCost();
+    if (this.altarBtn && altarCost !== null) {
+      const ready = s.gold >= altarCost && s.boonOffers.length === 0 && s.result === 'playing';
+      const akey = `${altarCost}|${ready}`;
+      if (akey !== this.last.altar) {
+        this.altarBtn.setLabel(`ALTAR\n${altarCost}`).setColor(ready ? 0x8a3fd0 : 0x4a3a66);
+        this.altarGlow?.setAlpha(ready ? 0.8 : 0);
+        this.last.altar = akey;
+      }
     }
 
     const boss = s.enemies.find((e) => e.isBoss);

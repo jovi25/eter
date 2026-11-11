@@ -24,6 +24,20 @@ export interface BoonDef {
 export const BOON_RULES = { every: 3, offset: 2, choices: 3 };
 
 export const RARITY_WEIGHT: Record<BoonRarity, number> = { common: 6, rare: 3, epic: 1 };
+
+/**
+ * Altar de Éter (Fenda Infinita only): trade piled-up gold for an extra Bênção.
+ * Better odds than the free offers; each purchase costs more. Gold-for-gold boons are left out.
+ */
+export const ALTAR = {
+  baseCost: 300,
+  growth: 1.25,
+  weights: { common: 3, rare: 3, epic: 2 } as Record<BoonRarity, number>,
+  exclude: ['treasure', 'bounty'] as string[],
+};
+
+/** "Trocar": re-roll the cards of an offer for gold (every mode). Price rises each use in the match. */
+export const REROLL = { baseCost: 40, step: 40 };
 export const RARITY_LABEL: Record<BoonRarity, string> = { common: 'Comum', rare: 'Rara', epic: 'Épica' };
 export const RARITY_COLOR: Record<BoonRarity, number> = { common: 0xb8b8c8, rare: 0x4aa3ff, epic: 0xb26bff };
 

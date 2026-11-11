@@ -1,6 +1,6 @@
 import { SIM_DT } from '../data/config';
 import { BONUS, ECONOMY, DIFFICULTY, STARS, WAVE_TIMING } from '../data/economy';
-import { BOON_IDS, BOON_RULES, BOONS, RARITY_WEIGHT, type BoonDef, type BoonId } from '../data/boons';
+import { ALTAR, BOON_IDS, BOON_RULES, BOONS, RARITY_WEIGHT, REROLL, type BoonDef, type BoonId, type BoonRarity } from '../data/boons';
 import { ENEMIES, type EnemyId } from '../data/enemies';
 import { HERO } from '../data/hero';
 import { BEAR, DRUID_FURY, HEROES, KNIGHT_SPIN, PRIEST, type BlockerStats, type HeroDef } from '../data/heroes';
@@ -50,6 +50,7 @@ export class Simulation {
   readonly path: Path;
   readonly paths: Path[];
   readonly stage: StageDef;
+  readonly stageId: StageId;
   readonly slots: readonly Vec2[];
   readonly mods: SimModifiers;
 
@@ -66,6 +67,7 @@ export class Simulation {
   private readonly tmp: Vec2 = { x: 0, y: 0 };
 
   constructor(opts: SimOptions) {
+    this.stageId = opts.stage;
     this.stage = STAGES[opts.stage];
     const map = MAPS[this.stage.map];
     this.paths = map.paths.map((pts) => new Path(pts));
@@ -112,6 +114,8 @@ export class Simulation {
       summons: [],
       boonOffers: [],
       boons: [],
+      altarBuys: 0,
+      rerolls: 0,
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
@@ -532,15 +536,15 @@ export class Simulation {
   // ───────────────────────────── Bênçãos de Éter ─────────────────────────────
 
   /** Roll a "pick 1 of 3" offer (weighted by rarity, no repeats inside one offer). */
-  private offerBoons(): void {
-    const pool = [...BOON_IDS];
+  private rollBoons(weights: Record<BoonRarity, number> = RARITY_WEIGHT, exclude: readonly string[] = []): BoonId[] {
+    const pool = BOON_IDS.filter((id) => !exclude.includes(id));
     const options: BoonId[] = [];
     while (options.length < BOON_RULES.choices && pool.length > 0) {
-      const total = pool.reduce((sum, id) => sum + RARITY_WEIGHT[(BOONS[id] as BoonDef).rarity], 0);
+      const total = pool.reduce((sum, id) => sum + weights[(BOONS[id] as BoonDef).rarity], 0);
       let roll = this.boonRng.next() * total;
       let pick = 0;
       for (let i = 0; i < pool.length; i++) {
-        roll -= RARITY_WEIGHT[(BOONS[pool[i]!] as BoonDef).rarity];
+        roll -= weights[(BOONS[pool[i]!] as BoonDef).rarity];
         if (roll <= 0) {
           pick = i;
           break;
@@ -548,8 +552,52 @@ export class Simulation {
       }
       options.push(pool.splice(pick, 1)[0]!);
     }
+    return options;
+  }
+
+  private offerBoons(): void {
+    const options = this.rollBoons();
     this.state.boonOffers.push(options);
     this.events.emit('boonOffered', { options });
+  }
+
+  /** Price of the next Altar de Éter purchase, or null when the Altar does not exist in this mode. */
+  altarCost(): number | null {
+    if (this.stageId !== 'rift') return null;
+    return Math.round(ALTAR.baseCost * Math.pow(ALTAR.growth, this.state.altarBuys));
+  }
+
+  /** Altar de Éter: pay gold for an extra "pick 1 of 3" with better odds. */
+  buyAltar(): boolean {
+    const s = this.state;
+    const cost = this.altarCost();
+    if (cost === null || s.result !== 'playing' || s.boonOffers.length > 0 || s.gold < cost) return false;
+    this.addGold(-cost);
+    s.altarBuys++;
+    const options = this.rollBoons(ALTAR.weights, ALTAR.exclude);
+    s.boonOffers.unshift(options);
+    this.events.emit('altarUsed', { cost, buys: s.altarBuys });
+    this.events.emit('boonOffered', { options, altar: true });
+    return true;
+  }
+
+  rerollCost(): number {
+    return REROLL.baseCost + REROLL.step * this.state.rerolls;
+  }
+
+  /** "Trocar": swap the cards of the pending offer for new ones. */
+  rerollBoons(): boolean {
+    const s = this.state;
+    const offer = s.boonOffers[0];
+    const cost = this.rerollCost();
+    if (!offer || s.result !== 'playing' || s.gold < cost) return false;
+    this.addGold(-cost);
+    s.rerolls++;
+    // New cards never repeat the ones just shown.
+    const options = this.rollBoons(RARITY_WEIGHT, [...offer]);
+    s.boonOffers[0] = options;
+    this.events.emit('boonsRerolled', { options, cost });
+    return true;
   }
 
   /** Take one boon from the oldest pending offer. */

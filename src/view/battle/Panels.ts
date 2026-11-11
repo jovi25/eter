@@ -3,6 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { getSettings, setSetting, type Settings } from '../settings';
+import { refreshMusic } from '../audio/music';
 import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
 
@@ -26,7 +27,7 @@ function panel(scene: Phaser.Scene, w: number, h: number, y = GAME_HEIGHT / 2): 
   return c;
 }
 
-const LABELS: Record<keyof Settings, string> = { sound: 'Som', vibration: 'Vibração', shake: 'Tremor de tela' };
+const LABELS: Record<keyof Settings, string> = { sound: 'Efeitos sonoros', music: 'Música', vibration: 'Vibração', shake: 'Tremor de tela' };
 
 export class PausePanel {
   private objs: Phaser.GameObjects.GameObject[] = [];
@@ -37,16 +38,17 @@ export class PausePanel {
     p.add(uiText(scene, 0, -300, 'PAUSA', 56));
     p.add(new Button(scene, 0, 330, { width: 400, height: 64, label: 'Sair para o mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onExit }));
     (Object.keys(LABELS) as (keyof Settings)[]).forEach((key, i) => {
-      const y = -200 + i * 92;
+      const y = -224 + i * 80;
       const label = () => `${LABELS[key]}: ${getSettings()[key] ? 'LIGADO' : 'DESLIGADO'}`;
       const btn = new Button(scene, 0, y, {
         width: 400,
-        height: 72,
+        height: 64,
         label: label(),
-        fontSize: 26,
+        fontSize: 24,
         color: getSettings()[key] ? 0x3aa655 : 0x6b6480,
         onClick: () => {
           setSetting(key, !getSettings()[key]);
+          if (key === 'music') refreshMusic();
           btn.setLabel(label()).setColor(getSettings()[key] ? 0x3aa655 : 0x6b6480);
         },
       });
@@ -81,10 +83,10 @@ export interface EndStats {
 }
 
 export class EndPanel {
-  constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void }) {
+  constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void; onStats?: () => void }) {
     backdrop(scene);
-    const p = panel(scene, 600, 800);
-    const title = uiText(scene, 0, -300, s.rift ? 'FIM DA FENDA' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
+    const p = panel(scene, 600, 880);
+    const title = uiText(scene, 0, -340, s.rift ? 'FIM DA FENDA' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
     p.add(title);
     scene.tweens.add({ targets: title, scale: { from: 1.08, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -138,13 +140,101 @@ export class EndPanel {
         }
       });
     }
+    if (cb.onStats) p.add(new Button(scene, 0, 200, { width: 300, height: 52, label: 'Ver estatísticas', fontSize: 22, color: 0x5a3fb0, onClick: cb.onStats }));
     if (cb.onNext) {
-      p.add(new Button(scene, 0, 222, { width: 440, height: 80, label: 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
-      p.add(new Button(scene, -112, 320, { width: 216, height: 64, label: 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));
-      p.add(new Button(scene, 112, 320, { width: 216, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
+      p.add(new Button(scene, 0, 270, { width: 440, height: 80, label: 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
+      p.add(new Button(scene, -112, 362, { width: 216, height: 64, label: 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));
+      p.add(new Button(scene, 112, 362, { width: 216, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
     } else {
-      p.add(new Button(scene, 0, 222, { width: 440, height: 80, label: s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 32, color: 0x3aa655, onClick: cb.onReplay }));
-      p.add(new Button(scene, 0, 320, { width: 300, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
+      p.add(new Button(scene, 0, 270, { width: 440, height: 80, label: s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 32, color: 0x3aa655, onClick: cb.onReplay }));
+      p.add(new Button(scene, 0, 362, { width: 300, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
     }
+  }
+}
+
+export interface ReportRow {
+  label: string;
+  value: number;
+  color: number;
+}
+
+export interface MatchReport {
+  damage: ReportRow[];
+  reactions: ReportRow[];
+  info: [string, string | number][];
+}
+
+/** CSV text (semicolon-separated: opens straight in Excel/Sheets in Portuguese). */
+export function reportCsv(r: MatchReport): string {
+  const esc = (v: string | number) => {
+    const s = String(v);
+    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = ['categoria;item;valor'];
+  for (const [k, v] of r.info) lines.push(['partida', k, v].map(esc).join(';'));
+  for (const d of r.damage) lines.push(['dano', d.label, d.value].map(esc).join(';'));
+  for (const d of r.reactions) lines.push(['reação', d.label, d.value].map(esc).join(';'));
+  return lines.join('\r\n');
+}
+
+function downloadText(name: string, text: string): void {
+  try {
+    const blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch {
+    /* download blocked: nothing else to do offline */
+  }
+}
+
+/** Match stats: damage per tower (and hero) and reactions per type, as bars, with CSV export. */
+export class StatsPanel {
+  private objs: Phaser.GameObjects.GameObject[] = [];
+
+  constructor(scene: Phaser.Scene, r: MatchReport) {
+    const bg = backdrop(scene).setDepth(DEPTH.panel + 2);
+    const p = panel(scene, 640, 1060).setDepth(DEPTH.panel + 3);
+    p.add(uiText(scene, 0, -480, 'ESTATÍSTICAS', 46, '#f3e9ff', 9));
+    const section = (title: string, rows: ReportRow[], top: number) => {
+      p.add(uiText(scene, 0, top, title, 26, PAL.goldCss, 5));
+      const max = Math.max(1, ...rows.map((x) => x.value));
+      const total = rows.reduce((n, x) => n + x.value, 0);
+      rows.forEach((row, i) => {
+        const y = top + 46 + i * 44;
+        p.add(uiText(scene, -290, y, row.label, 20, PAL.uiText, 4).setOrigin(0, 0.5));
+        const w = Math.max(4, (row.value / max) * 220);
+        p.add(scene.add.rectangle(-60, y, 224, 22, PAL.ink).setOrigin(0, 0.5));
+        const bar = scene.add.rectangle(-58, y, 0, 16, row.color).setOrigin(0, 0.5);
+        p.add(bar);
+        scene.tweens.add({ targets: bar, width: row.value > 0 ? w : 0, duration: 500, delay: 150 + i * 60, ease: 'Cubic.easeOut' });
+        const pct = total > 0 ? ` (${Math.round((row.value / total) * 100)}%)` : '';
+        p.add(uiText(scene, 290, y, `${row.value}${pct}`, 19, '#ffffff', 4).setOrigin(1, 0.5));
+      });
+    };
+    section('Dano causado', r.damage, -420);
+    section('Reações', r.reactions, -420 + 46 + r.damage.length * 44 + 30);
+    p.add(
+      new Button(scene, -150, 450, {
+        width: 270,
+        height: 68,
+        label: 'Exportar CSV',
+        fontSize: 24,
+        color: 0x3aa655,
+        onClick: () => downloadText('eter-partida.csv', reportCsv(r)),
+      }),
+    );
+    p.add(new Button(scene, 150, 450, { width: 230, height: 68, label: 'Fechar', fontSize: 24, color: 0x6b6480, onClick: () => this.destroy() }));
+    this.objs = [bg, p];
+  }
+
+  destroy(): void {
+    for (const o of this.objs) o.destroy();
+    this.objs = [];
   }
 }

@@ -2,12 +2,13 @@
 
 export interface Settings {
   sound: boolean;
+  music: boolean;
   vibration: boolean;
   shake: boolean;
 }
 
 const KEY = 'eter.settings.v1';
-const DEFAULTS: Settings = { sound: true, vibration: true, shake: true };
+const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true };
 
 let current: Settings = load();
 

@@ -4,7 +4,7 @@ import { BOONS, RARITY_COLOR, RARITY_LABEL, type BoonDef, type BoonId } from '..
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { vibrate } from '../settings';
-import { uiText } from '../ui/Button';
+import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
 
 const CARD_W = 620;
@@ -15,13 +15,18 @@ export class BoonPicker {
   private objs: Phaser.GameObjects.GameObject[] = [];
   private done = false;
 
-  constructor(private scene: Phaser.Scene, options: BoonId[], onPick: (index: number) => void) {
+  constructor(
+    private scene: Phaser.Scene,
+    options: BoonId[],
+    onPick: (index: number) => void,
+    extra: { title?: string; sub?: string; reroll?: { cost: number; affordable: boolean; onReroll: () => void } } = {},
+  ) {
     const shade = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0).setDepth(DEPTH.panel).setInteractive();
     scene.tweens.add({ targets: shade, fillAlpha: 0.78, duration: 200 });
     const rays = scene.add.image(GAME_WIDTH / 2, 300, 'spark').setDepth(DEPTH.panel).setScale(24).setTint(0xb57bff).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD);
     scene.tweens.add({ targets: rays, scale: 28, alpha: 0.5, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    const title = uiText(scene, GAME_WIDTH / 2, 250, 'BÊNÇÃO DE ÉTER', 58, '#f3e9ff', 10).setDepth(DEPTH.panel + 1).setScale(0);
-    const sub = uiText(scene, GAME_WIDTH / 2, 312, 'Escolha 1 poder para esta partida', 26, PAL.uiDim, 5).setDepth(DEPTH.panel + 1).setAlpha(0);
+    const title = uiText(scene, GAME_WIDTH / 2, 250, extra.title ?? 'BÊNÇÃO DE ÉTER', 58, '#f3e9ff', 10).setDepth(DEPTH.panel + 1).setScale(0);
+    const sub = uiText(scene, GAME_WIDTH / 2, 312, extra.sub ?? 'Escolha 1 poder para esta partida', 26, PAL.uiDim, 5).setDepth(DEPTH.panel + 1).setAlpha(0);
     scene.tweens.add({ targets: title, scale: 1, duration: 320, ease: 'Back.easeOut' });
     scene.tweens.add({ targets: sub, alpha: 1, delay: 200, duration: 250 });
     this.objs.push(shade, rays, title, sub);
@@ -72,6 +77,29 @@ export class BoonPicker {
       });
       this.objs.push(card);
     });
+
+    if (extra.reroll) {
+      const r = extra.reroll;
+      const btn = new Button(scene, GAME_WIDTH / 2, 1040, {
+        width: 380,
+        height: 74,
+        label: `Trocar cartas • ${r.cost} ouro`,
+        fontSize: 24,
+        color: r.affordable ? 0x3d7bd9 : 0x4a4560,
+        onClick: () => {
+          if (this.done) return;
+          if (!r.affordable) {
+            playSfx('error');
+            return;
+          }
+          this.done = true;
+          r.onReroll();
+        },
+      });
+      btn.setDepth(DEPTH.panel + 1).setAlpha(0);
+      scene.tweens.add({ targets: btn, alpha: 1, delay: 600, duration: 250 });
+      this.objs.push(btn);
+    }
   }
 
   destroy(): void {

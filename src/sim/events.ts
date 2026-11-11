@@ -24,7 +24,9 @@ export interface SimEvents {
   /** A max-level tower ability went off. */
   towerAbility: { towerId: number; ability: 'volley' | 'firefield' | 'deepfreeze' | 'entangle' | 'supercharge'; x: number; y: number };
   zoneCreated: { zoneId: number; x: number; y: number; radius: number; duration: number };
-  boonOffered: { options: BoonId[] };
+  boonOffered: { options: BoonId[]; altar?: boolean };
+  altarUsed: { cost: number; buys: number };
+  boonsRerolled: { options: BoonId[]; cost: number };
   boonChosen: { id: BoonId };
   heroFired: { targetId: number };
   /** The class skill went off by itself. */

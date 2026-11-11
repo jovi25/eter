@@ -3,13 +3,14 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ECONOMY } from '../../data/economy';
 import { ENEMIES, type EnemyId } from '../../data/enemies';
 import { ELEMENTS, type Element } from '../../data/elements';
-import { REACTIONS } from '../../data/reactions';
-import { STAGE_ORDER, type StageId } from '../../data/stages';
+import { REACTION_IDS, REACTIONS } from '../../data/reactions';
+import { STAGE_ORDER, STAGES, type StageId } from '../../data/stages';
 import { getSave } from '../../meta/save';
-import { MAX_LEVEL, TOWERS } from '../../data/towers';
+import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
 import { Simulation } from '../../sim/simulation';
 import { playSfx } from '../audio/sfx';
+import { playMusic, setMusicIntensity, type ThemeId } from '../audio/music';
 import { PAL } from '../art/palette';
 import { BoonPicker } from '../battle/BoonPicker';
 import { BuildMenu } from '../battle/BuildMenu';
@@ -23,11 +24,12 @@ import { FxLayer } from '../battle/FxLayer';
 import { Hud } from '../battle/Hud';
 import { DEPTH } from '../battle/layers';
 import { MapView } from '../battle/MapView';
-import { EndPanel, PausePanel } from '../battle/Panels';
+import { EndPanel, PausePanel, StatsPanel, type MatchReport } from '../battle/Panels';
 import { ProjectileLayer } from '../battle/ProjectileLayer';
 import { TowerLayer } from '../battle/TowerLayer';
 import { DebugOverlay } from '../DebugOverlay';
 import { getSettings, vibrate } from '../settings';
+import { updateQuality } from '../quality';
 
 const HITSTOP_MS = 70;
 const HITSTOP_COOLDOWN_MS = 350;
@@ -73,12 +75,35 @@ export class BattleScene extends Phaser.Scene {
   private dotAcc = new Map<number, { sum: number; shownAt: number }>();
   private stageId: StageId = 'v1';
   private daily: DailySetup | null = null;
+  private altarOffer = false;
 
   private again(stage: StageId = this.stageId): BattleData {
     return this.daily ? { daily: true } : { stage, hero: this.heroClass };
   }
   private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
+
+  /** Rows for the stats screen and its CSV export. */
+  private matchReport(): MatchReport {
+    const s = this.sim.state;
+    const damage = TOWER_IDS.map((id) => ({ label: TOWERS[id].name, value: Math.round(s.stats.damageByTower[id]), color: id === 'archer' ? 0xe8d6b0 : ELEMENTS[TOWERS[id].element].color }));
+    damage.push({ label: HEROES[this.heroClass].name, value: Math.round(s.stats.heroDamage), color: HERO_COLORS[this.heroClass] });
+    const reactions = REACTION_IDS.map((id) => ({ label: REACTIONS[id].name, value: s.stats.reactions[id], color: REACTIONS[id].color }));
+    const stage = this.stageId === 'rift' ? 'Fenda Infinita' : STAGES[this.stageId].name;
+    const info: [string, string | number][] = [
+      ['modo', this.daily ? 'desafio do dia' : stage],
+      ['resultado', s.result === 'won' ? 'vitória' : 'derrota'],
+      ['onda', s.wave],
+      ['vidas', s.lives],
+      ['tempo (s)', Math.round(s.time)],
+      ['abates', s.stats.kills],
+      ['maior combo', s.stats.bestCombo],
+      ['torres construídas', TOWER_IDS.reduce((n, id) => n + s.stats.built[id], 0)],
+      ['bênçãos', s.boons.map((b) => BOONS[b].name).join(' | ')],
+      ['seed', s.seed],
+    ];
+    return { damage, reactions, info };
+  }
 
   private toMap(): void {
     this.cameras.main.fadeOut(220, 11, 7, 22);
@@ -89,6 +114,7 @@ export class BattleScene extends Phaser.Scene {
   private introduceEnemy(type: EnemyId): void {
     if (this.seenTypes.has(type)) return;
     this.seenTypes.add(type);
+    if (getSave().discover('enemies', type)) this.hud.floatText(GAME_WIDTH / 2, 250, 'Novo no Códice!', '#e0c8ff');
     const def = ENEMIES[type];
     const entries = Object.entries(def.resist) as [Element, number][];
     if (entries.length === 0 && !def.rootImmune && !def.flying) return;
@@ -121,6 +147,8 @@ export class BattleScene extends Phaser.Scene {
     }
     this.seenTypes = new Set();
     this.picker = null;
+    this.altarOffer = false;
+    playMusic(this.stageId as ThemeId);
     this.clock = new FixedClock();
     this.speed = 1;
     this.paused = false;
@@ -146,6 +174,14 @@ export class BattleScene extends Phaser.Scene {
         this.hud.setSpeed(this.speed);
       },
       onPause: () => this.setPaused(true),
+      onAltar:
+        this.stageId === 'rift'
+          ? () => {
+              if (this.paused || this.ended || this.picker) return;
+              if (this.sim.buyAltar()) this.altarOffer = true;
+              else playSfx('error');
+            }
+          : undefined,
       onCallWave: () => {
         this.menu.close();
         this.sim.callNextWave();
@@ -259,6 +295,9 @@ export class BattleScene extends Phaser.Scene {
     });
 
     ev.on('reactionTriggered', (r) => {
+      if (getSave().discover('reactions', r.reaction)) {
+        this.fx.bigBanner(`NOVA REAÇÃO!\n${REACTIONS[r.reaction].name}`, '#e0c8ff', 46, 900);
+      }
       const p = head(r.enemyId, r.x, r.y);
       this.totalReactions++;
       this.bestCombo = Math.max(this.bestCombo, r.comboCount);
@@ -459,6 +498,12 @@ export class BattleScene extends Phaser.Scene {
       playSfx('sell');
     });
 
+    ev.on('altarUsed', (a) => {
+      this.fx.coinsTo(this.hud.goldIconPos.x, this.hud.goldIconPos.y, 452, GAME_HEIGHT - 58, 5, () => undefined);
+      this.hud.floatText(452, GAME_HEIGHT - 150, `-${a.cost}`, PAL.goldCss);
+      playSfx('boon');
+    });
+
     ev.on('waveStarted', (w) => {
       this.fx.bigBanner(w.wave === this.sim.state.totalWaves ? 'ONDA FINAL' : `ONDA ${w.wave}`, PAL.uiText, 64, 500);
       playSfx('wave');
@@ -517,7 +562,7 @@ export class BattleScene extends Phaser.Scene {
             challenges,
             daily,
           },
-          { onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
+          { onStats: () => new StatsPanel(this, this.matchReport()), onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
         );
       });
     });
@@ -543,13 +588,36 @@ export class BattleScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const dtMs = Math.min(delta, 100);
+    updateQuality(this.game.loop.actualFps, delta);
     // A pending Bênção pauses the match until the player picks a card.
     if (!this.picker && !this.paused && !this.ended && this.sim.state.boonOffers.length > 0) {
       this.menu.close();
-      this.picker = new BoonPicker(this, this.sim.state.boonOffers[0]!, (i) => {
-        this.sim.chooseBoon(i);
-        this.picker = null;
-      });
+      const fromAltar = this.altarOffer;
+      const cost = this.sim.rerollCost();
+      this.picker = new BoonPicker(
+        this,
+        this.sim.state.boonOffers[0]!,
+        (i) => {
+          this.sim.chooseBoon(i);
+          this.picker = null;
+          this.altarOffer = false;
+        },
+        {
+          title: fromAltar ? 'ALTAR DE ÉTER' : undefined,
+          sub: fromAltar ? 'Sua oferenda foi aceita. Escolha 1 poder' : undefined,
+          reroll: {
+            cost,
+            affordable: this.sim.state.gold >= cost,
+            onReroll: () => {
+              if (this.sim.rerollBoons()) {
+                playSfx('coin', 0.8);
+                this.picker?.destroy();
+                this.picker = null; // a fresh picker opens next frame with the new cards
+              }
+            },
+          },
+        },
+      );
     }
     if (!this.paused && !this.picker && this.sim.state.result === 'playing') {
       if (this.hitstopMs > 0) {
@@ -571,6 +639,11 @@ export class BattleScene extends Phaser.Scene {
         }
       }
     }
+    // Music follows the action: calm between waves, fuller during a wave, driving on bosses / deep in the Fenda.
+    const st = this.sim.state;
+    const fighting = st.wavePhase === 'spawning' || st.enemies.length > 0;
+    setMusicIntensity(!fighting ? 0 : st.enemies.some((e) => e.isBoss) || (this.stageId === 'rift' && st.wave >= 20) ? 2 : 1);
+
     const alpha = this.clock.alpha;
     this.enemies.sync(this.sim, alpha, dtMs);
     this.projectiles.sync(this.sim, alpha);

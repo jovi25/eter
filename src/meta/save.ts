@@ -2,9 +2,11 @@
 // Pure TypeScript (no Phaser) so it can be unit-tested.
 
 import { HEROES, type HeroClass } from '../data/heroes';
+import { ENEMIES } from '../data/enemies';
+import { REACTIONS } from '../data/reactions';
 import { RIFT, STAGE_ORDER, type CampaignStageId, type StageId } from '../data/stages';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -20,10 +22,11 @@ export interface SaveData {
   riftBest: number; // best wave reached in the Fenda Infinita (v3+)
   challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
   daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
+  codex: { enemies: string[]; reactions: string[] }; // Códice discoveries (v5+)
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 } };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] } };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -34,7 +37,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 } };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] } };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -48,7 +51,16 @@ export function migrate(raw: unknown): SaveData {
     // v4: stage challenges + daily challenge.
     out = { ...out, version: 4, challenges: {}, daily: { key: '', best: 0, plays: 0 } };
   }
+  if (out.version < 5) {
+    // v5: Códice.
+    out = { ...out, version: 5, codex: { enemies: [], reactions: [] } };
+  }
   if (!(out.hero in HEROES)) out.hero = 'mage';
+  const cx = out.codex;
+  out.codex = {
+    enemies: Array.isArray(cx?.enemies) ? [...new Set(cx.enemies.filter((e) => typeof e === 'string' && e in ENEMIES))] : [],
+    reactions: Array.isArray(cx?.reactions) ? [...new Set(cx.reactions.filter((r) => typeof r === 'string' && r in REACTIONS))] : [],
+  };
   const ch: SaveData['challenges'] = {};
   for (const id of STAGE_ORDER) {
     const list = out.challenges?.[id];
@@ -139,6 +151,15 @@ export class SaveStore {
 
   dailyBest(key: string): number {
     return this.data.daily.key === key ? this.data.daily.best : 0;
+  }
+
+  /** Códice: mark an enemy or reaction as seen. Returns true the first time. */
+  discover(kind: 'enemies' | 'reactions', id: string): boolean {
+    const list = this.data.codex[kind];
+    if (list.includes(id)) return false;
+    list.push(id);
+    this.persist();
+    return true;
   }
 
   /** Record how far a Fenda run got. Returns true on a new record. */

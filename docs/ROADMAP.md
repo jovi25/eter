@@ -32,13 +32,16 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 
 ## Próximas etapas
 
-### Fase 6 — Maestria (dar motivo para rejogar cada fase)
+### Fase 6 — Maestria (dar motivo para rejogar cada fase) ✔
 - [x] **3 desafios por fase** além das estrelas, salvos e mostrados no mapa, no cartão da fase e no fim da partida
 - [x] **Desafio diário**: mesma fase, herói, bênção inicial e seed para todo mundo; melhor pontuação do dia
 - [x] **Reforço** de torre após o nível 3 (uso infinito para o ouro; pedido do jogador)
 - [x] Desempenho: números de dano em fonte pré-desenhada, barras de vida em lote, menos redesenhos
-- [ ] **Códice**: página de reações e inimigos descobertos (com fraquezas), preenchida jogando
-- [ ] Tela de estatísticas da partida (dano por torre, reações por tipo) com exportar CSV
+- [x] **Códice**: inimigos e reações descobertos jogando (fraquezas, receitas, efeitos)
+- [x] Tela de estatísticas da partida (dano por torre e herói, reações por tipo) com exportar CSV
+- [x] **Música de fundo** composta por código, um tema por fase + mapa, que acompanha a intensidade da luta
+- [x] **Altar de Éter** na Fenda (ouro → Bênção extra) e **Trocar cartas** (ouro → novas opções) em todo modo
+- [x] Qualidade automática: em celular lento, corta partículas e números pequenos (não muda a jogabilidade)
 - *Aceite:* depois de vencer a fase 5, ainda tenho objetivos claros em todas as fases.
 
 ### Fase 7 — Relicários que importam (o pico de dopamina)

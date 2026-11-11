@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { BOONS } from '../../data/boons';
+import { playMusic, setMusicIntensity } from '../audio/music';
 import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
 import { RIFT, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
@@ -38,6 +39,8 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   create(): void {
+    playMusic('map');
+    setMusicIntensity(0);
     const save = getSave();
     paintMapBackground(this, [TRAIL], 'world_bg');
     placeDecor(this, [TRAIL], Object.values(NODES).flatMap((n) => [n, { x: n.x + (n.x < GAME_WIDTH / 2 ? 110 : -110), y: n.y }]), 99, 26);
@@ -46,7 +49,18 @@ export class WorldMapScene extends Phaser.Scene {
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
-    uiText(this, GAME_WIDTH / 2, 44, 'Campos de Vellmora', 40, '#f3e9ff', 8);
+    uiText(this, GAME_WIDTH / 2 - 50, 44, 'Campos de Vellmora', 38, '#f3e9ff', 8);
+    new Button(this, 636, 46, {
+      width: 132,
+      height: 60,
+      label: 'Códice',
+      fontSize: 22,
+      color: 0x8a3fd0,
+      onClick: () => {
+        this.cameras.main.fadeOut(180, 11, 7, 22);
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Codex'));
+      },
+    }).setDepth(45);
     uiText(this, GAME_WIDTH / 2, 92, `★ ${save.totalStars()}/${STAGE_ORDER.length * 3}     ✔ ${save.challengesDone()}/${TOTAL_CHALLENGES} desafios`, 28, PAL.goldCss, 6);
 
     STAGE_ORDER.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
@@ -150,7 +164,7 @@ export class WorldMapScene extends Phaser.Scene {
   private card: Phaser.GameObjects.Container | null = null;
 
   /** Panel with the stage description, the hero picker and a big JOGAR button. */
-  private showStageCard(id: StageId): void {
+  private showStageCard(id: StageId, animate = true): void {
     this.card?.destroy();
     const st = STAGES[id];
     const save = getSave();
@@ -191,6 +205,7 @@ export class WorldMapScene extends Phaser.Scene {
       bg.fillRoundedRect(-59, -73, 118, 150, 15);
       const img = this.add.image(0, -6, def.texture).setScale(0.62);
       if (!unlocked) img.setTint(0x111111).setAlpha(0.6);
+      if (!animate && selected) this.tweens.add({ targets: img, scale: { from: 0.74, to: 0.62 }, duration: 220, ease: 'Back.easeOut' });
       slot.add([bg, img, uiText(this, 0, 62, def.name, 16, unlocked ? PAL.uiText : PAL.uiDim, 4)]);
       if (!unlocked && def.unlockAfter) {
         const n = STAGE_ORDER.indexOf(def.unlockAfter) + 1;
@@ -204,7 +219,7 @@ export class WorldMapScene extends Phaser.Scene {
         }
         playSfx('ui');
         save.selectHero(cls);
-        this.showStageCard(id);
+        this.showStageCard(id, false);
       });
       c.add(slot);
     });
@@ -230,8 +245,10 @@ export class WorldMapScene extends Phaser.Scene {
         },
       }),
     );
-    c.setScale(0.7).setAlpha(0);
-    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
+    if (animate) {
+      c.setScale(0.7).setAlpha(0);
+      this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
+    }
     this.card = c;
   }
 

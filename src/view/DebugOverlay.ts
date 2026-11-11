@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { quality } from './quality';
 
 export interface DebugInfo {
   tick: number;
@@ -39,6 +40,6 @@ export class DebugOverlay {
     this.nextAt = now + 500;
     const { tick, seed } = this.getInfo();
     const fps = this.scene.game.loop.actualFps.toFixed(0);
-    this.text.setText(`fps ${fps}  tick ${tick}  seed ${seed}`);
+    this.text.setText(`fps ${fps}${quality.low ? ' (leve)' : ''}  tick ${tick}  seed ${seed}`);
   }
 }
