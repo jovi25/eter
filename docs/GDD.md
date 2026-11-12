@@ -217,14 +217,28 @@ Robôs: o Altar empurra a Fenda de ~onda 20 para ~onda 23–24.
 ### Códice e estatísticas
 Códice (botão no mapa): 12 inimigos e 6 reações, revelados quando aparecem na partida (save v5). Cada inimigo mostra vida,
 velocidade, fraquezas e resistências; cada reação mostra a receita e o efeito. Fim da partida: "Ver estatísticas" com dano por
-torre/herói e reações por tipo, e "Exportar CSV" (separado por ponto e vírgula, abre no Excel/Planilhas).
+torre/herói e reações por tipo (o exportar CSV foi retirado a pedido do jogador).
 
 ### Música
 Composta por código (sem arquivos): pad, baixo, arpejo, melodia de 8 compassos gerada por seed e percussão leve.
 Cada fase tem tom, modo e andamento próprios. Calma entre ondas, cheia durante a onda, intensa com chefe ou na Fenda a partir da onda 20.
 Opção "Música" separada de "Efeitos sonoros" na pausa.
 
-## 4. Coleção e evolução
+## Fase 7 — Relicários (implementado)
+Substitui o desenho antigo de equipamentos/refino/encaixes/cartas (seções 4 e 5 abaixo ficam como histórico).
+- **Moedas** (`coins`): vitória 30 + 10 por estrela; derrota 10; 1ª vitória da fase +60; cada desafio novo +40;
+  Fenda 4 por onda; desafio do dia +50 na 1ª partida do dia. Save antigo ganha 150 (um baú). Números em `src/data/relics.ts`.
+- **Baú**: 150 moedas. Conteúdo sorteado na compra e gravado no save (fechar o jogo não muda o resultado).
+  Chances: Comum 55%, Rara 30%, Épica 12%, Lendária 3%. Garantia: no máximo 10 baús seguidos sem Épica ou melhor.
+  Abertura: 4 toques; nos 3 primeiros a raridade pode subir (clarão, tremor, cor). Botão Pular.
+- **Conteúdo**: 14 Relíquias e 5 Bênçãos bloqueadas (Vinha Trepadeira, Mão Pesada, Flechas de Ferro, Raízes Eternas,
+  Derretimento Cortante). Repetida sobe a Relíquia de nível (até 3); se tudo daquela raridade estiver completo, devolve 60 moedas.
+- **Relíquias**: até 3 equipadas. Comuns são bônus simples; Raras e Épicas trazem uma troca (Lente de Cristal +dano −alcance,
+  Coroa da Tempestade +saltos −Fogo, Pedra do Alquimista +reações −golpe comum, Escudo de Carvalho +vidas −ouro).
+  Valem nas fases e na Fenda; **não** no desafio do dia (igual para todos).
+- Decisão padrão: 4 raridades (não 5 do desenho antigo) para casar com as cores das Bênçãos + dourado.
+
+## 4. Coleção e evolução (desenho antigo, substituído pela Fase 7)
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.
 - **Início:** Arqueiro, Vinha, Braseiro. **Cristal Gélido** vem no **primeiro relicário (roteirizado)**: sobe até Épico nos toques.

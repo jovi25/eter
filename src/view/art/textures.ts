@@ -1,4 +1,6 @@
 import * as Phaser from 'phaser';
+import { RELIC_IDS, RELICS } from '../../data/relics';
+import { drawChest, drawEterCoin, drawRelic, RELIC_ICON } from './relicArt';
 import { ASSETS, type AssetKey } from '../../assets/manifest';
 import {
   blush,
@@ -1015,6 +1017,17 @@ export function generateTextures(scene: Phaser.Scene): void {
     tex.refresh();
   }
   generateNumberFont(scene);
+  // Relicário art (Fase 7)
+  const paint = (key: string, w: number, h: number, fn: (c: CanvasRenderingContext2D) => void) => {
+    if (scene.textures.exists(key)) return;
+    const tex = scene.textures.createCanvas(key, w, h);
+    if (!tex) return;
+    fn(tex.getContext());
+    tex.refresh();
+  };
+  for (const id of RELIC_IDS) paint(`relic_${id}`, RELIC_ICON, RELIC_ICON, (c) => drawRelic(c, RELICS[id].shape, RELICS[id].color));
+  paint('chest', 200, 170, drawChest);
+  paint('eter_coin', 40, 40, drawEterCoin);
   // Hero rigs in layers (cape / body / weapon arm) so battle can animate them.
   for (const key of Object.keys(HERO_STYLES) as HeroTexture[]) {
     const parts = { cape: drawCape, body: drawBody, arm: drawArm };

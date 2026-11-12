@@ -4,7 +4,8 @@ import { ECONOMY } from '../../data/economy';
 import { ENEMIES, type EnemyId } from '../../data/enemies';
 import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTION_IDS, REACTIONS } from '../../data/reactions';
-import { STAGE_ORDER, STAGES, type StageId } from '../../data/stages';
+import { STAGE_ORDER, type CampaignStageId, type StageId } from '../../data/stages';
+import { matchCoins } from '../../data/relics';
 import { getSave } from '../../meta/save';
 import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
@@ -83,26 +84,13 @@ export class BattleScene extends Phaser.Scene {
   private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
 
-  /** Rows for the stats screen and its CSV export. */
+  /** Rows for the stats screen. */
   private matchReport(): MatchReport {
     const s = this.sim.state;
     const damage = TOWER_IDS.map((id) => ({ label: TOWERS[id].name, value: Math.round(s.stats.damageByTower[id]), color: id === 'archer' ? 0xe8d6b0 : ELEMENTS[TOWERS[id].element].color }));
     damage.push({ label: HEROES[this.heroClass].name, value: Math.round(s.stats.heroDamage), color: HERO_COLORS[this.heroClass] });
     const reactions = REACTION_IDS.map((id) => ({ label: REACTIONS[id].name, value: s.stats.reactions[id], color: REACTIONS[id].color }));
-    const stage = this.stageId === 'rift' ? 'Fenda Infinita' : STAGES[this.stageId].name;
-    const info: [string, string | number][] = [
-      ['modo', this.daily ? 'desafio do dia' : stage],
-      ['resultado', s.result === 'won' ? 'vitória' : 'derrota'],
-      ['onda', s.wave],
-      ['vidas', s.lives],
-      ['tempo (s)', Math.round(s.time)],
-      ['abates', s.stats.kills],
-      ['maior combo', s.stats.bestCombo],
-      ['torres construídas', TOWER_IDS.reduce((n, id) => n + s.stats.built[id], 0)],
-      ['bênçãos', s.boons.map((b) => BOONS[b].name).join(' | ')],
-      ['seed', s.seed],
-    ];
-    return { damage, reactions, info };
+    return { damage, reactions };
   }
 
   private toMap(): void {
@@ -139,7 +127,14 @@ export class BattleScene extends Phaser.Scene {
     const seed = this.daily?.seed ?? data.seed ?? Math.floor(Math.random() * 1e9);
     this.stageId = this.daily?.stage ?? data.stage ?? 'v1';
     this.heroClass = this.daily?.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
-    this.sim = new Simulation({ stage: this.stageId, seed, modifiers: { heroClass: this.heroClass } });
+    // Relíquias and revealed Bênçãos count everywhere except the daily challenge (same for everyone).
+    const save = getSave();
+    this.sim = new Simulation({
+      stage: this.stageId,
+      seed,
+      modifiers: { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons] },
+      relics: this.daily ? [] : save.loadout(),
+    });
     if (this.daily) {
       // The daily run starts with one boon already in hand.
       this.sim.state.boonOffers.unshift([this.daily.boon]);
@@ -522,10 +517,14 @@ export class BattleScene extends Phaser.Scene {
       this.menu.close();
       const save = getSave();
       const isRift = this.stageId === 'rift';
+      const firstWin = !isRift && !this.daily && g.won && save.stars(this.stageId as CampaignStageId) === 0;
+      let newChallenges = 0;
+      let firstDailyToday = false;
       let challenges: { text: string; done: boolean; fresh: boolean }[] | undefined;
       let daily: { score: number; best: number; record: boolean } | undefined;
       if (this.daily) {
         const score = dailyScore(this.sim.state);
+        firstDailyToday = save.data.daily.key !== this.daily.key || save.data.daily.plays === 0;
         const record = save.recordDaily(this.daily.key, score);
         daily = { score, record, best: save.dailyBest(this.daily.key) };
       } else {
@@ -533,12 +532,23 @@ export class BattleScene extends Phaser.Scene {
         if (this.stageId !== 'rift') {
           const id = this.stageId;
           const fresh = save.recordChallenges(id, evaluateChallenges(id, this.sim.state));
+          newChallenges = fresh.filter(Boolean).length;
           const done = save.data.challenges[id] ?? [];
           challenges = CHALLENGES[id].map((c, i) => ({ text: challengeText(c), done: !!done[i], fresh: !!fresh[i] }));
         }
       }
       const riftWave = g.won ? this.sim.state.totalWaves : Math.max(0, this.sim.state.wave - 1);
       const rift = isRift ? { wave: riftWave, record: getSave().recordRift(riftWave), best: getSave().data.riftBest } : undefined;
+      const coins = matchCoins({
+        mode: this.daily ? 'daily' : isRift ? 'rift' : 'stage',
+        won: g.won,
+        stars: g.stars,
+        firstWin,
+        newChallenges,
+        riftWave: rift?.wave ?? 0,
+        firstDailyToday,
+      });
+      save.addCoins(coins);
       const next = this.stageId === 'rift' || this.daily ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
       const onNext = g.won && next ? () => this.scene.restart(this.again(next)) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
@@ -561,6 +571,7 @@ export class BattleScene extends Phaser.Scene {
             rift,
             challenges,
             daily,
+            coins,
           },
           { onStats: () => new StatsPanel(this, this.matchReport()), onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
         );

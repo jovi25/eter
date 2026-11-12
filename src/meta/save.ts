@@ -2,11 +2,13 @@
 // Pure TypeScript (no Phaser) so it can be unit-tested.
 
 import { HEROES, type HeroClass } from '../data/heroes';
+import type { BoonId } from '../data/boons';
+import { COINS, LOCKED_BOONS, MAX_RELIC_LEVEL, RELIC_IDS, RELIC_SLOTS, isHighRarity, nextChestSeed, rollChest, type ChestReward, type RelicId } from '../data/relics';
 import { ENEMIES } from '../data/enemies';
 import { REACTIONS } from '../data/reactions';
 import { RIFT, STAGE_ORDER, type CampaignStageId, type StageId } from '../data/stages';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -23,10 +25,16 @@ export interface SaveData {
   challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
   daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
   codex: { enemies: string[]; reactions: string[] }; // Códice discoveries (v5+)
+  // ── v6: Relicários ──
+  coins: number;
+  relics: Partial<Record<RelicId, number>>; // owned level 1..3
+  equipped: RelicId[]; // up to RELIC_SLOTS
+  unlockedBoons: BoonId[];
+  chest: { seed: number; pending: ChestReward | null; opened: number; sinceEpic: number };
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] } };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -37,7 +45,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] } };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -55,7 +63,27 @@ export function migrate(raw: unknown): SaveData {
     // v5: Códice.
     out = { ...out, version: 5, codex: { enemies: [], reactions: [] } };
   }
+  if (out.version < 6) {
+    // v6: Relicários. Everyone gets enough coins for a first chest.
+    out = { ...out, version: 6, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
+  }
   if (!(out.hero in HEROES)) out.hero = 'mage';
+  out.coins = clampInt(out.coins, 0, 1e9);
+  const rel: SaveData['relics'] = {};
+  for (const id of RELIC_IDS) {
+    const lv = out.relics?.[id];
+    if (typeof lv === 'number' && lv >= 1) rel[id] = clampInt(lv, 1, MAX_RELIC_LEVEL);
+  }
+  out.relics = rel;
+  out.equipped = Array.isArray(out.equipped) ? [...new Set(out.equipped)].filter((id) => !!rel[id]).slice(0, RELIC_SLOTS) : [];
+  out.unlockedBoons = Array.isArray(out.unlockedBoons) ? [...new Set(out.unlockedBoons)].filter((id) => LOCKED_BOONS.includes(id)) : [];
+  const chs = out.chest;
+  out.chest = {
+    seed: typeof chs?.seed === 'number' ? chs.seed >>> 0 : 12345,
+    pending: chs?.pending && typeof chs.pending === 'object' && 'kind' in chs.pending ? chs.pending : null,
+    opened: clampInt(chs?.opened, 0, 1e9),
+    sinceEpic: clampInt(chs?.sinceEpic, 0, 1e9),
+  };
   const cx = out.codex;
   out.codex = {
     enemies: Array.isArray(cx?.enemies) ? [...new Set(cx.enemies.filter((e) => typeof e === 'string' && e in ENEMIES))] : [],
@@ -151,6 +179,61 @@ export class SaveStore {
 
   dailyBest(key: string): number {
     return this.data.daily.key === key ? this.data.daily.best : 0;
+  }
+
+  // ───────────── Relicários (v6) ─────────────
+
+  addCoins(n: number): void {
+    if (n <= 0) return;
+    this.data.coins += Math.round(n);
+    this.persist();
+  }
+
+  /** Pay for a chest and pre-roll its content (saved, so closing the game can't re-roll it). */
+  buyChest(): ChestReward | null {
+    const d = this.data;
+    if (d.chest.pending) return d.chest.pending;
+    if (d.coins < COINS.chestPrice) return null;
+    d.coins -= COINS.chestPrice;
+    d.chest.pending = rollChest(d.chest.seed, { relics: d.relics, unlockedBoons: d.unlockedBoons, sinceEpic: d.chest.sinceEpic });
+    d.chest.seed = nextChestSeed(d.chest.seed);
+    this.persist();
+    return d.chest.pending;
+  }
+
+  /** Put the opened chest's content into the collection. */
+  claimChest(): ChestReward | null {
+    const d = this.data;
+    const r = d.chest.pending;
+    if (!r) return null;
+    if (r.kind === 'relic') {
+      d.relics[r.id] = Math.min(MAX_RELIC_LEVEL, (d.relics[r.id] ?? 0) + 1);
+      if (r.isNew && d.equipped.length < RELIC_SLOTS) d.equipped.push(r.id);
+    } else if (r.kind === 'boon') {
+      if (!d.unlockedBoons.includes(r.id)) d.unlockedBoons.push(r.id);
+    } else d.coins += r.amount;
+    d.chest.opened++;
+    d.chest.sinceEpic = isHighRarity(r.rarity) ? 0 : d.chest.sinceEpic + 1;
+    d.chest.pending = null;
+    this.persist();
+    return r;
+  }
+
+  /** Equip / unequip a relic. Returns false when all slots are full. */
+  toggleEquip(id: RelicId): boolean {
+    const d = this.data;
+    if (!d.relics[id]) return false;
+    const i = d.equipped.indexOf(id);
+    if (i >= 0) d.equipped.splice(i, 1);
+    else if (d.equipped.length >= RELIC_SLOTS) return false;
+    else d.equipped.push(id);
+    this.persist();
+    return true;
+  }
+
+  /** What the match receives. */
+  loadout(): { id: RelicId; level: number }[] {
+    return this.data.equipped.map((id) => ({ id, level: this.data.relics[id] ?? 1 }));
   }
 
   /** Códice: mark an enemy or reaction as seen. Returns true the first time. */

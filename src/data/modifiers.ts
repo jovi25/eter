@@ -29,6 +29,7 @@ export interface SimModifiers {
   goldMult: number; // kill gold
   upgradeCostMult: number;
   rangeMult: number;
+  unlockedBoons: string[]; // locked Bênçãos revealed by Relicários (Fase 7)
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -53,5 +54,6 @@ export function defaultModifiers(): SimModifiers {
     goldMult: 1,
     upgradeCostMult: 1,
     rangeMult: 1,
+    unlockedBoons: [],
   };
 }

@@ -17,6 +17,7 @@ export interface BoonDef {
   desc: string;
   rarity: BoonRarity;
   color: number;
+  locked?: boolean; // only in the deck after a Relicário reveals it
   apply(ctx: BoonCtx): void;
 }
 
@@ -83,6 +84,17 @@ export const BOONS = {
     apply: ({ mods }) => { mods.chainBonus += 3; } },
   overdrive: { name: 'Sobremarcha', desc: 'Todas as torres: +20% de dano', rarity: 'epic', color: 0xffffff,
     apply: ({ mods }) => { for (const k of Object.keys(mods.towerDamageMult) as (keyof typeof mods.towerDamageMult)[]) mods.towerDamageMult[k] *= 1.2; } },
+  // ── Revealed by Relicários (Fase 7) ──
+  tallVines: { name: 'Vinha Trepadeira', desc: 'A Vinha alcança inimigos voadores', rarity: 'common', color: NATURE, locked: true,
+    apply: ({ mods }) => { mods.vineHitsFlying = true; } },
+  heavyHand: { name: 'Mão Pesada', desc: 'Herói: +35% de dano', rarity: 'common', color: ARCANE, locked: true,
+    apply: ({ mods }) => { mods.heroDamageMult *= 1.35; } },
+  ironArrows: { name: 'Flechas de Ferro', desc: 'Físico ignora resistência e Arqueiros +15% de dano', rarity: 'rare', color: 0xe8d6b0, locked: true,
+    apply: ({ mods }) => { mods.physicalIgnoresResist = true; mods.towerDamageMult.archer *= 1.15; } },
+  deepRoots: { name: 'Raízes Eternas', desc: 'Enraizado dura +1 s', rarity: 'rare', color: NATURE, locked: true,
+    apply: ({ mods }) => { mods.rootDurationBonus += 1; } },
+  sharpMelt: { name: 'Derretimento Cortante', desc: 'DERRETIMENTO deixa Frágil e Fogo +10%', rarity: 'epic', color: 0xffb347, locked: true,
+    apply: ({ mods }) => { mods.meltAppliesFragile = true; mods.elementDamageMult.fire *= 1.1; } },
 } satisfies Record<string, BoonDef>;
 
 export type BoonId = keyof typeof BOONS;

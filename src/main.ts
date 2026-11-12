@@ -4,6 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from './data/config';
 import { BattleScene } from './view/scenes/BattleScene';
 import { BootScene } from './view/scenes/BootScene';
 import { CodexScene } from './view/scenes/CodexScene';
+import { RelicScene } from './view/scenes/RelicScene';
 import { WorldMapScene } from './view/scenes/WorldMapScene';
 
 const game = new Phaser.Game({
@@ -18,7 +19,7 @@ const game = new Phaser.Game({
   },
   input: { activePointers: 2 },
   render: { powerPreference: 'high-performance' },
-  scene: [BootScene, WorldMapScene, BattleScene, CodexScene],
+  scene: [BootScene, WorldMapScene, BattleScene, CodexScene, RelicScene],
 });
 
 // Handy while debugging in the browser console.

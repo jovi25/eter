@@ -44,11 +44,12 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Qualidade automática: em celular lento, corta partículas e números pequenos (não muda a jogabilidade)
 - *Aceite:* depois de vencer a fase 5, ainda tenho objetivos claros em todas as fases.
 
-### Fase 7 — Relicários que importam (o pico de dopamina)
-- [ ] Relicário com abertura por toques, escalada de raridade, pré-sorteio salvo, chances visíveis e garantia
-- [ ] Conteúdo que **muda o jogo**: bênçãos novas para o baralho, **bênção inicial** (começa a partida com 1), talentos de herói
-- [ ] `coins` por partida, desafios e recordes da Fenda; loja de relicários por coins
-- [ ] Corte proposto: **sem refino e sem encaixes**. No lugar: 3 **Relíquias** equipáveis com um efeito forte cada
+### Fase 7 — Relicários que importam (o pico de dopamina) ✔
+- [x] Relicário com abertura por 4 toques, escalada de raridade, pré-sorteio salvo, chances visíveis e garantia (Épica+ a cada 10)
+- [x] Conteúdo que **muda o jogo**: 5 bênçãos novas para o baralho, **bênção inicial** (Pergaminho Antigo); talentos ficam para a Fase 8
+- [x] `coins` por partida, estrelas, 1ª vitória, desafios novos, Fenda e desafio do dia; baú por 150 moedas
+- [x] Sem refino e sem encaixes: 14 **Relíquias** (4 raridades, 3 níveis), até 3 equipadas, a maioria com um custo
+- [x] Exportar CSV removido a pedido do jogador
 - *Aceite:* abrir um relicário me faz querer testar uma estratégia nova na partida seguinte.
 
 ### Fase 8 — Heróis com identidade

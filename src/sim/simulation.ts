@@ -1,5 +1,6 @@
 import { SIM_DT } from '../data/config';
 import { BONUS, ECONOMY, DIFFICULTY, STARS, WAVE_TIMING } from '../data/economy';
+import { RELICS, type RelicDef, type RelicId } from '../data/relics';
 import { ALTAR, BOON_IDS, BOON_RULES, BOONS, RARITY_WEIGHT, REROLL, type BoonDef, type BoonId, type BoonRarity } from '../data/boons';
 import { ENEMIES, type EnemyId } from '../data/enemies';
 import { HERO } from '../data/hero';
@@ -21,6 +22,8 @@ export interface SimOptions {
   stage: StageId;
   seed: number;
   modifiers?: Partial<SimModifiers>;
+  /** Equipped Relíquias (Fase 7): applied once at the start. */
+  relics?: { id: RelicId; level: number }[];
 }
 
 export interface SpawnOptions {
@@ -131,6 +134,17 @@ export class Simulation {
         bestCombo: 0,
       },
     };
+    for (const r of opts.relics ?? []) {
+      (RELICS[r.id] as RelicDef).apply(
+        {
+          mods: this.mods,
+          state: this.state,
+          addGold: (n) => (this.state.gold = Math.max(0, this.state.gold + n)),
+          offerBoon: (rich) => this.state.boonOffers.push(rich ? this.rollBoons(ALTAR.weights, ALTAR.exclude) : this.rollBoons()),
+        },
+        r.level,
+      );
+    }
     if (this.mods.heroClass === 'druid') {
       this.state.summons.push({
         id: this.nextId++,
@@ -537,7 +551,7 @@ export class Simulation {
 
   /** Roll a "pick 1 of 3" offer (weighted by rarity, no repeats inside one offer). */
   private rollBoons(weights: Record<BoonRarity, number> = RARITY_WEIGHT, exclude: readonly string[] = []): BoonId[] {
-    const pool = BOON_IDS.filter((id) => !exclude.includes(id));
+    const pool = BOON_IDS.filter((id) => !exclude.includes(id) && (!(BOONS[id] as BoonDef).locked || this.mods.unlockedBoons.includes(id)));
     const options: BoonId[] = [];
     while (options.length < BOON_RULES.choices && pool.length > 0) {
       const total = pool.reduce((sum, id) => sum + weights[(BOONS[id] as BoonDef).rarity], 0);
