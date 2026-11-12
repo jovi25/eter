@@ -1004,27 +1004,39 @@ const DRAW: Record<AssetKey, Drawer> = {
 };
 
 /** Paint every procedural asset once into the texture cache. */
+/** One sprite waiting to be packed into the atlas. */
+interface Job {
+  key: string;
+  w: number;
+  h: number;
+  draw: (c: CanvasRenderingContext2D) => void;
+}
+
+export const ATLAS_KEY = 'atlas';
+const ATLAS_PAD = 2;
+
+/**
+ * Paint every procedural sprite once — all into ONE big texture (an atlas).
+ *
+ * Why: the renderer can batch any number of sprites that share a texture into a single draw, and with only one
+ * texture per batch it uses its simplest pixel program. (With many separate textures it uses a program that tests
+ * up to 16 textures for every pixel, which is very slow on low-end phone GPUs.)
+ *
+ * Every sprite keeps its own key: each key is registered as a tiny Texture whose single frame points into the atlas.
+ */
 export function generateTextures(scene: Phaser.Scene): void {
-  for (const key of Object.keys(ASSETS) as AssetKey[]) {
-    const src = ASSETS[key];
-    if (src.kind !== 'procedural' || scene.textures.exists(key)) continue;
-    const d = DRAW[key];
-    const tex = scene.textures.createCanvas(key, d.w, d.h);
-    if (!tex) continue;
-    const ctx = tex.getContext();
-    ctx.clearRect(0, 0, d.w, d.h);
-    d.draw(ctx, d.w / 2, d.h / 2);
-    tex.refresh();
-  }
   generateNumberFont(scene);
-  // Relicário art (Fase 7)
+  if (scene.textures.exists(ATLAS_KEY)) return;
+  const jobs: Job[] = [];
   const paint = (key: string, w: number, h: number, fn: (c: CanvasRenderingContext2D) => void) => {
-    if (scene.textures.exists(key)) return;
-    const tex = scene.textures.createCanvas(key, w, h);
-    if (!tex) return;
-    fn(tex.getContext());
-    tex.refresh();
+    if (!scene.textures.exists(key)) jobs.push({ key, w, h, draw: fn });
   };
+  for (const key of Object.keys(ASSETS) as AssetKey[]) {
+    if (ASSETS[key].kind !== 'procedural') continue;
+    const d = DRAW[key];
+    paint(key, d.w, d.h, (c) => d.draw(c, d.w / 2, d.h / 2));
+  }
+  // Relicário art (Fase 7)
   for (const id of RELIC_IDS) paint(`relic_${id}`, RELIC_ICON, RELIC_ICON, (c) => drawRelic(c, RELICS[id].shape, RELICS[id].color));
   paint('chest', 200, 170, drawChest);
   paint('eter_coin', 40, 40, drawEterCoin);
@@ -1051,14 +1063,68 @@ export function generateTextures(scene: Phaser.Scene): void {
   // Hero rigs in layers (cape / body / weapon arm) so battle can animate them.
   for (const key of Object.keys(HERO_STYLES) as HeroTexture[]) {
     const parts = { cape: drawCape, body: drawBody, arm: drawArm };
-    for (const [part, draw] of Object.entries(parts)) {
-      const k = `${key}_${part}`;
-      if (scene.textures.exists(k)) continue;
-      const tex = scene.textures.createCanvas(k, RIG.w, RIG.h);
-      if (!tex) continue;
-      draw(tex.getContext(), HERO_STYLES[key]);
-      tex.refresh();
+    for (const [part, draw] of Object.entries(parts)) paint(`${key}_${part}`, RIG.w, RIG.h, (c) => draw(c, HERO_STYLES[key]));
+  }
+  buildAtlas(scene, jobs);
+}
+
+/** Shelf-pack the jobs (tallest first) and register one texture key per sprite, all sharing the atlas. */
+function buildAtlas(scene: Phaser.Scene, jobs: Job[]): void {
+  const sorted = [...jobs].sort((x, y) => y.h - x.h);
+  const place = (size: number): Map<string, { x: number; y: number }> | null => {
+    const pos = new Map<string, { x: number; y: number }>();
+    let x = ATLAS_PAD;
+    let y = ATLAS_PAD;
+    let shelf = 0;
+    for (const j of sorted) {
+      const w = j.w + ATLAS_PAD * 2;
+      const h = j.h + ATLAS_PAD * 2;
+      if (x + w > size) {
+        x = ATLAS_PAD;
+        y += shelf;
+        shelf = 0;
+      }
+      if (y + h > size) return null;
+      pos.set(j.key, { x: x + ATLAS_PAD, y: y + ATLAS_PAD });
+      x += w;
+      shelf = Math.max(shelf, h);
     }
+    return pos;
+  };
+  let size = 1024;
+  let pos = place(size);
+  while (!pos && size < 4096) {
+    size *= 2;
+    pos = place(size);
+  }
+  if (!pos) throw new Error('atlas: sprites do not fit');
+  const atlas = scene.textures.createCanvas(ATLAS_KEY, size, size);
+  if (!atlas) return;
+  const ctx = atlas.getContext();
+  for (const j of sorted) {
+    const at = pos.get(j.key)!;
+    ctx.save();
+    if (j.key === 'px') {
+      // The solid pixel is stretched into bars: give it a solid border so its edges never blend with emptiness.
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(at.x - ATLAS_PAD, at.y - ATLAS_PAD, j.w + ATLAS_PAD * 2, j.h + ATLAS_PAD * 2);
+    } else {
+      ctx.beginPath();
+      ctx.rect(at.x, at.y, j.w, j.h);
+      ctx.clip(); // glows may paint past their box: never onto a neighbour
+      ctx.translate(at.x, at.y);
+      j.draw(ctx);
+    }
+    ctx.restore();
+  }
+  atlas.refresh();
+  const source = atlas.source[0]!;
+  for (const j of sorted) {
+    const at = pos.get(j.key)!;
+    const tex = new Phaser.Textures.Texture(scene.textures, j.key, [], 0, 0);
+    tex.source.push(source);
+    tex.add('__BASE', 0, at.x, at.y, j.w, j.h);
+    (scene.textures.list as Record<string, Phaser.Textures.Texture>)[j.key] = tex;
   }
 }
 

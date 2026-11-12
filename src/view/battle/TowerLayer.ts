@@ -4,6 +4,7 @@ import { ELEMENTS } from '../../data/elements';
 import { MAX_LEVEL, TOWERS } from '../../data/towers';
 import type { TowerState } from '../../sim/types';
 import { DEPTH, unitDepth } from './layers';
+import { quality } from '../quality';
 import { EVOLUTIONS, evolvedLevel } from '../../data/evolutions';
 
 class TowerView {
@@ -79,7 +80,7 @@ class TowerView {
     this.pips.forEach((p, i) => p.setVisible(i < level));
     this.baseScale = 1 + (level - 1) * 0.1;
     this.top.setScale(this.baseScale);
-    if (level >= MAX_LEVEL && !this.aura.visible) {
+    if (level >= MAX_LEVEL && !this.aura.visible && !quality.low) {
       this.aura.setVisible(true).setAlpha(0.5);
       this.auraTween = this.scene.tweens.add({ targets: this.aura, alpha: 0.95, scaleX: 6.3, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }

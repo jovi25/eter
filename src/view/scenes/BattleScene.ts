@@ -753,7 +753,7 @@ export class BattleScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const t0 = performance.now();
     const dtMs = Math.min(delta, 100);
-    updateQuality(this.game.loop.actualFps, delta);
+    updateQuality(this.game, this.game.loop.actualFps, delta);
     // A pending Bênção pauses the match until the player picks a card.
     this.tutorial.update(dtMs, !this.picker && !this.paused && !this.ended);
     this.checkTips();

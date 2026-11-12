@@ -279,6 +279,18 @@ Agora: ~1 ms típico. Formas estáticas viram imagens (`src/view/ui/bake.ts`), r
 andam sem animações, textos repetidos são reaproveitados (`LabelPool`), ouro/vidas/combo usam fonte de dígitos pronta.
 O limitador de 30 fps foi removido: em telas de 60/90/120 Hz ele entregava quadros em intervalos irregulares (engasgos).
 
+### Desempenho em celular fraco (rodada 3)
+Relato: menos de 10 fps num celular fraco em fase normal. A cena é leve em CPU; a suspeita é a placa de vídeo.
+- **Atlas único** (`generateTextures`): todos os sprites pintados numa textura 2048². Cada chave continua existindo
+  (uma Texture por chave com um frame apontando para o atlas), então o resto do código não muda.
+- **`maxTextures: 1`**: com várias texturas por lote o Phaser usa um programa de pixels com até 16 testes por pixel,
+  muito lento em GPU fraca. Com 1, usa o mais simples. Custo: ~48 chamadas de desenho por quadro (eram 19), aceitável.
+- **`antialiasGL: false`**: sem MSAA na tela.
+- **Resolução adaptativa** (`src/view/perf.ts`): 100% → 80% → 65% → 50%. Abaixo de 45 fps por 2,5 s desce um degrau
+  (ao vivo, sem recarregar) e grava o nível no aparelho. Abaixo de 50 fps liga efeitos leves (sem brilhos de torre, sem sombras).
+  Modo econômico: Automático (adapta), Ligado (começa em 80%), Desligado (100% fixo). Voltar a Automático zera o aprendizado.
+- Não verificado em aparelho real: depende de teste do jogador. O contador mostra a resolução atual (ex.: "GL 65%").
+
 ## 4. Coleção e evolução (desenho antigo, substituído pela Fase 7)
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

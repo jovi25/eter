@@ -380,7 +380,7 @@ export class WorldMapScene extends Phaser.Scene {
       c.add(btn);
     });
     c.add(economyButton(this, 0, 34, 440));
-    c.add(uiText(this, 0, 82, 'Econômico: resolução menor e efeitos leves. Gasta menos bateria.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
+    c.add(uiText(this, 0, 82, 'Automático baixa a resolução sozinho se o jogo ficar lento.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
     c.add(uiText(this, 0, 150, 'Backup do progresso', 24, PAL.goldCss, 5));
     c.add(new Button(this, -112, 214, { width: 214, height: 62, label: 'Copiar', fontSize: 22, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
     c.add(new Button(this, 112, 214, { width: 214, height: 62, label: 'Restaurar', fontSize: 22, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));

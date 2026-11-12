@@ -1,7 +1,8 @@
-import { economyOn, markStruggled } from './perf';
+import type * as Phaser from 'phaser';
+import { dropResolution, economyOn } from './perf';
 
-// Adaptive effects quality: when the phone can't keep up, trim the eye candy (never the gameplay).
-// "high" = everything; "low" = fewer particles, no damage-over-time numbers, fewer numbers per frame.
+// Adaptive quality: when the phone can't keep up, first trim the eye candy, then lower the resolution
+// (never the gameplay). "low" = fewer particles, no glows/shadows, no damage-over-time numbers.
 
 export const quality = {
   low: false,
@@ -9,19 +10,18 @@ export const quality = {
   numbersLeft: 8,
 };
 
-const LOW_FPS = 48;
+const LOW_FPS = 50; // below this: light effects
+const DROP_FPS = 45; // below this for a while: one resolution level down (goal: never under 30)
 const HIGH_FPS = 57;
 let belowMs = 0;
 let aboveMs = 0;
-let severeMs = 0;
+let slowMs = 0;
 
-/** Call once per frame with the measured fps and the frame time. */
-export function updateQuality(fps: number, dtMs: number): void {
+/** Call once per frame with the measured fps and the real frame time. */
+export function updateQuality(game: Phaser.Game, fps: number, dtMs: number): void {
   quality.numbersLeft = quality.low ? 3 : 8;
-  if (typeof document !== 'undefined' && document.hidden) return;
-  // Really slow (under 25 fps for 5 s): remember it, so Automático turns on Modo econômico next launch.
-  severeMs = fps < 25 ? severeMs + dtMs : 0;
-  if (severeMs > 5000 && !economyOn()) markStruggled();
+  // Ignore frames from a hidden / throttled tab: they say nothing about the phone's speed.
+  if ((typeof document !== 'undefined' && document.hidden) || dtMs > 400) return;
   if (fps < LOW_FPS) {
     belowMs += dtMs;
     aboveMs = 0;
@@ -29,11 +29,16 @@ export function updateQuality(fps: number, dtMs: number): void {
     aboveMs += dtMs;
     belowMs = 0;
   }
-  // Drop fast (2 s of struggle), recover slowly (10 s of smooth play) so it doesn't flip-flop.
-  if (!quality.low && belowMs > 2000) {
-    quality.low = true;
-  }
+  // Effects: drop fast (1.5 s of struggle), recover slowly (10 s of smooth play) so it doesn't flip-flop.
+  if (!quality.low && belowMs > 1500) quality.low = true;
   if (quality.low && aboveMs > 10000 && !economyOn()) quality.low = false;
+  // Resolution: still slow → fewer pixels. Then wait a few seconds before judging again.
+  slowMs = fps < DROP_FPS ? slowMs + dtMs : Math.min(slowMs, 0);
+  if (slowMs > 2500) {
+    quality.low = true;
+    dropResolution(game);
+    slowMs = -3000;
+  }
 }
 
 /** Scale a particle count for the current quality. */

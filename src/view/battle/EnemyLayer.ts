@@ -4,6 +4,7 @@ import type { EnemyState } from '../../sim/types';
 import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
 import { unitDepth } from './layers';
+import { quality } from '../quality';
 
 const HP_W = 52;
 
@@ -114,7 +115,7 @@ export class EnemyLayer {
     const h = v.body.height;
     v.bodyY = def.flying ? -h * 0.5 - 34 : -h * 0.42;
     v.body.setPosition(0, v.bodyY);
-    v.shadow.setScale(def.radius / 30, 1).setPosition(0, 4).setAlpha(def.flying ? 0.5 : 1);
+    v.shadow.setScale(def.radius / 30, 1).setPosition(0, 4).setAlpha(def.flying ? 0.5 : 1).setVisible(!quality.low);
     v.roots.setVisible(false).setScale(def.radius / 28);
     v.ice.setVisible(false).setPosition(0, v.bodyY).setScale((def.radius * 2.4) / 64);
     const top = v.bodyY - h * 0.5 - 8;

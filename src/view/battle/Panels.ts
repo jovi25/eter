@@ -4,7 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { getSettings, setSetting } from '../settings';
-import { ECONOMY_LABEL, economyOn, RENDER_SCALE } from '../perf';
+import { applyScale, ECONOMY_LABEL, economyOn, renderScale, resetLearned } from '../perf';
 import { refreshMusic } from '../audio/music';
 import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
@@ -33,30 +33,27 @@ function panel(scene: Phaser.Scene, w: number, h: number, y = GAME_HEIGHT / 2): 
 type Toggle = 'sound' | 'music' | 'vibration' | 'shake';
 const LABELS: Record<Toggle, string> = { sound: 'Efeitos sonoros', music: 'Música', vibration: 'Vibração', shake: 'Tremor de tela' };
 
-/** "Modo econômico" cycles Automático → Ligado → Desligado. Resolution changes apply on the next launch. */
+/** "Modo econômico" cycles Automático → Ligado → Desligado. The resolution changes right away. */
 export function economyButton(scene: Phaser.Scene, x: number, y: number, width: number): Button {
-  const label = () => `Modo econômico: ${ECONOMY_LABEL[getSettings().economy]}`;
+  const label = () => `Modo econômico: ${ECONOMY_LABEL[getSettings().economy]} (${Math.round(renderScale() * 100)}%)`;
   const btn = new Button(scene, x, y, {
     width,
     height: 58,
     label: label(),
-    fontSize: 21,
+    fontSize: 19,
     color: economyOn() ? 0x3aa655 : 0x6b6480,
     onClick: () => {
       const order = ['auto', 'on', 'off'] as const;
       const next = order[(order.indexOf(getSettings().economy) + 1) % order.length]!;
       setSetting('economy', next);
+      // Back to Automático = start over at full quality and let the game find the right level again.
+      if (next === 'auto') resetLearned(scene.game);
+      else applyScale(scene.game);
       btn.setLabel(label()).setColor(economyOn() ? 0x3aa655 : 0x6b6480);
-      if ((economyOn() ? 0.75 : 1) !== RENDER_SCALE) {
-        const t = uiText(scene, x, y + 44, 'A resolução muda ao reabrir o jogo', 17, PAL.uiDim, 4);
-        btn.parentContainer?.add(t);
-        scene.tweens.add({ targets: t, alpha: 0, delay: 2200, duration: 400, onComplete: () => t.destroy() });
-      }
     },
   });
   return btn;
 }
-
 
 export class PausePanel {
   private objs: Phaser.GameObjects.GameObject[] = [];
