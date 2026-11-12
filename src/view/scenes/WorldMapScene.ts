@@ -1,4 +1,9 @@
 import * as Phaser from 'phaser';
+import { getSettings, setSetting } from '../settings';
+import { refreshMusic } from '../audio/music';
+import { economyButton } from '../battle/Panels';
+import { resetTips } from '../battle/Tutorial';
+import { fitCamera, frameCap } from '../perf';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { BOONS } from '../../data/boons';
@@ -40,6 +45,8 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
+    frameCap(this, 'menu');
     playMusic('map');
     setMusicIntensity(0);
     const save = getSave();
@@ -50,54 +57,35 @@ export class WorldMapScene extends Phaser.Scene {
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
-    uiText(this, GAME_WIDTH / 2 - 50, 44, 'Campos de Vellmora', 38, '#f3e9ff', 8);
-    new Button(this, 636, 46, {
-      width: 132,
-      height: 60,
-      label: 'Códice',
-      fontSize: 22,
-      color: 0x8a3fd0,
-      onClick: () => {
-        this.cameras.main.fadeOut(180, 11, 7, 22);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Codex'));
-      },
-    }).setDepth(45);
-    uiText(this, GAME_WIDTH / 2 - 70, 92, `★ ${save.totalStars()}/${STAGE_ORDER.length * 3}     ✔ ${save.challengesDone()}/${TOTAL_CHALLENGES} desafios`, 26, PAL.goldCss, 6);
-    this.add.image(556, 92, 'eter_coin').setScale(0.85);
-    uiText(this, 578, 92, `${save.data.coins}`, 26, '#d6c4ff', 6).setOrigin(0, 0.5);
+    uiText(this, GAME_WIDTH / 2, 42, 'Campos de Vellmora', 38, '#f3e9ff', 8);
+    // Progress chips: stars, challenges, coins
+    const chip = (x: number, icon: string, text: string, color: string, scale = 0.8) => {
+      const g = this.add.graphics();
+      g.fillStyle(0x0b0716, 0.55);
+      g.fillRoundedRect(x - 92, 74, 184, 40, 20);
+      this.add.image(x - 66, 94, icon).setScale(scale);
+      uiText(this, x - 44, 94, text, 24, color, 5).setOrigin(0, 0.5);
+    };
+    chip(150, 'star', `${save.totalStars()}/${STAGE_ORDER.length * 3}`, PAL.goldCss, 0.4);
+    chip(360, 'icon_check', `${save.challengesDone()}/${TOTAL_CHALLENGES}`, '#9be89b', 0.7);
+    chip(570, 'eter_coin', `${save.data.coins}`, '#d6c4ff', 0.75);
 
     STAGE_ORDER.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
     this.riftNode();
 
-    // Footer: backup
-    const foot = this.add.graphics();
-    foot.fillStyle(PAL.panel, 0.9);
-    foot.fillRoundedRect(-20, GAME_HEIGHT - 100, GAME_WIDTH + 40, 140, 24);
+    // Bottom navigation: big painted icons, a dot when something is waiting.
+    const foot = this.add.graphics().setDepth(44);
+    foot.fillStyle(PAL.panel, 0.94);
+    foot.fillRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
+    foot.lineStyle(4, 0x5a3fb0, 1);
+    foot.strokeRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
     const today = dailySetup(new Date());
-    const best = save.dailyBest(today.key);
-    const dailyBtn = new Button(this, 128, GAME_HEIGHT - 52, {
-      width: 230,
-      height: 72,
-      label: best > 0 ? `Desafio do dia ✔` : 'Desafio do dia',
-      fontSize: 22,
-      color: 0xb0479a,
-      onClick: () => this.showDailyCard(),
-    });
-    if (best === 0) this.tweens.add({ targets: dailyBtn, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const playedToday = save.dailyBest(today.key) > 0;
     const chestReady = save.data.coins >= COINS.chestPrice || !!save.data.chest.pending;
-    const relicBtn = new Button(this, 372, GAME_HEIGHT - 52, {
-      width: 216,
-      height: 72,
-      label: chestReady ? 'Relicário !' : 'Relicário',
-      fontSize: 24,
-      color: 0x8a3fd0,
-      onClick: () => {
-        this.cameras.main.fadeOut(180, 11, 7, 22);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Relics'));
-      },
-    });
-    if (chestReady) this.tweens.add({ targets: relicBtn, scale: 1.06, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    new Button(this, 592, GAME_HEIGHT - 52, { width: 168, height: 64, label: 'Backup', fontSize: 22, color: 0x3d7bd9, onClick: () => this.showBackupCard() });
+    this.navItem(90, 'nav_pink', 'icon_daily', 'Desafio do dia', !playedToday, () => this.showDailyCard());
+    this.navItem(270, 'nav_purple', 'chest', 'Relicário', chestReady, () => this.go('Relics'), 0.34);
+    this.navItem(450, 'nav_blue', 'icon_codex', 'Códice', false, () => this.go('Codex'));
+    this.navItem(630, 'nav_gray', 'icon_gear', 'Opções', false, () => this.showOptionsCard());
     this.cameras.main.fadeIn(250, 11, 7, 22);
   }
 
@@ -106,7 +94,7 @@ export class WorldMapScene extends Phaser.Scene {
     const save = getSave();
     const unlocked = save.isUnlocked('rift');
     const x = 588;
-    const y = 1050;
+    const y = 1016;
     const portal = this.add.image(x, y, 'portal').setDepth(40).setScale(0.95);
     this.tweens.add({ targets: portal, angle: 360, duration: 5000, repeat: -1 });
     if (!unlocked) portal.setTint(0x555555).setAlpha(0.8);
@@ -319,7 +307,35 @@ export class WorldMapScene extends Phaser.Scene {
     this.card = c;
   }
 
-  private showBackupCard(): void {
+  private go(scene: string): void {
+    this.cameras.main.fadeOut(180, 11, 7, 22);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene));
+  }
+
+  /** One button of the bottom bar: glossy badge + icon + label, with an optional "!" dot. */
+  private navItem(x: number, badge: string, icon: string, label: string, dot: boolean, onClick: () => void, iconScale = 0.82): void {
+    const y = GAME_HEIGHT - 84;
+    const c = this.add.container(x, y).setDepth(45);
+    const b = this.add.image(0, 0, badge).setScale(0.86);
+    const ic = this.add.image(0, -2, icon).setScale(iconScale);
+    const t = uiText(this, 0, 58, label, 19, PAL.uiText, 5);
+    c.add([b, ic, t]);
+    if (dot) {
+      const d = this.add.circle(30, -30, 13, 0xff4d5e).setStrokeStyle(3, PAL.ink);
+      const ex = uiText(this, 30, -31, '!', 20, '#ffffff', 3);
+      c.add([d, ex]);
+      this.tweens.add({ targets: [d, ex], scale: 1.25, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    c.setSize(150, 140).setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => {
+      playSfx('ui');
+      this.tweens.add({ targets: c, scale: 0.9, duration: 70, yoyo: true });
+      onClick();
+    });
+  }
+
+  /** Options: sound, music, vibration, shake, Modo econômico and backup — reachable from the map too. */
+  private showOptionsCard(): void {
     this.card?.destroy();
     const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(50);
     const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.6).setInteractive();
@@ -330,13 +346,52 @@ export class WorldMapScene extends Phaser.Scene {
     shade.on('pointerdown', close);
     const g = this.add.graphics();
     g.fillStyle(PAL.ink, 1);
-    g.fillRoundedRect(-280, -170, 560, 340, 30);
+    g.fillRoundedRect(-290, -400, 580, 800, 30);
     g.fillStyle(0x2a1a4d, 1);
-    g.fillRoundedRect(-275, -165, 550, 330, 26);
-    c.add([shade, g, uiText(this, 0, -120, 'Backup do progresso', 32, '#f3e9ff', 7)]);
-    c.add(uiText(this, 0, -76, 'Guarde o texto num lugar seguro para levar seu jogo a outro aparelho.', 18, PAL.uiDim, 4).setWordWrapWidth(500));
-    c.add(new Button(this, 0, 0, { width: 380, height: 70, label: 'Copiar backup', fontSize: 26, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
-    c.add(new Button(this, 0, 92, { width: 380, height: 70, label: 'Restaurar backup', fontSize: 26, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));
+    g.fillRoundedRect(-285, -395, 570, 790, 26);
+    c.add([shade, g, this.add.image(-170, -346, 'icon_gear').setScale(0.6), uiText(this, 20, -346, 'Opções', 38, '#f3e9ff', 7)]);
+    const toggles: [('sound' | 'music' | 'vibration' | 'shake'), string][] = [
+      ['sound', 'Efeitos sonoros'],
+      ['music', 'Música'],
+      ['vibration', 'Vibração'],
+      ['shake', 'Tremor de tela'],
+    ];
+    toggles.forEach(([key, name], i) => {
+      const label = () => `${name}: ${getSettings()[key] ? 'LIGADO' : 'DESLIGADO'}`;
+      const btn = new Button(this, 0, -262 + i * 74, {
+        width: 440,
+        height: 60,
+        label: label(),
+        fontSize: 22,
+        color: getSettings()[key] ? 0x3aa655 : 0x6b6480,
+        onClick: () => {
+          setSetting(key, !getSettings()[key]);
+          if (key === 'music') refreshMusic();
+          btn.setLabel(label()).setColor(getSettings()[key] ? 0x3aa655 : 0x6b6480);
+        },
+      });
+      c.add(btn);
+    });
+    c.add(economyButton(this, 0, 34, 440));
+    c.add(uiText(this, 0, 82, 'Econômico: 30 fps e resolução menor. Gasta menos bateria.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
+    c.add(uiText(this, 0, 150, 'Backup do progresso', 24, PAL.goldCss, 5));
+    c.add(new Button(this, -112, 214, { width: 214, height: 62, label: 'Copiar', fontSize: 22, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
+    c.add(new Button(this, 112, 214, { width: 214, height: 62, label: 'Restaurar', fontSize: 22, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));
+    const tipsBtn = new Button(this, 0, 290, {
+      width: 300,
+      height: 54,
+      label: 'Rever dicas',
+      fontSize: 21,
+      color: 0xc08a1e,
+      onClick: () => {
+        resetTips();
+        tipsBtn.setLabel('Dicas reativadas ✔');
+      },
+    });
+    c.add(tipsBtn);
+    c.add(new Button(this, 0, 352, { width: 300, height: 58, label: 'Fechar', fontSize: 24, color: 0x5a3fb0, onClick: close }));
+    c.setScale(0.8).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 200, ease: 'Back.easeOut' });
     this.card = c;
   }
 

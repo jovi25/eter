@@ -5,17 +5,37 @@ import { Rng } from '../../sim/rng';
 import type { Simulation } from '../../sim/simulation';
 import { radial, type Ctx } from '../art/paint';
 import { DEPTH, unitDepth } from './layers';
+import { RUNE_RULES, RUNES, type RuneKind } from '../../data/runes';
 
 /** Static scenery: painted grass + dirt roads background, decorations, portals, crystal and build slots. */
+/** Show a built rune: crystal on the stone + a soft circle of its reach. */
+export function showRune(map: MapView, scene: Phaser.Scene, index: number, x: number, y: number, kind: RuneKind | null): void {
+  const img = map.runeImages[index];
+  const aura = map.runeAuras[index];
+  if (!img || !aura) return;
+  scene.tweens.killTweensOf(img);
+  img.setTexture(kind ? `rune_${kind}` : 'rune_stone').setY(y - 14);
+  aura.clear().setVisible(!!kind);
+  if (!kind) return;
+  const color = RUNES[kind].color;
+  aura.fillStyle(color, 0.07);
+  aura.fillCircle(x, y, RUNE_RULES.radius);
+  aura.lineStyle(3, color, 0.35);
+  aura.strokeCircle(x, y, RUNE_RULES.radius);
+  scene.tweens.add({ targets: img, y: y - 20, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+}
+
 export class MapView {
   readonly crystal: Phaser.GameObjects.Image;
   readonly portals: Phaser.GameObjects.Image[] = [];
   readonly slotImages: Phaser.GameObjects.Image[] = [];
+  readonly runeImages: Phaser.GameObjects.Image[] = [];
+  readonly runeAuras: Phaser.GameObjects.Graphics[] = [];
 
   constructor(scene: Phaser.Scene, sim: Simulation) {
     const paths = sim.paths.map((p) => p.points as Vec2[]);
     paintMapBackground(scene, paths, 'map_bg').setDepth(DEPTH.ground);
-    placeDecor(scene, paths, sim.slots, 2024);
+    placeDecor(scene, paths, [...sim.slots, ...sim.state.runes], 2024);
 
     // One portal per distinct road start.
     const starts = new Map<string, Vec2>();
@@ -36,6 +56,12 @@ export class MapView {
 
     sim.slots.forEach((s) => {
       this.slotImages.push(scene.add.image(s.x, s.y, 'slot').setDepth(DEPTH.slot));
+    });
+    // Rune stones: the aura (radius) is painted once and only shown while a rune stands there.
+    sim.state.runes.forEach((r) => {
+      const aura = scene.add.graphics().setDepth(DEPTH.slot).setVisible(false);
+      this.runeAuras.push(aura);
+      this.runeImages.push(scene.add.image(r.x, r.y - 14, 'rune_stone').setDepth(unitDepth(r.y)).setScale(0.8));
     });
   }
 }

@@ -4,6 +4,7 @@ import { ELEMENTS } from '../../data/elements';
 import { BOOST, MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
 import type { Simulation } from '../../sim/simulation';
 import type { TowerState } from '../../sim/types';
+import { RUNE_KINDS, RUNE_RULES, RUNES, type RuneKind } from '../../data/runes';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
@@ -29,7 +30,14 @@ export class BuildMenu {
   constructor(
     private scene: Phaser.Scene,
     private sim: Simulation,
-    private actions: { build: (slot: number, type: TowerId) => void; upgrade: (id: number) => void; boost: (id: number) => void; sell: (id: number) => void },
+    private actions: {
+      build: (slot: number, type: TowerId) => void;
+      upgrade: (id: number) => void;
+      boost: (id: number) => void;
+      sell: (id: number) => void;
+      buildRune: (index: number, kind: RuneKind) => void;
+      sellRune: (index: number) => void;
+    },
   ) {
     this.range = scene.add.graphics().setDepth(DEPTH.range);
   }
@@ -125,6 +133,58 @@ export class BuildMenu {
     const ab = uiText(this.scene, 0, -146, abilityText, 17, unlocked ? PAL.goldCss : PAL.uiDim, 4);
     ab.setWordWrapWidth(420).setAlign('center');
     root.add(ab);
+    this.refresh();
+  }
+
+  /** Rune stone: pick Pressa or Poder (or sell the one that is there). Shows the reach and the towers it boosts. */
+  openRune(index: number): void {
+    this.close();
+    const r = this.sim.state.runes[index];
+    if (!r) return;
+    const root = this.makeRoot(r.x, r.y, 190, 250, 1000);
+    this.range.clear();
+    const color = r.kind ? RUNES[r.kind].color : 0xd8d0ff;
+    this.range.fillStyle(color, 0.1);
+    this.range.fillCircle(r.x, r.y, RUNE_RULES.radius);
+    this.range.lineStyle(3, color, 0.8);
+    this.range.strokeCircle(r.x, r.y, RUNE_RULES.radius);
+    for (const t of this.sim.state.towers) {
+      if ((t.x - r.x) ** 2 + (t.y - r.y) ** 2 <= RUNE_RULES.radius ** 2) {
+        this.range.lineStyle(4, 0x6ee66e, 0.9);
+        this.range.strokeCircle(t.x, t.y, 44);
+      }
+    }
+    if (r.kind) {
+      const def = RUNES[r.kind];
+      const sell = this.option(0, 96, 0xc0504a, 'coin', null, false, () => {
+        this.actions.sellRune(index);
+        this.close();
+      });
+      sell.cost.setText(`+${Math.round(def.cost * RUNE_RULES.sellRefund)}`).setColor(PAL.goldCss);
+      root.add(sell.root);
+      root.add(uiText(this.scene, 0, -150, def.name, 24, PAL.uiText, 5));
+      root.add(uiText(this.scene, 0, -120, def.desc, 18, PAL.goldCss, 4).setWordWrapWidth(360));
+    } else {
+      root.add(uiText(this.scene, 0, -190, 'Pedra rúnica', 24, PAL.uiText, 5));
+      root.add(uiText(this.scene, 0, -142, 'Não ocupa espaço de torre. Fortalece as torres no círculo.', 17, PAL.uiDim, 4).setWordWrapWidth(380));
+      RUNE_KINDS.forEach((kind, i) => {
+        const def = RUNES[kind];
+        const x = i === 0 ? -100 : 100;
+        const opt = this.option(x, -30, def.color, `rune_${kind}`, def.cost, false, () => {
+          if (this.sim.state.gold < def.cost) {
+            playSfx('error');
+            this.shake(opt.root);
+            return;
+          }
+          this.actions.buildRune(index, kind);
+          this.close();
+        });
+        (opt.root.list[2] as Phaser.GameObjects.Image).setScale(0.62).setY(4);
+        root.add(opt.root);
+        this.options.push(opt);
+        root.add(uiText(this.scene, x, 36, kind === 'haste' ? 'Pressa\n+25% velocidade' : 'Poder\n+25% dano', 16, PAL.uiText, 4));
+      });
+    }
     this.refresh();
   }
 

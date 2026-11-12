@@ -49,7 +49,8 @@ describe('coins', () => {
     expect(matchCoins(base)).toBe(COINS.win + 3 * COINS.perStar);
     expect(matchCoins({ ...base, won: false, stars: 0 })).toBe(COINS.loss);
     expect(matchCoins({ ...base, firstWin: true, newChallenges: 2 })).toBe(COINS.win + 30 + COINS.firstWinBonus + 2 * COINS.perChallenge);
-    expect(matchCoins({ ...base, mode: 'rift', riftWave: 20 })).toBe(20 * COINS.riftPerWave);
+    expect(matchCoins({ ...base, won: false, mode: 'rift', riftWave: 20 })).toBe(20 * COINS.riftPerWave + 2 * COINS.riftMilestone);
+    expect(matchCoins({ ...base, won: true, mode: 'rift', riftWave: 40 })).toBeGreaterThanOrEqual(500); // beating the Fenda ≈ 3 chests
   });
 });
 

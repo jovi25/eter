@@ -134,7 +134,9 @@ export const COINS = {
   perStar: 10,
   firstWinBonus: 60, // first time a stage is beaten
   perChallenge: 40, // each challenge completed for the first time
-  riftPerWave: 4,
+  riftPerWave: 5,
+  riftMilestone: 40, // every 10 waves reached
+  riftClear: 150, // all 40 waves
   dailyFirstPlay: 50, // first daily challenge of the day
   duplicateRefund: 60, // max-level relic or already-unlocked boon
 };
@@ -150,7 +152,7 @@ export interface MatchCoinInput {
 }
 
 export function matchCoins(m: MatchCoinInput): number {
-  if (m.mode === 'rift') return m.riftWave * COINS.riftPerWave;
+  if (m.mode === 'rift') return m.riftWave * COINS.riftPerWave + Math.floor(m.riftWave / 10) * COINS.riftMilestone + (m.won ? COINS.riftClear : 0);
   let c = m.won ? COINS.win + m.stars * COINS.perStar : COINS.loss;
   if (m.mode === 'daily') return c + (m.firstDailyToday ? COINS.dailyFirstPlay : 0);
   if (m.firstWin) c += COINS.firstWinBonus;

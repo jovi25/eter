@@ -4,6 +4,7 @@
 // Intensity: 0 = between waves (calm), 1 = wave in progress, 2 = boss / deep in the Fenda.
 import { getSettings } from '../settings';
 import { audioNodes } from './sfx';
+import { economyOn } from '../perf';
 
 export type ThemeId = 'map' | 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'rift';
 
@@ -187,7 +188,7 @@ function scheduleStep(ac: AudioContext, out: AudioNode, buf: AudioBuffer | null,
 
   // Pad: whole bar, soft and wide.
   if (s === 0) {
-    for (const m of chord.slice(0, 3)) tone(ac, out, th.pad, m, t, stepDur * 8.4, 0.03, { attack: 0.35, cutoff: th.bright * (lvl > 0 ? 1.2 : 0.8), detune: [-7, 7] });
+    for (const m of chord.slice(0, 3)) tone(ac, out, th.pad, m, t, stepDur * 8.4, 0.03, { attack: 0.35, cutoff: th.bright * (lvl > 0 ? 1.2 : 0.8), detune: economyOn() ? [] : [-7, 7] });
   }
   // Bass: root on 1 and 3; driving 8ths when intense.
   const bassHit = s === 0 || s === 4 || (lvl >= 1 && s === 6) || (lvl >= 2 && s % 2 === 0);

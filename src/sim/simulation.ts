@@ -12,6 +12,7 @@ import { defaultModifiers, type SimModifiers } from '../data/modifiers';
 import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
+import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { BOOST, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
@@ -118,6 +119,7 @@ export class Simulation {
       boonOffers: [],
       boons: [],
       altarBuys: 0,
+      runes: this.stage.runes ? map.runes.map((p) => ({ x: p.x, y: p.y, kind: null })) : [],
       rerolls: 0,
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
@@ -280,13 +282,48 @@ export class Simulation {
 
   /** Towers near the Sacerdotisa attack faster. */
   private towerRateMult(t: TowerState): number {
-    if (this.mods.heroClass !== 'priest' || !this.state.hero.alive) return 1;
+    let m = this.runeMult(t, 'rateMult');
+    if (this.mods.heroClass !== 'priest' || !this.state.hero.alive) return m;
     const h = this.state.hero;
-    return (t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= PRIEST.auraRadius ** 2 ? PRIEST.auraRateMult : 1;
+    if ((t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= PRIEST.auraRadius ** 2) m *= PRIEST.auraRateMult;
+    return m;
   }
 
   private blessMult(t: TowerState): number {
-    return (t.blessTime > 0 ? PRIEST.blessDamageMult : 1) * (1 + BOOST.damagePerLevel * t.boost);
+    return (t.blessTime > 0 ? PRIEST.blessDamageMult : 1) * (1 + BOOST.damagePerLevel * t.boost) * this.runeMult(t, 'damageMult');
+  }
+
+  /** Product of the runes of one kind that reach this tower. */
+  runeMult(t: { x: number; y: number }, key: 'rateMult' | 'damageMult'): number {
+    let m = 1;
+    for (const r of this.state.runes) {
+      if (!r.kind) continue;
+      if ((t.x - r.x) ** 2 + (t.y - r.y) ** 2 <= RUNE_RULES.radius ** 2) m *= RUNES[r.kind][key];
+    }
+    return m;
+  }
+
+  /** Build a rune on an empty rune stone. */
+  buildRune(index: number, kind: RuneKind): boolean {
+    const s = this.state;
+    const r = s.runes[index];
+    const cost = RUNES[kind].cost;
+    if (!r || r.kind || s.result !== 'playing' || s.gold < cost) return false;
+    r.kind = kind;
+    this.addGold(-cost);
+    this.events.emit('runeBuilt', { index, kind });
+    return true;
+  }
+
+  sellRune(index: number): boolean {
+    const s = this.state;
+    const r = s.runes[index];
+    if (!r?.kind || s.result !== 'playing') return false;
+    const refund = Math.round(RUNES[r.kind].cost * RUNE_RULES.sellRefund);
+    r.kind = null;
+    this.addGold(refund);
+    this.events.emit('runeSold', { index, refund });
+    return true;
   }
 
   private updateHero(): void {

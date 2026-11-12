@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { fitCamera, frameCap } from '../perf';
 import { CODEX_ENEMIES, enemyFacts, REACTION_EFFECT, reactionName, reactionRecipe } from '../../data/codex';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ENEMIES, type EnemyId } from '../../data/enemies';
@@ -22,6 +23,8 @@ export class CodexScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
+    frameCap(this, 'menu');
     paintMapBackground(this, [], 'codex_bg');
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b0716, 0.55);
     const save = getSave();

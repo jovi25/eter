@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { fitCamera, frameCap } from '../perf';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { unlockAudio } from '../audio/sfx';
@@ -18,6 +19,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
+    frameCap(this, 'menu');
     generateTextures(this);
     const cx = GAME_WIDTH / 2;
 

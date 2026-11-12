@@ -1,4 +1,5 @@
 import type { Element } from '../data/elements';
+import type { RuneKind } from '../data/runes';
 import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
 import type { BoonId } from '../data/boons';
@@ -119,6 +120,7 @@ export interface SimState {
   boonOffers: BoonId[][]; // pending "pick 1 of 3" offers, oldest first
   boons: BoonId[]; // picked so far (repeats stack)
   altarBuys: number; // Altar de Éter purchases this match
+  runes: { x: number; y: number; kind: RuneKind | null }[]; // rune stones of this map (empty when the stage has none)
   rerolls: number; // offers re-rolled this match
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;

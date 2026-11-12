@@ -52,6 +52,13 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Exportar CSV removido a pedido do jogador
 - *Aceite:* abrir um relicário me faz querer testar uma estratégia nova na partida seguinte.
 
+### Fase 7b — Pedidos do jogador (nov/2026) ✔
+- [x] Região 1 vira **tutorial**: 18 dicas que aparecem na hora certa (pausa + seta), uma vez por aparelho; "Rever dicas" em Opções
+- [x] **Menu do mapa** com ícones pintados: Desafio do dia, Relicário, Códice, Opções (som, música, econômico, backup)
+- [x] **Runas**: pedras rúnicas no chão (2 por mapa, a partir da fase 3 e na Fenda), Pressa ou Poder para as torres no círculo
+- [x] **Modo econômico** (automático em celular fraco): 30 fps, resolução 75%, sem eco no som; menus sempre a 30 fps
+- [x] Fenda paga mais: 5 por onda + 40 a cada 10 ondas + 150 por vencer as 40 (≈ 510 moedas)
+
 ### Fase 8 — Heróis com identidade
 - [ ] 3 talentos por herói (escolhe 1 por nível): mudam o estilo, não só os números
 - [ ] Arma do Arcanista troca o elemento (Brasa, Geada, Trovão, Seiva) → combos diferentes
@@ -59,6 +66,7 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - *Aceite:* dois jogadores com o mesmo herói jogam de formas diferentes.
 
 ### Fase 9 — Região 2 e chefes com mecânica
+- [ ] **Mapas maiores** (pedido do jogador): 1,5 a 2 telas de altura com a câmera rolando (arrastar com o dedo), 10–14 espaços de torre e 3–4 pedras rúnicas
 - [ ] 5 fases novas com um elemento de mapa novo (pontes que abrem/fecham, portal que troca de lado)
 - [ ] 2 chefes com fases (escudo elemental que só quebra com a reação certa)
 - [ ] Torre nova de elemento duplo por fusão

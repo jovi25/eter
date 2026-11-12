@@ -2,6 +2,7 @@
 // Engine: layered voices (oscillators with unison detune / FM, filtered noise), per-voice filter sweeps,
 // a shared convolution reverb send and a master compressor. Each play gets a little random pitch variation.
 import { getSettings } from '../settings';
+import { economyOn } from '../perf';
 
 type Osc = OscillatorType;
 
@@ -71,12 +72,15 @@ export function unlockAudio(): void {
       master = ctx.createGain();
       master.gain.value = 0.7;
       master.connect(comp);
-      const conv = ctx.createConvolver();
-      conv.buffer = makeImpulse(ctx, 1.6, 3);
-      const wet = ctx.createGain();
-      wet.gain.value = 0.35;
-      reverbIn = ctx.createGain();
-      reverbIn.connect(conv).connect(wet).connect(comp);
+      // The echo (convolution reverb) is the most expensive audio node: skipped in Modo econômico.
+      if (!economyOn()) {
+        const conv = ctx.createConvolver();
+        conv.buffer = makeImpulse(ctx, 1.6, 3);
+        const wet = ctx.createGain();
+        wet.gain.value = 0.35;
+        reverbIn = ctx.createGain();
+        reverbIn.connect(conv).connect(wet).connect(comp);
+      }
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = noiseBuf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;

@@ -2,7 +2,8 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
-import { getSettings, setSetting, type Settings } from '../settings';
+import { getSettings, setSetting } from '../settings';
+import { ECONOMY_LABEL, economyOn, RENDER_SCALE } from '../perf';
 import { refreshMusic } from '../audio/music';
 import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
@@ -27,7 +28,38 @@ function panel(scene: Phaser.Scene, w: number, h: number, y = GAME_HEIGHT / 2): 
   return c;
 }
 
-const LABELS: Record<keyof Settings, string> = { sound: 'Efeitos sonoros', music: 'Música', vibration: 'Vibração', shake: 'Tremor de tela' };
+type Toggle = 'sound' | 'music' | 'vibration' | 'shake';
+const LABELS: Record<Toggle, string> = { sound: 'Efeitos sonoros', music: 'Música', vibration: 'Vibração', shake: 'Tremor de tela' };
+
+/** "Modo econômico" cycles Automático → Ligado → Desligado. Resolution changes apply on the next launch. */
+export function economyButton(scene: Phaser.Scene, x: number, y: number, width: number): Button {
+  const label = () => `Modo econômico: ${ECONOMY_LABEL[getSettings().economy]}`;
+  const btn = new Button(scene, x, y, {
+    width,
+    height: 58,
+    label: label(),
+    fontSize: 21,
+    color: economyOn() ? 0x3aa655 : 0x6b6480,
+    onClick: () => {
+      const order = ['auto', 'on', 'off'] as const;
+      const next = order[(order.indexOf(getSettings().economy) + 1) % order.length]!;
+      setSetting('economy', next);
+      btn.setLabel(label()).setColor(economyOn() ? 0x3aa655 : 0x6b6480);
+      frameCapNow(scene);
+      if ((economyOn() ? 0.75 : 1) !== RENDER_SCALE) {
+        const t = uiText(scene, x, y + 44, 'A resolução muda ao reabrir o jogo', 17, PAL.uiDim, 4);
+        btn.parentContainer?.add(t);
+        scene.tweens.add({ targets: t, alpha: 0, delay: 2200, duration: 400, onComplete: () => t.destroy() });
+      }
+    },
+  });
+  return btn;
+}
+
+function frameCapNow(scene: Phaser.Scene): void {
+  const loop = scene.game.loop as Phaser.Core.TimeStep & { setFPSLimit?: (n: number) => void };
+  loop.setFPSLimit?.(scene.scene.key === 'Battle' && !economyOn() ? 0 : 30);
+}
 
 export class PausePanel {
   private objs: Phaser.GameObjects.GameObject[] = [];
@@ -37,14 +69,14 @@ export class PausePanel {
     const p = panel(scene, 520, 740);
     p.add(uiText(scene, 0, -300, 'PAUSA', 56));
     p.add(new Button(scene, 0, 330, { width: 400, height: 64, label: 'Sair para o mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onExit }));
-    (Object.keys(LABELS) as (keyof Settings)[]).forEach((key, i) => {
-      const y = -224 + i * 80;
+    (Object.keys(LABELS) as Toggle[]).forEach((key, i) => {
+      const y = -244 + i * 70;
       const label = () => `${LABELS[key]}: ${getSettings()[key] ? 'LIGADO' : 'DESLIGADO'}`;
       const btn = new Button(scene, 0, y, {
         width: 400,
-        height: 64,
+        height: 58,
         label: label(),
-        fontSize: 24,
+        fontSize: 22,
         color: getSettings()[key] ? 0x3aa655 : 0x6b6480,
         onClick: () => {
           setSetting(key, !getSettings()[key]);
@@ -54,7 +86,8 @@ export class PausePanel {
       });
       p.add(btn);
     });
-    p.add(new Button(scene, 0, 120, { width: 400, height: 80, label: 'CONTINUAR', fontSize: 32, color: 0x3d7bd9, onClick: cb.onResume }));
+    p.add(economyButton(scene, 0, 36, 400));
+    p.add(new Button(scene, 0, 130, { width: 400, height: 80, label: 'CONTINUAR', fontSize: 32, color: 0x3d7bd9, onClick: cb.onResume }));
     p.add(new Button(scene, 0, 226, { width: 400, height: 68, label: 'Reiniciar fase', fontSize: 26, color: 0xc0504a, onClick: cb.onRestart }));
     this.objs = [bg, p];
   }

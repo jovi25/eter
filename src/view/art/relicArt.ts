@@ -196,3 +196,117 @@ export function drawEterCoin(c: Ctx): void {
   shape(c, poly([[cx, cy - 9], [cx + 6, cy - 1], [cx, cy + 7], [cx - 6, cy - 1]]), '#b57bff', INK, 1.5);
   gloss(c, cx - 6, cy - 8, 6, 3, 0.9);
 }
+
+// ───────────── Menu icons (72×72) ─────────────
+
+export function drawIconCheck(c: Ctx): void {
+  shape(c, circle(24, 24, 18), radial(c, 24, 24, 19, [[0, '#b6f5b6'], [1, '#3aa655']], 18, 18), INK, 2.5);
+  c.strokeStyle = '#ffffff';
+  c.lineWidth = 5;
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.beginPath();
+  c.moveTo(15, 24);
+  c.lineTo(22, 31);
+  c.lineTo(33, 17);
+  c.stroke();
+}
+
+export function drawIconDaily(c: Ctx): void {
+  const cx = 36;
+  const cy = 38;
+  // calendar page with a sun
+  shape(c, roundRect(cx - 26, cy - 24, 52, 50, 8), linear(c, 0, cy - 24, 0, cy + 26, [[0, '#ffffff'], [1, '#e6dcf5']]), INK, 3);
+  shape(c, roundRect(cx - 26, cy - 24, 52, 14, [8, 8, 0, 0] as unknown as number), '#e0477a', INK, 0);
+  for (const x of [cx - 13, cx + 13]) shape(c, roundRect(x - 3, cy - 32, 6, 14, 3), '#8a8aa0', INK, 2);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    shape(c, poly([[cx + Math.cos(a) * 9, cy + 9 + Math.sin(a) * 9], [cx + Math.cos(a + 0.25) * 15, cy + 9 + Math.sin(a + 0.25) * 15], [cx + Math.cos(a - 0.25) * 15, cy + 9 + Math.sin(a - 0.25) * 15]]), '#ffb02e', INK, 0);
+  }
+  shape(c, circle(cx, cy + 9, 8), radial(c, cx, cy + 9, 9, [[0, '#fff3a8'], [1, '#ffb02e']], cx - 3, cy + 6), INK, 2);
+}
+
+export function drawIconCodex(c: Ctx): void {
+  const cx = 36;
+  const cy = 36;
+  shape(c, roundRect(cx - 24, cy - 26, 48, 54, 6), '#f3ead8', INK, 3);
+  shape(c, roundRect(cx - 28, cy - 28, 46, 54, 6), linear(c, cx - 28, 0, cx + 18, 0, [[0, '#4a2a8a'], [1, '#7a4fd0']]), INK, 3);
+  shape(c, roundRect(cx - 28, cy - 28, 8, 54, 3), '#2e1a5a', INK, 0);
+  shape(c, poly([[cx - 4, cy - 14], [cx + 6, cy - 2], [cx - 4, cy + 12], [cx - 14, cy - 2]]), radial(c, cx - 4, cy - 2, 14, [[0, '#f3e9ff'], [0.5, '#b57bff'], [1, '#5a2aa0']], cx - 7, cy - 6), INK, 2);
+  gloss(c, cx - 12, cy - 20, 10, 4, 0.5);
+}
+
+export function drawIconGear(c: Ctx): void {
+  const cx = 36;
+  const cy = 36;
+  const teeth = 8;
+  shape(c, (p) => {
+    for (let i = 0; i < teeth * 2; i++) {
+      const a = (i / (teeth * 2)) * Math.PI * 2;
+      const r = i % 2 === 0 ? 28 : 21;
+      const a2 = a + Math.PI / (teeth * 2);
+      if (i === 0) p.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      else p.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      p.lineTo(cx + Math.cos(a2) * r, cy + Math.sin(a2) * r);
+    }
+    p.closePath();
+  }, radial(c, cx, cy, 30, [[0, '#ffffff'], [0.6, '#c8c6d8'], [1, '#7a7890']], cx - 8, cy - 8), INK, 3);
+  shape(c, circle(cx, cy, 9), '#3a3350', INK, 2.5);
+}
+
+export function drawNavBadge(c: Ctx, color: number): void {
+  // round, glossy badge behind a menu icon (96×96)
+  shape(c, circle(48, 50, 42), hex(shade(color, -0.45)), INK, 3.5);
+  shape(c, circle(48, 46, 40), radial(c, 48, 46, 42, [[0, hex(shade(color, 0.35))], [0.7, hex(color)], [1, hex(shade(color, -0.2))]], 36, 30), INK, 0);
+  gloss(c, 34, 26, 18, 8, 0.55);
+}
+
+/** Rune stone on the ground (120×120): empty (kind null) or with a glowing rune crystal. */
+export function drawRuneStone(c: Ctx, kind: 'haste' | 'power' | null): void {
+  const cx = 60;
+  const cy = 74;
+  // flat carved stone disc
+  shape(c, ellipse(cx, cy + 4, 46, 22), '#5c5872', INK, 3.5);
+  shape(c, ellipse(cx, cy, 44, 20), linear(c, 0, cy - 20, 0, cy + 20, [[0, '#b9b4cf'], [1, '#7d7896']]), INK, 0);
+  c.strokeStyle = 'rgba(40,30,70,0.55)';
+  c.lineWidth = 2.5;
+  c.beginPath();
+  c.ellipse(cx, cy, 30, 13, 0, 0, Math.PI * 2);
+  c.stroke();
+  // carved glyph
+  c.beginPath();
+  c.moveTo(cx - 12, cy - 4);
+  c.lineTo(cx, cy + 6);
+  c.lineTo(cx + 12, cy - 4);
+  c.moveTo(cx, cy - 8);
+  c.lineTo(cx, cy + 6);
+  c.stroke();
+  if (!kind) {
+    gloss(c, cx - 14, cy - 8, 14, 4, 0.5, 0);
+    return;
+  }
+  const color = kind === 'haste' ? 0x6fe6ff : 0xff7a2e;
+  glow(c, cx, cy - 30, 40, color, 0.55);
+  // floating crystal obelisk
+  shape(c, poly([[cx, cy - 66], [cx + 14, cy - 34], [cx, cy - 6], [cx - 14, cy - 34]]), radial(c, cx, cy - 36, 34, [[0, '#ffffff'], [0.4, hex(shade(color, 0.3))], [1, hex(shade(color, -0.35))]], cx - 5, cy - 46), INK, 3);
+  c.strokeStyle = 'rgba(255,255,255,0.7)';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(cx, cy - 62);
+  c.lineTo(cx, cy - 10);
+  c.stroke();
+  if (kind === 'haste') {
+    // speed chevrons
+    for (const dy of [-44, -30]) {
+      c.strokeStyle = INK;
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(cx - 6, dy + cy - 4);
+      c.lineTo(cx, dy + cy - 10);
+      c.lineTo(cx + 6, dy + cy - 4);
+      c.stroke();
+    }
+  } else {
+    shape(c, star(c, cx, cy - 36, 7, 0.45), '#fff3a8', INK, 1.5);
+  }
+}

@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { RELIC_IDS, RELICS } from '../../data/relics';
-import { drawChest, drawEterCoin, drawRelic, RELIC_ICON } from './relicArt';
+import { drawChest, drawEterCoin, drawIconCheck, drawIconCodex, drawIconDaily, drawIconGear, drawNavBadge, drawRelic, drawRuneStone, RELIC_ICON } from './relicArt';
 import { ASSETS, type AssetKey } from '../../assets/manifest';
 import {
   blush,
@@ -1028,6 +1028,14 @@ export function generateTextures(scene: Phaser.Scene): void {
   for (const id of RELIC_IDS) paint(`relic_${id}`, RELIC_ICON, RELIC_ICON, (c) => drawRelic(c, RELICS[id].shape, RELICS[id].color));
   paint('chest', 200, 170, drawChest);
   paint('eter_coin', 40, 40, drawEterCoin);
+  paint('icon_daily', 72, 72, drawIconDaily);
+  paint('icon_check', 48, 48, drawIconCheck);
+  paint('icon_codex', 72, 72, drawIconCodex);
+  paint('icon_gear', 72, 72, drawIconGear);
+  paint('rune_stone', 120, 120, (c) => drawRuneStone(c, null));
+  paint('rune_haste', 120, 120, (c) => drawRuneStone(c, 'haste'));
+  paint('rune_power', 120, 120, (c) => drawRuneStone(c, 'power'));
+  for (const [k, col] of [['nav_pink', 0xd0559c], ['nav_purple', 0x8a4fe0], ['nav_blue', 0x3d7bd9], ['nav_gray', 0x6b6480]] as const) paint(k, 96, 96, (c) => drawNavBadge(c, col));
   // Hero rigs in layers (cape / body / weapon arm) so battle can animate them.
   for (const key of Object.keys(HERO_STYLES) as HeroTexture[]) {
     const parts = { cape: drawCape, body: drawBody, arm: drawArm };

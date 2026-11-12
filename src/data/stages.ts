@@ -19,6 +19,7 @@ export interface StageDef {
   map: MapId;
   hpMult: number; // extra difficulty multiplier for the whole stage
   startGold?: number; // overrides ECONOMY.startGold
+  runes?: boolean; // rune stones available (taught from stage 3 on)
   waves: WaveDef[];
 }
 
@@ -53,6 +54,7 @@ const g = (enemy: EnemyId, count: number, interval: number, delay = 0, path?: nu
 
 export const STAGES: Record<StageId, StageDef> = {
   rift: {
+    runes: true,
     name: 'Fenda Infinita',
     subtitle: 'Até onde você aguenta? Uma bênção a cada 3 ondas.',
     map: 'twin',
@@ -98,6 +100,7 @@ export const STAGES: Record<StageId, StageDef> = {
     ],
   },
   v3: {
+    runes: true,
     name: 'Pântano de Vellmora',
     subtitle: 'O Anel — gelo e lama',
     map: 'ring',
@@ -117,6 +120,7 @@ export const STAGES: Record<StageId, StageDef> = {
     ],
   },
   v4: {
+    runes: true,
     name: 'Desfiladeiro de Vellmora',
     subtitle: 'Corredor curto — poucos espaços',
     map: 'corridor',
@@ -136,6 +140,7 @@ export const STAGES: Record<StageId, StageDef> = {
     ],
   },
   v5: {
+    runes: true,
     name: 'Trono da Geada',
     subtitle: 'Bifurcação — o Arauto da Geada',
     map: 'fork',

@@ -10,6 +10,7 @@ export interface MapDef {
   name: string;
   paths: Vec2[][]; // each from a portal (first point) to the crystal (last point)
   slots: Vec2[]; // fixed build spots
+  runes: Vec2[]; // rune stones: boost nearby towers, never take a slot
   heroStart: Vec2;
 }
 
@@ -24,6 +25,7 @@ export const MAPS: Record<MapId, MapDef> = {
     name: 'Zigue-zague',
     paths: [P([[576, 144], [576, 288], [144, 288], [144, 576], [576, 576], [576, 816], [144, 816], [144, 1008], [384, 1008], [384, 1104]])],
     slots: S([[408, 192], [264, 432], [456, 432], [264, 696], [456, 696], [264, 912], [456, 912], [144, 696]]),
+    runes: S([[384, 360], [336, 744]]),
     heroStart: { x: 360, y: 696 },
   },
   // 2 — two portals merging into one road: the slots at the junction are gold.
@@ -34,6 +36,7 @@ export const MAPS: Record<MapId, MapDef> = {
       P([[624, 144], [624, 432], [384, 432], [384, 768], [576, 768], [576, 1008], [384, 1008], [384, 1104]]),
     ],
     slots: S([[288, 288], [480, 288], [264, 576], [504, 576], [360, 888], [480, 888], [504, 1104], [288, 696]]),
+    runes: S([[336, 360], [456, 672]]),
     heroStart: { x: 624, y: 600 },
   },
   // 3 — a ring around a plateau; every slot covers two roads, so upgrading pays.
@@ -41,6 +44,7 @@ export const MAPS: Record<MapId, MapDef> = {
     name: 'O Anel',
     paths: [P([[96, 144], [96, 1104], [624, 1104], [624, 336], [384, 336], [384, 768]])],
     slots: S([[240, 360], [504, 600], [240, 480], [504, 480], [240, 720], [504, 720], [240, 960], [504, 960]]),
+    runes: S([[560, 840], [168, 408]]),
     heroStart: { x: 384, y: 912 },
   },
   // 4 — short road, only 5 slots: no room for spam, max-level towers and the hero decide it.
@@ -48,6 +52,7 @@ export const MAPS: Record<MapId, MapDef> = {
     name: 'Corredor',
     paths: [P([[384, 144], [384, 432], [192, 432], [192, 720], [528, 720], [528, 1008], [384, 1008], [384, 1104]])],
     slots: S([[240, 288], [480, 312], [360, 576], [360, 864], [624, 864]]),
+    runes: S([[312, 336], [456, 840]]),
     heroStart: { x: 600, y: 480 },
   },
   // 5 — the road forks and rejoins; enemies alternate sides. The middle slots reach both branches.
@@ -58,6 +63,7 @@ export const MAPS: Record<MapId, MapDef> = {
       P([[384, 144], [384, 288], [528, 288], [528, 864], [384, 864], [384, 1104]]),
     ],
     slots: S([[240, 192], [528, 192], [144, 408], [384, 480], [384, 672], [624, 408], [240, 1008], [528, 1008]]),
+    runes: S([[168, 288], [312, 576]]),
     heroStart: { x: 384, y: 576 },
   },
 };

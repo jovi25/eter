@@ -1,4 +1,6 @@
 import * as Phaser from 'phaser';
+import { economyOn, fitCamera, frameCap } from '../perf';
+import { quality } from '../quality';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ECONOMY } from '../../data/economy';
 import { ENEMIES, type EnemyId } from '../../data/enemies';
@@ -24,11 +26,13 @@ import { EnemyLayer } from '../battle/EnemyLayer';
 import { FxLayer } from '../battle/FxLayer';
 import { Hud } from '../battle/Hud';
 import { DEPTH } from '../battle/layers';
-import { MapView } from '../battle/MapView';
+import { MapView, showRune } from '../battle/MapView';
+import { RUNES } from '../../data/runes';
 import { EndPanel, PausePanel, StatsPanel, type MatchReport } from '../battle/Panels';
 import { ProjectileLayer } from '../battle/ProjectileLayer';
 import { TowerLayer } from '../battle/TowerLayer';
-import { DebugOverlay } from '../DebugOverlay';
+import { DebugOverlay, logicMs } from '../DebugOverlay';
+import { Tutorial } from '../battle/Tutorial';
 import { getSettings, vibrate } from '../settings';
 import { updateQuality } from '../quality';
 
@@ -63,6 +67,7 @@ export class BattleScene extends Phaser.Scene {
   private catalyzeBtn!: CatalyzeButton;
   private summons: SummonView[] = [];
   private picker: BoonPicker | null = null;
+  private tutorial!: Tutorial;
   private pausePanel: PausePanel | null = null;
 
   private speed = 1;
@@ -83,6 +88,73 @@ export class BattleScene extends Phaser.Scene {
   }
   private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
+
+  // ───────────────────────────── tutorial ─────────────────────────────
+
+  /** Tips that belong to a stage show at its start; the rest wait for the moment they explain. */
+  private setupTutorial(): void {
+    this.tutorial = new Tutorial(this);
+    this.events.once('shutdown', () => this.tutorial.destroy());
+    const t = this.tutorial;
+    const sim = this.sim;
+    const slot = (i: number) => () => sim.slots[i] ?? null;
+    switch (this.daily ? 'daily' : this.stageId) {
+      case 'v1':
+        t.request('build', slot(1));
+        break;
+      case 'v2':
+        t.request('twoPaths', () => (this.map.portals[1] ? { x: this.map.portals[1].x, y: this.map.portals[1].y } : null));
+        break;
+      case 'v3':
+        t.request('runes', () => sim.state.runes[0] ?? null);
+        t.request('skill', () => ({ x: GAME_WIDTH - 82, y: GAME_HEIGHT - 76 }));
+        break;
+      case 'v4':
+        t.request('fewSlots');
+        break;
+      case 'rift':
+        t.request('rift');
+        break;
+    }
+    const ev = sim.events;
+    ev.on('towerBuilt', () => {
+      t.request('elements');
+      t.request('hero', () => ({ x: sim.state.hero.x, y: sim.state.hero.y - 40 }));
+    });
+    ev.on('reactionTriggered', (r) => {
+      t.request('reaction', () => ({ x: r.x, y: r.y }));
+      if (r.comboCount >= 3) t.request('combo');
+    });
+    ev.on('enemySpawned', (s) => {
+      const def = ENEMIES[s.type];
+      const where = () => {
+        const e = sim.state.enemies.find((x) => x.id === s.enemyId);
+        return e ? { x: e.x, y: e.y } : null;
+      };
+      if (s.isBoss) t.request('boss', where);
+      else if (def.flying) t.request('flying', where);
+      else if (Object.keys(def.resist).length > 0) t.request('resist', where);
+    });
+    ev.on('boonChosen', () => t.request('boon'));
+    ev.on('towerUpgraded', (u) => {
+      if (u.level < MAX_LEVEL) return;
+      const tw = sim.getTower(u.towerId);
+      t.request('maxLevel', () => (tw ? { x: tw.x, y: tw.y } : null));
+    });
+  }
+
+  /** State-based tips (checked every frame, cheap). */
+  private checkTips(): void {
+    const s = this.sim.state;
+    const t = this.tutorial;
+    if (s.wavePhase === 'countdown' && s.wave === 1) t.request('callWave', () => ({ x: this.stageId === 'rift' ? 222 : 290, y: GAME_HEIGHT - 58 }));
+    if (s.wave >= 2 && s.wavePhase !== 'prep') {
+      const tw = s.towers.find((x) => x.level < MAX_LEVEL && (this.sim.upgradeCost(x) ?? Infinity) <= s.gold);
+      if (tw) t.request('upgrade', () => ({ x: tw.x, y: tw.y }));
+    }
+    const altar = this.sim.altarCost();
+    if (altar !== null && s.gold >= altar) t.request('altar', () => ({ x: 452, y: GAME_HEIGHT - 58 }));
+  }
 
   /** Rows for the stats screen. */
   private matchReport(): MatchReport {
@@ -123,6 +195,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(data: BattleData): void {
+    fitCamera(this);
+    frameCap(this, 'battle');
+    quality.low = economyOn();
     this.daily = data.daily ? dailySetup(new Date()) : null;
     const seed = this.daily?.seed ?? data.seed ?? Math.floor(Math.random() * 1e9);
     this.stageId = this.daily?.stage ?? data.stage ?? 'v1';
@@ -187,6 +262,8 @@ export class BattleScene extends Phaser.Scene {
       upgrade: (id) => this.sim.upgrade(id),
       boost: (id) => this.sim.boost(id),
       sell: (id) => this.sim.sell(id),
+      buildRune: (i, kind) => this.sim.buildRune(i, kind),
+      sellRune: (i) => this.sim.sellRune(i),
     });
     // Skill indicator (heroes cast on their own).
     const cls = this.sim.mods.heroClass;
@@ -204,6 +281,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.setupInput();
     this.wireEvents();
+    this.setupTutorial();
     this.cameras.main.fadeIn(300, 11, 7, 22);
   }
 
@@ -219,6 +297,15 @@ export class BattleScene extends Phaser.Scene {
         playSfx('ui', 0.8);
         if (tower) this.menu.openTower(tower);
         else this.menu.openSlot(i);
+      });
+    });
+    this.sim.state.runes.forEach((r, i) => {
+      const zone = this.add.zone(r.x, r.y - 10, 84, 84).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+        ev.stopPropagation();
+        if (this.paused || this.ended || this.picker) return;
+        playSfx('ui', 0.9);
+        this.menu.openRune(i);
       });
     });
     // Tap on free ground: closes an open menu, otherwise walks the hero there.
@@ -460,6 +547,22 @@ export class BattleScene extends Phaser.Scene {
       vibrate(15);
     });
 
+    ev.on('runeBuilt', (r) => {
+      const st = this.sim.state.runes[r.index]!;
+      showRune(this.map, this, r.index, st.x, st.y, r.kind);
+      this.fx.burst(st.x, st.y - 30, RUNES[r.kind].color, 20);
+      this.fx.shockwave(st.x, st.y, RUNES[r.kind].color, 2.6, 600);
+      this.fx.popLabel(st.x, st.y - 100, RUNES[r.kind].name.toUpperCase(), '#ffffff');
+      playSfx('upgrade', 1.25);
+    });
+
+    ev.on('runeSold', (r) => {
+      const st = this.sim.state.runes[r.index]!;
+      showRune(this.map, this, r.index, st.x, st.y, null);
+      this.fx.coinsTo(st.x, st.y, this.hud.goldIconPos.x, this.hud.goldIconPos.y, 3, () => this.hud.pulseGold());
+      playSfx('sell');
+    });
+
     ev.on('towerBoosted', (u) => {
       const t = this.sim.getTower(u.towerId);
       if (!t) return;
@@ -598,10 +701,13 @@ export class BattleScene extends Phaser.Scene {
   // ───────────────────────────── loop ─────────────────────────────
 
   update(_time: number, delta: number): void {
+    const t0 = performance.now();
     const dtMs = Math.min(delta, 100);
     updateQuality(this.game.loop.actualFps, delta);
     // A pending Bênção pauses the match until the player picks a card.
-    if (!this.picker && !this.paused && !this.ended && this.sim.state.boonOffers.length > 0) {
+    this.tutorial.update(dtMs, !this.picker && !this.paused && !this.ended);
+    this.checkTips();
+    if (!this.picker && !this.paused && !this.ended && !this.tutorial.blocking && this.sim.state.boonOffers.length > 0) {
       this.menu.close();
       const fromAltar = this.altarOffer;
       const cost = this.sim.rerollCost();
@@ -630,7 +736,7 @@ export class BattleScene extends Phaser.Scene {
         },
       );
     }
-    if (!this.paused && !this.picker && this.sim.state.result === 'playing') {
+    if (!this.paused && !this.picker && !this.tutorial.blocking && this.sim.state.result === 'playing') {
       if (this.hitstopMs > 0) {
         this.hitstopMs -= dtMs;
       } else {
@@ -663,6 +769,7 @@ export class BattleScene extends Phaser.Scene {
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
     this.menu.refresh();
+    logicMs.value = logicMs.value * 0.9 + (performance.now() - t0) * 0.1;
     this.debug.update();
   }
 }

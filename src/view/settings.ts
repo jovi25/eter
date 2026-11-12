@@ -5,10 +5,11 @@ export interface Settings {
   music: boolean;
   vibration: boolean;
   shake: boolean;
+  economy: 'auto' | 'on' | 'off'; // Modo econômico (src/view/perf.ts)
 }
 
 const KEY = 'eter.settings.v1';
-const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true };
+const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true, economy: 'auto' };
 
 let current: Settings = load();
 
@@ -38,6 +39,9 @@ export function setSetting<K extends keyof Settings>(key: K, value: Settings[K])
 export function vibrate(pattern: number | number[]): void {
   if (!current.vibration) return;
   try {
+    // Browsers refuse (and log an error) before the first tap on the page.
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (ua && !ua.hasBeenActive) return;
     navigator.vibrate?.(pattern);
   } catch {
     /* not supported (iOS) */

@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { fitCamera, frameCap } from '../perf';
 import { BOONS, type BoonDef } from '../../data/boons';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import {
@@ -23,6 +24,8 @@ export class RelicScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
+    frameCap(this, 'menu');
     this.detail = null;
     const save = getSave();
     paintMapBackground(this, [], 'relic_bg');

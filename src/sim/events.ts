@@ -1,4 +1,5 @@
 import type { Element } from '../data/elements';
+import type { RuneKind } from '../data/runes';
 import type { BoonId } from '../data/boons';
 import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
@@ -17,6 +18,8 @@ export interface SimEvents {
   towerBuilt: { towerId: number; slot: number; type: TowerId };
   towerUpgraded: { towerId: number; level: number };
   towerBoosted: { towerId: number; boost: number };
+  runeBuilt: { index: number; kind: RuneKind };
+  runeSold: { index: number; refund: number };
   towerSold: { towerId: number; slot: number; refund: number };
   towerFired: { towerId: number; targetId: number };
   /** Lightning bolt path: tower first, then every enemy hit in order. */

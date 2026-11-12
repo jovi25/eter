@@ -238,6 +238,24 @@ Substitui o desenho antigo de equipamentos/refino/encaixes/cartas (seções 4 e 
   Valem nas fases e na Fenda; **não** no desafio do dia (igual para todos).
 - Decisão padrão: 4 raridades (não 5 do desenho antigo) para casar com as cores das Bênçãos + dourado.
 
+## Fase 7b — Tutorial, Runas, menu e desempenho
+### Tutorial (Região 1)
+Dicas curtas em `src/data/tutorial.ts`. Cada uma aparece **uma vez por aparelho**, pausa a partida e pode apontar com uma seta.
+Fase 1: construir, elementos, herói, chamar onda, reação, combo, melhorar. Fase 2: duas entradas, fraquezas, Bênção.
+Fase 3: Runas, habilidade do herói, voadores. Fase 4: poucos espaços, Reforço. Fase 5: chefe. Fenda: modo e Altar.
+Dicas de evento (reação, voador, chefe...) aparecem onde o jogador encontrar primeiro. "Rever dicas" em Opções.
+
+### Runas
+Duas **pedras rúnicas** fixas por mapa, fora da estrada e dos espaços de torre (posições calculadas para alcançar 2–3 espaços).
+Disponíveis a partir da fase 3 e na Fenda. Runa de Pressa (+25% velocidade de ataque) ou Runa de Poder (+25% dano)
+para as torres a até 175 px. Custam 100 de ouro; vender devolve 70%. Decisão: pedras fixas em vez de construir em qualquer
+lugar do chão, porque tocar no chão já move o herói e isso deixa o mapa legível no celular.
+
+### Desempenho e bateria
+Modo econômico (Opções/Pausa: Automático, Ligado, Desligado). Automático liga em aparelho com ≤4 núcleos ou ≤3 GB, ou depois
+que o jogo ficou abaixo de 25 fps por 5 s. Ligado: 30 fps, tela desenhada a 75% e ampliada, efeitos leves, sem eco no áudio.
+Menus (mapa, Relicário, Códice) sempre a 30 fps. O contador mostra "lógica X ms" e GL/CV para diagnosticar celulares lentos.
+
 ## 4. Coleção e evolução (desenho antigo, substituído pela Fase 7)
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.
