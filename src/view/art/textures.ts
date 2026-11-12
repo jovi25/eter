@@ -1028,6 +1028,18 @@ export function generateTextures(scene: Phaser.Scene): void {
   for (const id of RELIC_IDS) paint(`relic_${id}`, RELIC_ICON, RELIC_ICON, (c) => drawRelic(c, RELICS[id].shape, RELICS[id].color));
   paint('chest', 200, 170, drawChest);
   paint('eter_coin', 40, 40, drawEterCoin);
+  paint('bolt', 8, 32, (c) => {
+    const g = c.createLinearGradient(0, 0, 0, 32);
+    g.addColorStop(0, 'rgba(255,233,92,0)');
+    g.addColorStop(0.3, 'rgba(255,233,92,0.35)');
+    g.addColorStop(0.42, 'rgba(255,243,160,0.85)');
+    g.addColorStop(0.5, 'rgba(255,255,255,1)');
+    g.addColorStop(0.58, 'rgba(255,243,160,0.85)');
+    g.addColorStop(0.7, 'rgba(255,233,92,0.35)');
+    g.addColorStop(1, 'rgba(255,233,92,0)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 8, 32);
+  });
   paint('icon_daily', 72, 72, drawIconDaily);
   paint('icon_check', 48, 48, drawIconCheck);
   paint('icon_codex', 72, 72, drawIconCodex);
@@ -1052,7 +1064,7 @@ export function generateTextures(scene: Phaser.Scene): void {
 
 export const NUM_FONT = 'numfont';
 /** Glyphs of the damage-number font. '<' and '>' are drawn as up / down arrows (weak / resisted). */
-const NUM_CHARS = '0123456789!+<>IMUNE';
+const NUM_CHARS = '0123456789!+<>IMUNEx%';
 const NUM_CELL = { w: 26, h: 40 };
 
 /** Pre-render digits once and register them as a bitmap font (tinted per use). */

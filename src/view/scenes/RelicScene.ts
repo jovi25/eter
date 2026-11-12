@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import { fitCamera, frameCap } from '../perf';
 import { BOONS, type BoonDef } from '../../data/boons';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
@@ -35,6 +36,7 @@ export class RelicScene extends Phaser.Scene {
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.92);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 130, 24);
+    bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 138 }, 'relic_head');
     uiText(this, GAME_WIDTH / 2, 42, 'Relicário', 44, '#f3e9ff', 8);
     this.add.image(GAME_WIDTH / 2 - 60, 88, 'eter_coin').setScale(0.9);
     uiText(this, GAME_WIDTH / 2 - 36, 88, `${save.data.coins} moedas`, 26, '#d6c4ff', 5).setOrigin(0, 0.5);
@@ -102,9 +104,10 @@ export class RelicScene extends Phaser.Scene {
     g.fillRoundedRect(-73, -60, 146, 122, 13);
     g.fillStyle(level ? 0x2a1a4d : 0x1e1830, 1);
     g.fillRoundedRect(-69, -56, 138, 114, 11);
+    const gImg = bakeInPlace(g, { x0: -79, y0: -66, w: 158, h: 134 }, `relcard_${on}_${level ? rc : 0}`);
     const icon = this.add.image(0, -10, `relic_${id}`).setScale(0.82);
     if (!level) icon.setTint(0x141020).setAlpha(0.8);
-    c.add([g, icon, uiText(this, 0, 44, level ? def.name : '???', 14, level ? PAL.uiText : PAL.uiDim, 3).setWordWrapWidth(136)]);
+    c.add([gImg, icon, uiText(this, 0, 44, level ? def.name : '???', 14, level ? PAL.uiText : PAL.uiDim, 3).setWordWrapWidth(136)]);
     if (level) {
       c.add(uiText(this, 58, -44, `${level}`, 18, '#ffffff', 4));
       if (on) c.add(uiText(this, -56, -44, '✔', 20, '#6ee66e', 4));

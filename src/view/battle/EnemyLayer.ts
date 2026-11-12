@@ -23,7 +23,9 @@ class EnemyView {
   flashUntil = 0;
   seen = false;
   dying: 'kill' | 'leak' | null = null;
-  breath?: Phaser.Tweens.Tween;
+  phase = 0; // breathing
+  breathMs = 420;
+  flying = false;
   fireTimer = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -120,17 +122,9 @@ export class EnemyLayer {
     v.hpFill.setPosition(-HP_W / 2, top).setVisible(false);
     v.fragile.setPosition(HP_W / 2 + 10, top).setVisible(false);
     // Breathing (squash & stretch) — bats flap faster and bob.
-    v.breath?.stop();
-    v.breath = this.scene.tweens.add({
-      targets: v.body,
-      scaleY: def.flying ? 0.9 : 0.92,
-      scaleX: def.flying ? 1.08 : 1.05,
-      y: v.bodyY + (def.flying ? 6 : 1),
-      duration: def.flying ? 180 : 420 + (e.id % 5) * 40,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    v.phase = (e.id * 0.37) % 1;
+    v.breathMs = def.flying ? 180 : 420 + (e.id % 5) * 40;
+    v.flying = def.flying;
     // Spawn pop
     v.root.setScale(0.2);
     this.scene.tweens.add({ targets: v.root, scale: 1, duration: 220, ease: 'Back.easeOut' });
@@ -166,13 +160,13 @@ export class EnemyLayer {
         this.onBurning(v.root.x + (Math.random() - 0.5) * 20, v.root.y + v.bodyY);
       }
     }
-    // Rooted/frozen enemies stop breathing for clear feedback.
-    if (v.breath) v.breath.timeScale = e.frozenTime > 0 || e.rootTime > 0 ? 0 : 1;
+    // Breathing (squash & stretch) computed here — bats flap faster and bob. Rooted/frozen enemies hold still.
+    if (!(e.frozenTime > 0 || e.rootTime > 0)) v.phase = (v.phase + dtMs / (v.breathMs * 2)) % 1;
+    const w = 0.5 - 0.5 * Math.cos(v.phase * Math.PI * 2);
+    v.body.setScale(1 + (v.flying ? 0.08 : 0.05) * w, 1 - (v.flying ? 0.1 : 0.08) * w).setY(v.bodyY + (v.flying ? 6 : 1) * w);
   }
 
   private despawn(v: EnemyView): void {
-    v.breath?.stop();
-    v.breath = undefined;
     const done = () => {
       v.root.setVisible(false);
       this.pool.push(v);

@@ -1,4 +1,5 @@
 import type { Element } from '../data/elements';
+import type { EvolutionId } from '../data/evolutions';
 import type { RuneKind } from '../data/runes';
 import type { BoonId } from '../data/boons';
 import type { EnemyId } from '../data/enemies';
@@ -20,6 +21,8 @@ export interface SimEvents {
   towerBoosted: { towerId: number; boost: number };
   runeBuilt: { index: number; kind: RuneKind };
   runeSold: { index: number; refund: number };
+  towerEvolved: { towerId: number; evo: EvolutionId };
+  towerUlt: { towerId: number; evo: EvolutionId; x: number; y: number; radius: number; targets: { x: number; y: number }[] };
   towerSold: { towerId: number; slot: number; refund: number };
   towerFired: { towerId: number; targetId: number };
   /** Lightning bolt path: tower first, then every enemy hit in order. */

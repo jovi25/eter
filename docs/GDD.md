@@ -253,8 +253,31 @@ lugar do chão, porque tocar no chão já move o herói e isso deixa o mapa leg�
 
 ### Desempenho e bateria
 Modo econômico (Opções/Pausa: Automático, Ligado, Desligado). Automático liga em aparelho com ≤4 núcleos ou ≤3 GB, ou depois
-que o jogo ficou abaixo de 25 fps por 5 s. Ligado: 30 fps, tela desenhada a 75% e ampliada, efeitos leves, sem eco no áudio.
-Menus (mapa, Relicário, Códice) sempre a 30 fps. O contador mostra "lógica X ms" e GL/CV para diagnosticar celulares lentos.
+que o jogo ficou abaixo de 25 fps por 5 s. Ligado: tela desenhada a 75% e ampliada, efeitos leves, sem eco no áudio (o limite de 30 fps foi retirado: causava engasgos).
+O contador mostra "lógica X ms" e GL/CV para diagnosticar celulares lentos.
+
+## Fase 7c — Evoluções de torre
+No nível 3 a torre pode evoluir para **uma** de duas formas finais (dados em `src/data/evolutions.ts`). Reforço continua depois.
+Ramo A = golpe final lento e devastador; ramo B = efeito constante com menos dano. Escolha com 2 toques (o 1º mostra o efeito).
+
+| Torre | A (golpe final) | B (constante) |
+|---|---|---|
+| Gelo | Coroa do Inverno: a cada 9 s congela todos no alcance, 6× dano | Nevasca Eterna: sem tiros; a cada 0,6 s resfria e fere todos no alcance |
+| Fogo | Vulcão: a cada 7 s meteoro no maior grupo (4×, raio 115) + chão em chamas | Fornalha: 2,5× velocidade, 45% dano, queima +60% |
+| Natureza | Árvore Anciã: a cada 8 s enraíza todos (terrestres) no alcance | Raiz Faminta: todo golpe enraíza, +30% velocidade, 70% dano |
+| Raio | Senhor do Trovão: a cada 7 s raios do céu em até 6 inimigos (3×) | Bobina Tesla: 2,5× velocidade, +2 saltos, 42% dano |
+| Arqueiro | Atirador de Elite: 45% velocidade, 3,4× dano, +45% alcance, mira no mais forte | Chuva de Flechas: todo disparo acerta 3 inimigos, 75% dano |
+
+O golpe final só dispara com inimigo no alcance (fica carregado esperando). O primeiro vem com 40% do tempo.
+Custos 220–240 de ouro (afetados por Mestre de Obras).
+
+### Desempenho (medido)
+Cenário: Fenda onda 10–16, 8 torres no máximo/evoluídas, ~25 inimigos, no computador.
+Antes: 4,7 ms por quadro em média, picos de 100–140 ms, ~400 animações vivas.
+Causa principal: formas vetoriais (botões, barras, auras, raios) eram recalculadas a cada quadro (6,6 ms → 0,3 ms sem elas).
+Agora: ~1 ms típico. Formas estáticas viram imagens (`src/view/ui/bake.ts`), raios são pedaços de imagem, números de dano
+andam sem animações, textos repetidos são reaproveitados (`LabelPool`), ouro/vidas/combo usam fonte de dígitos pronta.
+O limitador de 30 fps foi removido: em telas de 60/90/120 Hz ele entregava quadros em intervalos irregulares (engasgos).
 
 ## 4. Coleção e evolução (desenho antigo, substituído pela Fase 7)
 

@@ -28,6 +28,7 @@ import { Hud } from '../battle/Hud';
 import { DEPTH } from '../battle/layers';
 import { MapView, showRune } from '../battle/MapView';
 import { RUNES } from '../../data/runes';
+import { EVOLUTIONS } from '../../data/evolutions';
 import { EndPanel, PausePanel, StatsPanel, type MatchReport } from '../battle/Panels';
 import { ProjectileLayer } from '../battle/ProjectileLayer';
 import { TowerLayer } from '../battle/TowerLayer';
@@ -261,6 +262,7 @@ export class BattleScene extends Phaser.Scene {
       build: (slot, type) => this.sim.build(slot, type),
       upgrade: (id) => this.sim.upgrade(id),
       boost: (id) => this.sim.boost(id),
+      evolve: (id, evo) => this.sim.evolve(id, evo),
       sell: (id) => this.sim.sell(id),
       buildRune: (i, kind) => this.sim.buildRune(i, kind),
       sellRune: (i) => this.sim.sellRune(i),
@@ -563,6 +565,54 @@ export class BattleScene extends Phaser.Scene {
       playSfx('sell');
     });
 
+    ev.on('towerEvolved', (u) => {
+      const t = this.sim.getTower(u.towerId);
+      if (!t) return;
+      const def = EVOLUTIONS[u.evo];
+      this.towers.evolve(t);
+      this.fx.burst(t.x, t.y - 30, def.color, 34);
+      this.fx.shockwave(t.x, t.y, def.color, 3, 700);
+      this.fx.bigBanner(`EVOLUÇÃO!\n${def.name.toUpperCase()}`, `#${def.color.toString(16).padStart(6, '0')}`, 54, 800, true);
+      this.shake(220, 0.006);
+      playSfx('mvp');
+      vibrate([40, 30, 90]);
+    });
+
+    ev.on('towerUlt', (u) => {
+      const def = EVOLUTIONS[u.evo];
+      const t = this.sim.getTower(u.towerId);
+      if (t) this.fx.popLabel(t.x, t.y - 120, `${def.name.toUpperCase()}!`, `#${def.color.toString(16).padStart(6, '0')}`);
+      switch (def.ult?.kind) {
+        case 'tomb':
+          this.fx.shockwave(u.x, u.y, 0x9fe8ff, u.radius / 40, 700);
+          for (const p of u.targets) this.fx.burst(p.x, p.y - 20, 0xd8f6ff, 10);
+          this.cameras.main.flash(160, 190, 235, 255);
+          this.shake(260, 0.007);
+          playSfx('reaction_shatter');
+          break;
+        case 'meteor':
+          this.fx.meteor(u.x, u.y, def.color, () => {
+            this.fx.shockwave(u.x, u.y, 0xff7a2e, u.radius / 40, 500);
+            this.fx.burst(u.x, u.y, 0xff5a1f, 30);
+            this.fx.dust(u.x, u.y, 0x8a5a2a, 14);
+            this.shake(240, 0.008);
+            playSfx('reaction_wildfire');
+          });
+          break;
+        case 'massRoot':
+          this.fx.shockwave(u.x, u.y, 0x6ad44a, u.radius / 40, 650);
+          for (const p of u.targets) this.fx.burst(p.x, p.y, 0x6ad44a, 8);
+          playSfx('reaction_thornfrost');
+          break;
+        case 'skyStrike':
+          for (const p of u.targets) this.fx.lightning([{ x: p.x + 20, y: p.y - 420 }, { x: p.x, y: p.y }]);
+          this.cameras.main.flash(120, 255, 250, 200);
+          this.shake(200, 0.006);
+          playSfx('reaction_overload');
+          break;
+      }
+    });
+
     ev.on('towerBoosted', (u) => {
       const t = this.sim.getTower(u.towerId);
       if (!t) return;
@@ -766,6 +816,7 @@ export class BattleScene extends Phaser.Scene {
     this.projectiles.sync(this.sim, alpha);
     this.hero.sync(this.sim.state.hero, alpha, dtMs);
     this.sim.state.summons.forEach((sm, i) => this.summons[i]?.sync(sm, alpha, dtMs));
+    this.fx.update(dtMs);
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
     this.menu.refresh();

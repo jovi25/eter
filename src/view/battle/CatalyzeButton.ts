@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import type { HeroState } from '../../sim/types';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
@@ -34,12 +35,13 @@ export class CatalyzeButton {
     bg.fillCircle(0, 0, R - 2);
     bg.fillStyle(0xffffff, 0.25);
     bg.fillEllipse(-10, -22, 70, 34);
+    const bgImg = bakeInPlace(bg, { x0: -R - 8, y0: -R - 8, w: 2 * R + 16, h: 2 * R + 20 }, `skillbtn_${color}`);
     const img = scene.add.image(0, -6, icon).setScale(icon === 'icon_catalyze' ? 0.85 : 0.42);
     const text = uiText(scene, 0, 38, label.toUpperCase(), label.length > 12 ? 13 : 16, PAL.uiText, 4);
     const auto = uiText(scene, 0, -R + 4, 'AUTO', 13, PAL.goldCss, 4);
     this.pie = scene.add.graphics();
     this.secs = uiText(scene, 0, -4, '', 40, '#ffffff', 7);
-    this.root = scene.add.container(x, y, [this.halo, bg, img, text, auto, this.pie, this.secs]).setDepth(DEPTH.hud + 2);
+    this.root = scene.add.container(x, y, [this.halo, bgImg, img, text, auto, this.pie, this.secs]).setDepth(DEPTH.hud + 2);
     scene.tweens.add({ targets: this.halo, scale: 8.5, alpha: 0.9, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 

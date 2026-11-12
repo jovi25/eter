@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import { fitCamera, frameCap } from '../perf';
 import { CODEX_ENEMIES, enemyFacts, REACTION_EFFECT, reactionName, reactionRecipe } from '../../data/codex';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
@@ -31,6 +32,7 @@ export class CodexScene extends Phaser.Scene {
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.92);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
+    bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'codex_head');
     uiText(this, GAME_WIDTH / 2, 44, 'Códice', 44, '#f3e9ff', 8);
     const ne = save.data.codex.enemies.length;
     const nr = save.data.codex.reactions.length;

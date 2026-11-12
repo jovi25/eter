@@ -1,4 +1,5 @@
 import type { Element } from '../data/elements';
+import type { EvolutionId } from '../data/evolutions';
 import type { RuneKind } from '../data/runes';
 import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
@@ -48,6 +49,8 @@ export interface TowerState {
   shots: number; // attacks fired (drives every-Nth-shot abilities)
   blessTime: number; // Sacerdotisa blessing: +damage while > 0
   boost: number; // Reforços bought after max level
+  evo: EvolutionId | null; // chosen final form (after level 3)
+  ultTimer: number; // seconds until the next ultimate / storm tick
 }
 
 export interface ProjectileState {

@@ -1,10 +1,13 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ENEMIES } from '../../data/enemies';
 import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
 import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
+import { NUM_FONT } from '../art/textures';
+import { LabelPool } from '../ui/LabelPool';
 
 export interface HudCallbacks {
   onSpeed: () => void;
@@ -16,8 +19,9 @@ export interface HudCallbacks {
 /** Top bar (lives, gold, wave, 2×, pause), combo meter, boss bar, bottom "call wave" button. */
 export class Hud {
   readonly goldIconPos = { x: 182, y: 48 };
-  private livesText: Phaser.GameObjects.Text;
-  private goldText: Phaser.GameObjects.Text;
+  private livesText: Phaser.GameObjects.BitmapText;
+  private goldText: Phaser.GameObjects.BitmapText;
+  private labels: LabelPool;
   private waveText: Phaser.GameObjects.Text;
   private speedBtn: Button;
   private callBtn: Button;
@@ -25,8 +29,8 @@ export class Hud {
   private heart: Phaser.GameObjects.Image;
   private coin: Phaser.GameObjects.Image;
   private combo: Phaser.GameObjects.Container;
-  private comboText: Phaser.GameObjects.Text;
-  private comboSub: Phaser.GameObjects.Text;
+  private comboText: Phaser.GameObjects.BitmapText;
+  private comboSub: Phaser.GameObjects.BitmapText;
   private boss: Phaser.GameObjects.Container;
   private bossFill: Phaser.GameObjects.Rectangle;
   private last = { gold: -1, lives: -1, wave: -1, call: '', altar: '' };
@@ -39,11 +43,14 @@ export class Hud {
     top.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 116, 24);
     top.lineStyle(4, 0x5a3fb0, 1);
     top.strokeRoundedRect(-20, -20, GAME_WIDTH + 40, 116, 24);
+    bakeInPlace(top, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 124 }, 'hud_top');
 
     this.heart = scene.add.image(42, 48, 'heart').setDepth(DEPTH.hud);
-    this.livesText = uiText(scene, 72, 48, '20', 36).setOrigin(0, 0.5).setDepth(DEPTH.hud);
+    this.labels = new LabelPool(scene);
+    // Numbers that change all the time use the pre-drawn digit font (no canvas re-draw per change).
+    this.livesText = scene.add.bitmapText(70, 50, NUM_FONT, '20', 40).setLetterSpacing(-7).setOrigin(0, 0.5).setDepth(DEPTH.hud);
     this.coin = scene.add.image(this.goldIconPos.x, this.goldIconPos.y, 'coin').setDepth(DEPTH.hud).setScale(1.1);
-    this.goldText = uiText(scene, 208, 48, '120', 36, PAL.goldCss).setOrigin(0, 0.5).setDepth(DEPTH.hud);
+    this.goldText = scene.add.bitmapText(206, 50, NUM_FONT, '120', 40).setLetterSpacing(-7).setTint(0xffd34d).setOrigin(0, 0.5).setDepth(DEPTH.hud);
     this.waveText = uiText(scene, 448, 48, 'Onda 0/10', 30).setDepth(DEPTH.hud);
 
     this.speedBtn = new Button(scene, 588, 48, { width: 76, height: 60, label: '1×', fontSize: 30, color: 0x3d7bd9, onClick: cb.onSpeed });
@@ -54,6 +61,7 @@ export class Hud {
     const bottom = scene.add.graphics().setDepth(DEPTH.hud);
     bottom.fillStyle(PAL.panel, 0.88);
     bottom.fillRoundedRect(-20, GAME_HEIGHT - 104, GAME_WIDTH + 40, 140, 24);
+    bakeInPlace(bottom, { x0: -24, y0: GAME_HEIGHT - 108, w: GAME_WIDTH + 48, h: 148 }, 'hud_bottom');
     const compact = !!cb.onAltar;
     const callX = compact ? 222 : 290;
     this.callBtn = new Button(scene, callX, GAME_HEIGHT - 58, {
@@ -74,9 +82,11 @@ export class Hud {
     }
 
     // combo meter
-    this.comboText = uiText(scene, 0, 0, '', 40, '#ffe34d', 8);
-    this.comboSub = uiText(scene, 0, 34, '', 22, PAL.uiText, 5);
-    this.combo = scene.add.container(GAME_WIDTH / 2, 196, [this.comboText, this.comboSub]).setDepth(DEPTH.hud).setVisible(false);
+    const comboWord = uiText(scene, -6, 0, 'COMBO', 40, '#ffe34d', 8).setOrigin(1, 0.5);
+    this.comboText = scene.add.bitmapText(0, 2, NUM_FONT, '', 52).setLetterSpacing(-9).setTint(0xffe34d).setOrigin(0, 0.5);
+    this.comboSub = scene.add.bitmapText(-6, 36, NUM_FONT, '', 28).setLetterSpacing(-6).setOrigin(1, 0.5);
+    const comboSubWord = uiText(scene, 0, 36, 'dano de reação', 22, PAL.uiText, 5).setOrigin(0, 0.5);
+    this.combo = scene.add.container(GAME_WIDTH / 2 - 10, 196, [comboWord, this.comboText, this.comboSub, comboSubWord]).setDepth(DEPTH.hud).setVisible(false);
 
     // boss bar
     const bossName = uiText(scene, 0, -22, ENEMIES.herald.name.toUpperCase(), 24, '#bff4ff', 5);
@@ -158,8 +168,8 @@ export class Hud {
       return;
     }
     this.combo.setVisible(true).setAlpha(1);
-    this.comboText.setText(`COMBO ×${count}`);
-    this.comboSub.setText(`+${Math.round((mult - 1) * 100)}% dano de reação`);
+    this.comboText.setText(`x${count}`);
+    this.comboSub.setText(`+${Math.round((mult - 1) * 100)}%`);
     this.scene.tweens.killTweensOf(this.combo);
     this.combo.setScale(1.5);
     this.scene.tweens.add({ targets: this.combo, scale: 1, duration: 220, ease: 'Back.easeOut' });
@@ -170,8 +180,8 @@ export class Hud {
   }
 
   floatText(x: number, y: number, text: string, color: string): void {
-    const t = uiText(this.scene, x, y, text, 30, color).setDepth(DEPTH.hud + 2);
-    this.scene.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
+    const t = this.labels.get(text, 30, color, 6).setPosition(x, y).setDepth(DEPTH.hud + 2);
+    this.scene.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => this.labels.release(t) });
   }
 
   private pulse(obj: Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject, to: number): void {

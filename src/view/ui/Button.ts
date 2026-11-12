@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { ensureBaked } from './bake';
 import { playSfx } from '../audio/sfx';
 import { FONT, PAL } from '../art/palette';
 
@@ -17,7 +18,7 @@ export interface ButtonOptions {
 
 /** Rounded, chunky, touch-friendly button (min 48 px) with a press squash. */
 export class Button extends Phaser.GameObjects.Container {
-  private bg: Phaser.GameObjects.Graphics;
+  private bg: Phaser.GameObjects.Image;
   readonly text?: Phaser.GameObjects.Text;
   readonly iconImg?: Phaser.GameObjects.Image;
   private enabled = true;
@@ -26,7 +27,7 @@ export class Button extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, x: number, y: number, private opts: ButtonOptions) {
     super(scene, x, y);
     this.color = opts.color ?? 0x5a3fb0;
-    this.bg = scene.add.graphics();
+    this.bg = scene.add.image(0, 0, '__WHITE');
     this.add(this.bg);
     if (opts.icon) {
       this.iconImg = scene.add.image(opts.label ? -opts.width / 2 + 36 : 0, 0, opts.icon).setScale(opts.iconScale ?? 1);
@@ -63,15 +64,20 @@ export class Button extends Phaser.GameObjects.Container {
     const { width: w, height: h } = this.opts;
     const r = this.opts.radius ?? Math.min(22, h / 2);
     const c = this.enabled ? this.color : 0x4a4458;
-    this.bg.clear();
-    this.bg.fillStyle(PAL.ink, 1);
-    this.bg.fillRoundedRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 9, r + 3);
-    this.bg.fillStyle(Phaser.Display.Color.ValueToColor(c).darken(25).color, 1);
-    this.bg.fillRoundedRect(-w / 2, -h / 2 + 4, w, h, r);
-    this.bg.fillStyle(c, 1);
-    this.bg.fillRoundedRect(-w / 2, -h / 2, w, h - 2, r);
-    this.bg.fillStyle(0xffffff, 0.18);
-    this.bg.fillRoundedRect(-w / 2 + 6, -h / 2 + 4, w - 12, h * 0.35, Math.max(4, r - 6));
+    // Drawn once per size/colour and reused as an image (vector shapes are slow to redraw every frame).
+    const key = `btn_${w}_${h}_${r}_${c}`;
+    const box = { x0: -w / 2 - 4, y0: -h / 2 - 4, w: w + 8, h: h + 12 };
+    ensureBaked(this.scene, key, box, (g) => {
+      g.fillStyle(PAL.ink, 1);
+      g.fillRoundedRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 9, r + 3);
+      g.fillStyle(Phaser.Display.Color.ValueToColor(c).darken(25).color, 1);
+      g.fillRoundedRect(-w / 2, -h / 2 + 4, w, h, r);
+      g.fillStyle(c, 1);
+      g.fillRoundedRect(-w / 2, -h / 2, w, h - 2, r);
+      g.fillStyle(0xffffff, 0.18);
+      g.fillRoundedRect(-w / 2 + 6, -h / 2 + 4, w - 12, h * 0.35, Math.max(4, r - 6));
+    });
+    this.bg.setTexture(key).setOrigin(-box.x0 / box.w, -box.y0 / box.h);
   }
 
   setEnabled(on: boolean): this {

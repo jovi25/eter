@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
@@ -23,6 +24,7 @@ function panel(scene: Phaser.Scene, w: number, h: number, y = GAME_HEIGHT / 2): 
   g.lineStyle(4, 0x7d5ce0, 1);
   g.strokeRoundedRect(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 24);
   const c = scene.add.container(GAME_WIDTH / 2, y, [g]).setDepth(DEPTH.panel);
+  bakeInPlace(g, { x0: -w / 2 - 8, y0: -h / 2 - 8, w: w + 16, h: h + 24 }, `panel_${w}_${h}`);
   c.setScale(0.6).setAlpha(0);
   scene.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut' });
   return c;
@@ -45,7 +47,6 @@ export function economyButton(scene: Phaser.Scene, x: number, y: number, width: 
       const next = order[(order.indexOf(getSettings().economy) + 1) % order.length]!;
       setSetting('economy', next);
       btn.setLabel(label()).setColor(economyOn() ? 0x3aa655 : 0x6b6480);
-      frameCapNow(scene);
       if ((economyOn() ? 0.75 : 1) !== RENDER_SCALE) {
         const t = uiText(scene, x, y + 44, 'A resolução muda ao reabrir o jogo', 17, PAL.uiDim, 4);
         btn.parentContainer?.add(t);
@@ -56,10 +57,6 @@ export function economyButton(scene: Phaser.Scene, x: number, y: number, width: 
   return btn;
 }
 
-function frameCapNow(scene: Phaser.Scene): void {
-  const loop = scene.game.loop as Phaser.Core.TimeStep & { setFPSLimit?: (n: number) => void };
-  loop.setFPSLimit?.(scene.scene.key === 'Battle' && !economyOn() ? 0 : 30);
-}
 
 export class PausePanel {
   private objs: Phaser.GameObjects.GameObject[] = [];

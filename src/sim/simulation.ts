@@ -13,6 +13,7 @@ import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type Reac
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
+import { EVOLUTIONS, evolvedLevel, type EvolutionId } from '../data/evolutions';
 import { BOOST, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
@@ -507,7 +508,7 @@ export class Simulation {
     if (!this.mods.unlockedTowers.includes(type)) return null;
     const cost = TOWERS[type].levels[0].cost;
     if (s.gold < cost) return null;
-    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, boost: 0 };
+    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, boost: 0, evo: null, ultTimer: 0 };
     s.towers.push(tower);
     s.stats.built[type]++;
     s.stats.peakTowers = Math.max(s.stats.peakTowers, s.towers.length);
@@ -908,6 +909,7 @@ export class Simulation {
   // ───────────────────────────── towers & projectiles ─────────────────────────────
 
   levelOf(t: TowerState): TowerLevel {
+    if (t.evo) return evolvedLevel(t.type, t.evo);
     return TOWERS[t.type].levels[t.level - 1]!;
   }
 
@@ -921,13 +923,14 @@ export class Simulation {
   findTarget(t: TowerState): EnemyState | null {
     const range = this.levelOf(t).range * this.mods.rangeMult;
     const r2 = range * range;
+    const strongest = !!(t.evo && EVOLUTIONS[t.evo].targetStrongest);
     let best: EnemyState | null = null;
     for (const e of this.state.enemies) {
       if (!this.canTarget(t, e)) continue;
       const dx = e.x - t.x;
       const dy = e.y - t.y;
       if (dx * dx + dy * dy > r2) continue;
-      if (!best || e.dist > best.dist) best = e;
+      if (!best || (strongest ? e.hp > best.hp : e.dist > best.dist)) best = e;
     }
     return best;
   }
@@ -935,6 +938,20 @@ export class Simulation {
   private updateTowers(): void {
     for (const t of this.state.towers) {
       if (t.blessTime > 0) t.blessTime = Math.max(0, t.blessTime - DT);
+      if (t.evo) {
+        const evo = EVOLUTIONS[t.evo];
+        if (evo.ult || evo.aura) {
+          t.ultTimer -= DT * this.towerRateMult(t);
+          if (t.ultTimer <= 0) {
+            if (evo.aura) {
+              this.stormTick(t, t.evo);
+              t.ultTimer += evo.aura.tick;
+            } else if (this.castUlt(t, t.evo)) t.ultTimer = evo.ult!.every;
+            else t.ultTimer = 0;
+          }
+          if (evo.aura) continue; // the storm replaces normal shots
+        }
+      }
       if (t.cooldown > 0) t.cooldown = Math.max(0, t.cooldown - DT * this.towerRateMult(t));
       if (t.cooldown > 0) continue;
       const target = this.findTarget(t);
@@ -991,7 +1008,102 @@ export class Simulation {
 
   /** The tower's special ability, if it is at max level. */
   abilityOf(t: TowerState): TowerAbility | null {
+    if (t.evo && !EVOLUTIONS[t.evo].keepAbility) return null;
     return t.level >= MAX_LEVEL ? TOWERS[t.type].ability : null;
+  }
+
+  // ───────────────────────────── Evoluções ─────────────────────────────
+
+  /** Price of evolving this tower, or null if it can't (not level 3 yet, or already evolved). */
+  evolveCost(t: TowerState, evo: EvolutionId): number | null {
+    if (t.level < MAX_LEVEL || t.evo || EVOLUTIONS[evo].tower !== t.type) return null;
+    return Math.round(EVOLUTIONS[evo].cost * this.mods.upgradeCostMult);
+  }
+
+  evolve(towerId: number, evo: EvolutionId): boolean {
+    const s = this.state;
+    const t = this.getTower(towerId);
+    if (!t || s.result !== 'playing') return false;
+    const cost = this.evolveCost(t, evo);
+    if (cost === null || s.gold < cost) return false;
+    t.evo = evo;
+    t.invested += cost;
+    const def = EVOLUTIONS[evo];
+    t.ultTimer = def.ult ? def.ult.every * 0.4 : 0; // first ultimate comes a bit sooner
+    this.addGold(-cost);
+    this.events.emit('towerEvolved', { towerId: t.id, evo });
+    return true;
+  }
+
+  private inRange(t: TowerState, range = this.levelOf(t).range * this.mods.rangeMult): EnemyState[] {
+    const r2 = range * range;
+    return this.state.enemies.filter((e) => this.canTarget(t, e) && (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= r2);
+  }
+
+  /** Damage base for ultimates/storms: the level-3 hit, with every bonus (relics, boons, runes, Reforço). */
+  private ultBase(t: TowerState): number {
+    const def = TOWERS[t.type];
+    return def.levels[MAX_LEVEL - 1]!.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * this.blessMult(t);
+  }
+
+  /** Branch A. Returns false when nobody is in range (it waits, fully charged). */
+  private castUlt(t: TowerState, evo: EvolutionId): boolean {
+    const def = EVOLUTIONS[evo];
+    const ult = def.ult!;
+    const range = this.levelOf(t).range * this.mods.rangeMult;
+    const foes = this.inRange(t, range);
+    if (foes.length === 0) return false;
+    const base = this.ultBase(t) * ult.damageMult;
+    const el = TOWERS[t.type].element;
+    const targets: { x: number; y: number }[] = [];
+    const hit = (e: EnemyState, spec: Partial<HitSpec>) => {
+      targets.push({ x: e.x, y: e.y });
+      this.applyHit(e, { element: el, damage: base, towerId: t.id, towerType: t.type, ...spec });
+    };
+    let cx = t.x;
+    let cy = t.y;
+    let radius = range;
+    if (ult.kind === 'tomb') {
+      for (const e of foes) hit(e, { chillStacks: ult.freeze ?? 6 });
+    } else if (ult.kind === 'massRoot') {
+      for (const e of foes) if (!e.flying) hit(e, { rootChance: 1 });
+    } else if (ult.kind === 'skyStrike') {
+      const n = ult.targets ?? 6;
+      for (const e of [...foes].sort((a, b) => b.hp - a.hp).slice(0, n)) hit(e, {});
+    } else if (ult.kind === 'meteor') {
+      // Aim where the most enemies are bunched up.
+      const r = ult.radius ?? 110;
+      let best = foes[0]!;
+      let bestN = -1;
+      for (const a of foes) {
+        let n = 0;
+        for (const b of foes) if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 <= r * r) n++;
+        if (n > bestN) {
+          bestN = n;
+          best = a;
+        }
+      }
+      cx = best.x;
+      cy = best.y;
+      radius = r;
+      const lvl3 = TOWERS[t.type].levels[MAX_LEVEL - 1]!;
+      for (const e of this.state.enemies) {
+        if (!e.alive || (e.x - cx) ** 2 + (e.y - cy) ** 2 > r * r) continue;
+        hit(e, { damage: e === best ? base : base * 0.7, burnDps: (lvl3.burnDps ?? 0) * this.mods.burnDpsMult });
+      }
+      this.createZone(cx, cy, 90, 4, (lvl3.burnDps ?? 10) * this.mods.burnDpsMult);
+    }
+    this.events.emit('towerUlt', { towerId: t.id, evo, x: cx, y: cy, radius, targets });
+    return true;
+  }
+
+  /** Branch B of the ice tower: a constant storm instead of shots. */
+  private stormTick(t: TowerState, evo: EvolutionId): void {
+    const aura = EVOLUTIONS[evo].aura!;
+    const dmg = this.ultBase(t) * aura.damageMult;
+    for (const e of this.inRange(t)) {
+      this.applyHit(e, { element: TOWERS[t.type].element, damage: dmg, chillStacks: aura.chillStacks, towerId: t.id, towerType: t.type });
+    }
   }
 
   private fire(t: TowerState, target: EnemyState): void {
@@ -1004,6 +1116,15 @@ export class Simulation {
     }
     const ab = this.abilityOf(t);
     this.launch(t, target);
+    const multishot = t.evo ? EVOLUTIONS[t.evo].multishot ?? 0 : 0;
+    if (multishot > 1) {
+      const r2 = (lvl.range * this.mods.rangeMult) ** 2;
+      const others = this.state.enemies
+        .filter((e) => e !== target && this.canTarget(t, e) && (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= r2)
+        .sort((a, b) => b.dist - a.dist)
+        .slice(0, multishot - 1);
+      for (const e of others) this.launch(t, e);
+    }
     if (ab?.id === 'volley' && t.shots % ab.every === 0) {
       // Rajada: extra arrows at the next-furthest enemies in range.
       const r2 = (lvl.range * this.mods.rangeMult) ** 2;

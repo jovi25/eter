@@ -1,10 +1,12 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import { GAME_WIDTH } from '../../data/config';
 import { ELEMENTS } from '../../data/elements';
 import { BOOST, MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
 import type { Simulation } from '../../sim/simulation';
 import type { TowerState } from '../../sim/types';
 import { RUNE_KINDS, RUNE_RULES, RUNES, type RuneKind } from '../../data/runes';
+import { EVOLUTIONS, TOWER_EVOLUTIONS, type EvolutionId } from '../../data/evolutions';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
@@ -35,6 +37,7 @@ export class BuildMenu {
       upgrade: (id: number) => void;
       boost: (id: number) => void;
       sell: (id: number) => void;
+      evolve: (id: number, evo: EvolutionId) => void;
       buildRune: (index: number, kind: RuneKind) => void;
       sellRune: (index: number) => void;
     },
@@ -91,7 +94,8 @@ export class BuildMenu {
   openTower(tower: TowerState): void {
     this.close();
     this.openTowerId = tower.id;
-    const root = this.makeRoot(tower.x, tower.y, 215, 286, 1026);
+    const fork = tower.level >= MAX_LEVEL && !tower.evo;
+    const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, 1026);
     const def = TOWERS[tower.type];
     const lvl = this.sim.levelOf(tower);
     this.range.clear();
@@ -101,11 +105,12 @@ export class BuildMenu {
     this.range.lineStyle(3, ELEMENTS[def.element].color, 0.7);
     this.range.strokeCircle(tower.x, tower.y, range);
 
-    // Below max level: upgrade. At max level: Reforço (repeatable, pricier each time).
     const maxed = tower.level >= MAX_LEVEL;
+    const evolving = maxed && !tower.evo; // the fork: choose 1 of 2 final forms
+    // Below max level: upgrade. At max level: Reforço (repeatable, pricier each time).
     const costNow = () => (maxed ? this.sim.boostCost(tower) : this.sim.upgradeCost(tower));
-    const upCost = costNow();
-    const up = this.option(0, -96, maxed ? 0xe0862f : 0x3aa655, 'icon_play', upCost, false, () => {
+    const upPos = evolving ? { x: -110, y: 96 } : { x: 0, y: -96 };
+    const up = this.option(upPos.x, upPos.y, maxed ? 0xe0862f : 0x3aa655, 'icon_play', costNow(), false, () => {
       const cost = costNow();
       if (cost === null || this.sim.state.gold < cost) {
         playSfx('error');
@@ -117,22 +122,30 @@ export class BuildMenu {
       this.close();
     });
     (up.root.list[2] as Phaser.GameObjects.Image).setAngle(-90).setScale(1);
-    if (maxed) root.add(uiText(this.scene, 78, -96, `Reforço\n+${Math.round(BOOST.damagePerLevel * 100)}% dano`, 17, '#ffd9a8', 4).setOrigin(0, 0.5).setAlign('left'));
-    const sell = this.option(0, 96, 0xc0504a, 'coin', null, false, () => {
+    if (maxed) {
+      const lx = evolving ? upPos.x - 52 : 78;
+      root.add(uiText(this.scene, lx, upPos.y + (evolving ? 64 : 0), `Reforço +${Math.round(BOOST.damagePerLevel * 100)}%`, 16, '#ffd9a8', 4).setOrigin(evolving ? 0 : 0, 0.5).setAlign('left'));
+    }
+    const sellPos = evolving ? { x: 110, y: 96 } : { x: 0, y: 96 };
+    const sell = this.option(sellPos.x, sellPos.y, 0xc0504a, 'coin', null, false, () => {
       this.actions.sell(tower.id);
       this.close();
     });
     sell.cost.setText(`+${this.sim.sellValue(tower)}`).setColor(PAL.goldCss);
     root.add([up.root, sell.root]);
     this.options.push(up);
-    root.add(uiText(this.scene, 0, -172, `${def.name}  nv ${tower.level}${tower.boost > 0 ? `  +${tower.boost}` : ''}`, 22, PAL.uiText, 5));
-    // Max-level ability: preview it while upgrading, show it once unlocked.
+    const evoDef = tower.evo ? EVOLUTIONS[tower.evo] : null;
+    const title = evoDef ? `${evoDef.name}${tower.boost > 0 ? `  +${tower.boost}` : ''}` : `${def.name}  nv ${tower.level}${tower.boost > 0 ? `  +${tower.boost}` : ''}`;
+    root.add(uiText(this.scene, 0, evolving ? -238 : -172, title, 22, evoDef ? `#${evoDef.color.toString(16).padStart(6, '0')}` : PAL.uiText, 5));
     const info = def.abilityInfo;
-    const unlocked = tower.level >= MAX_LEVEL;
-    const abilityText = unlocked ? `★ ${info.name}: ${info.desc}` : `No nível 3: ${info.name} — ${info.desc}`;
-    const ab = uiText(this.scene, 0, -146, abilityText, 17, unlocked ? PAL.goldCss : PAL.uiDim, 4);
-    ab.setWordWrapWidth(420).setAlign('center');
+    let abilityText: string;
+    if (evoDef) abilityText = `★ ${evoDef.desc}`;
+    else if (maxed) abilityText = 'EVOLUÇÃO: escolha um caminho (toque 2× para confirmar)';
+    else abilityText = `No nível 3: ${info.name} — ${info.desc}`;
+    const ab = uiText(this.scene, 0, evolving ? -212 : -146, abilityText, 17, maxed ? PAL.goldCss : PAL.uiDim, 4);
+    ab.setWordWrapWidth(440).setAlign('center');
     root.add(ab);
+    if (evolving) this.evolutionChoices(root, tower, ab);
     this.refresh();
   }
 
@@ -188,6 +201,39 @@ export class BuildMenu {
     this.refresh();
   }
 
+  /** The two final forms, side by side. First tap shows what it does; second tap evolves. */
+  private evolutionChoices(root: Phaser.GameObjects.Container, tower: TowerState, info: Phaser.GameObjects.Text): void {
+    let picked: EvolutionId | null = null;
+    TOWER_EVOLUTIONS[tower.type].forEach((evo, i) => {
+      const def = EVOLUTIONS[evo];
+      const x = i === 0 ? -110 : 110;
+      const cost = this.sim.evolveCost(tower, evo);
+      const opt = this.option(x, -104, def.color, `tower_${tower.type}`, cost, false, () => {
+        const c = this.sim.evolveCost(tower, evo);
+        if (picked !== evo) {
+          picked = evo;
+          playSfx('ui', 1.2);
+          info.setText(`${def.name}: ${def.desc}\nToque de novo para evoluir`);
+          for (const o of this.options) if (o.root !== opt.root) this.scene.tweens.killTweensOf(o.root);
+          this.scene.tweens.add({ targets: opt.root, scale: 1.12, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+          return;
+        }
+        if (c === null || this.sim.state.gold < c) {
+          playSfx('error');
+          this.shake(opt.root);
+          return;
+        }
+        this.actions.evolve(tower.id, evo);
+        this.close();
+      });
+      (opt.root.list[2] as Phaser.GameObjects.Image).setTint(def.color);
+      root.add(opt.root);
+      this.options.push(opt);
+      root.add(uiText(this.scene, x, -170, i === 0 ? 'GOLPE FINAL' : 'CONSTANTE', 14, i === 0 ? '#ffb36b' : '#9fe8ff', 4));
+      root.add(uiText(this.scene, x, -38, def.name, 16, PAL.uiText, 4).setWordWrapWidth(170));
+    });
+  }
+
   /** Keep "can I afford it?" colors live while the menu is open. */
   refresh(): void {
     if (!this.root) return;
@@ -227,12 +273,14 @@ export class BuildMenu {
     g.fillCircle(0, 0, 39);
     g.fillStyle(0xffffff, 0.2);
     g.fillEllipse(-8, -14, 44, 22);
+    const gImg = bakeInPlace(g, { x0: -46, y0: -46, w: 92, h: 92 }, `opt_${color}`);
     const img = this.scene.add.image(0, -4, icon).setScale(icon.startsWith('tower_') ? 0.62 : 1.1);
     const costBg = this.scene.add.graphics();
     costBg.fillStyle(PAL.ink, 0.9);
     costBg.fillRoundedRect(-34, 26, 68, 28, 14);
+    const costImg = bakeInPlace(costBg, { x0: -36, y0: 24, w: 72, h: 32 }, 'opt_cost');
     const costText = uiText(this.scene, 0, 40, cost === null ? '' : `${cost}`, 22, PAL.goldCss, 4);
-    const root = this.scene.add.container(x, y, [g, costBg, img, costText]);
+    const root = this.scene.add.container(x, y, [gImg, costImg, img, costText]);
     if (locked) root.add(uiText(this.scene, 0, -4, '🔒', 30));
     root.setSize(96, 96);
     root.setInteractive({ useHandCursor: true });

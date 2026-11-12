@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { ensureBaked } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { Vec2 } from '../../data/maps';
 import { Rng } from '../../sim/rng';
@@ -15,13 +16,17 @@ export function showRune(map: MapView, scene: Phaser.Scene, index: number, x: nu
   if (!img || !aura) return;
   scene.tweens.killTweensOf(img);
   img.setTexture(kind ? `rune_${kind}` : 'rune_stone').setY(y - 14);
-  aura.clear().setVisible(!!kind);
+  aura.setVisible(!!kind);
   if (!kind) return;
   const color = RUNES[kind].color;
-  aura.fillStyle(color, 0.07);
-  aura.fillCircle(x, y, RUNE_RULES.radius);
-  aura.lineStyle(3, color, 0.35);
-  aura.strokeCircle(x, y, RUNE_RULES.radius);
+  const R = RUNE_RULES.radius;
+  ensureBaked(scene, `runeaura_${kind}`, { x0: -R - 3, y0: -R - 3, w: 2 * R + 6, h: 2 * R + 6 }, (g) => {
+    g.fillStyle(color, 0.07);
+    g.fillCircle(0, 0, R);
+    g.lineStyle(3, color, 0.35);
+    g.strokeCircle(0, 0, R);
+  });
+  aura.setTexture(`runeaura_${kind}`).setPosition(x, y);
   scene.tweens.add({ targets: img, y: y - 20, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 }
 
@@ -30,7 +35,7 @@ export class MapView {
   readonly portals: Phaser.GameObjects.Image[] = [];
   readonly slotImages: Phaser.GameObjects.Image[] = [];
   readonly runeImages: Phaser.GameObjects.Image[] = [];
-  readonly runeAuras: Phaser.GameObjects.Graphics[] = [];
+  readonly runeAuras: Phaser.GameObjects.Image[] = [];
 
   constructor(scene: Phaser.Scene, sim: Simulation) {
     const paths = sim.paths.map((p) => p.points as Vec2[]);
@@ -59,7 +64,7 @@ export class MapView {
     });
     // Rune stones: the aura (radius) is painted once and only shown while a rune stands there.
     sim.state.runes.forEach((r) => {
-      const aura = scene.add.graphics().setDepth(DEPTH.slot).setVisible(false);
+      const aura = scene.add.image(r.x, r.y, '__WHITE').setDepth(DEPTH.slot).setVisible(false);
       this.runeAuras.push(aura);
       this.runeImages.push(scene.add.image(r.x, r.y - 14, 'rune_stone').setDepth(unitDepth(r.y)).setScale(0.8));
     });

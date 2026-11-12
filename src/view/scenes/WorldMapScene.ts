@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { bakeInPlace } from '../ui/bake';
 import { getSettings, setSetting } from '../settings';
 import { refreshMusic } from '../audio/music';
 import { economyButton } from '../battle/Panels';
@@ -57,12 +58,14 @@ export class WorldMapScene extends Phaser.Scene {
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
+    bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'map_head');
     uiText(this, GAME_WIDTH / 2, 42, 'Campos de Vellmora', 38, '#f3e9ff', 8);
     // Progress chips: stars, challenges, coins
     const chip = (x: number, icon: string, text: string, color: string, scale = 0.8) => {
       const g = this.add.graphics();
       g.fillStyle(0x0b0716, 0.55);
       g.fillRoundedRect(x - 92, 74, 184, 40, 20);
+      bakeInPlace(g, { x0: x - 94, y0: 72, w: 188, h: 44 }, `map_chip_${x}`);
       this.add.image(x - 66, 94, icon).setScale(scale);
       uiText(this, x - 44, 94, text, 24, color, 5).setOrigin(0, 0.5);
     };
@@ -79,6 +82,7 @@ export class WorldMapScene extends Phaser.Scene {
     foot.fillRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
     foot.lineStyle(4, 0x5a3fb0, 1);
     foot.strokeRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
+    bakeInPlace(foot, { x0: -24, y0: GAME_HEIGHT - 132, w: GAME_WIDTH + 48, h: 168 }, 'map_foot');
     const today = dailySetup(new Date());
     const playedToday = save.dailyBest(today.key) > 0;
     const chestReady = save.data.coins >= COINS.chestPrice || !!save.data.chest.pending;
@@ -104,6 +108,7 @@ export class WorldMapScene extends Phaser.Scene {
     lg.fillStyle(PAL.ink, 0.88);
     lg.fillRoundedRect(-150, -32, 300, 64, 16);
     label.add(lg);
+    bakeInPlace(lg, { x0: -152, y0: -34, w: 304, h: 68 }, 'rift_label');
     label.add(uiText(this, 0, -12, 'Fenda Infinita', 22, unlocked ? '#e0c8ff' : PAL.uiDim, 4));
     const n = STAGE_ORDER.indexOf(RIFT.unlockAfter) + 1;
     label.add(uiText(this, 0, 14, unlocked ? (save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : 'Até onde você aguenta?') : `🔒 Vença a fase ${n}`, 17, unlocked ? PAL.goldCss : PAL.uiDim, 4));
@@ -132,6 +137,7 @@ export class WorldMapScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.22);
     g.fillEllipse(-8, -r * 0.4, r * 1.2, r * 0.5);
     c.add(g);
+    bakeInPlace(g, { x0: -r - 8, y0: -r - 8, w: 2 * r + 16, h: 2 * r + 20 }, `node_${r}_${color}`);
     c.add(uiText(this, 0, -2, unlocked ? `${index + 1}` : '🔒', boss ? 52 : 44, '#ffffff', 8));
 
     // Featured monster next to the node.
@@ -148,6 +154,7 @@ export class WorldMapScene extends Phaser.Scene {
     lg.fillStyle(PAL.ink, 0.85);
     lg.fillRoundedRect(-150, -22, 300, 44, 16);
     label.add(lg);
+    bakeInPlace(lg, { x0: -152, y0: -24, w: 304, h: 48 }, 'node_label');
     label.add(uiText(this, 0, 0, st.name, 21, unlocked ? PAL.uiText : PAL.uiDim, 4));
     for (let s = 0; s < 3; s++) {
       label.add(this.add.image((s - 1) * 30, -2 * r - 56, s < stars ? 'star' : 'starEmpty').setScale(0.4));
@@ -373,7 +380,7 @@ export class WorldMapScene extends Phaser.Scene {
       c.add(btn);
     });
     c.add(economyButton(this, 0, 34, 440));
-    c.add(uiText(this, 0, 82, 'Econômico: 30 fps e resolução menor. Gasta menos bateria.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
+    c.add(uiText(this, 0, 82, 'Econômico: resolução menor e efeitos leves. Gasta menos bateria.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
     c.add(uiText(this, 0, 150, 'Backup do progresso', 24, PAL.goldCss, 5));
     c.add(new Button(this, -112, 214, { width: 214, height: 62, label: 'Copiar', fontSize: 22, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
     c.add(new Button(this, 112, 214, { width: 214, height: 62, label: 'Restaurar', fontSize: 22, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));

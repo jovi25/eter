@@ -59,6 +59,11 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] **Modo econômico** (automático em celular fraco): 30 fps, resolução 75%, sem eco no som; menus sempre a 30 fps
 - [x] Fenda paga mais: 5 por onda + 40 a cada 10 ondas + 150 por vencer as 40 (≈ 510 moedas)
 
+### Fase 7c — Evoluções e desempenho ✔
+- [x] **Evoluções de torre**: no nível 3, escolher 1 de 2 formas finais (golpe final lento × efeito constante), 10 no total
+- [x] Desempenho: formas vetoriais viram imagens prontas (o maior custo do quadro), raios em imagens, números sem animações,
+      textos reaproveitados; sem limitador de fps (causava engasgos)
+
 ### Fase 8 — Heróis com identidade
 - [ ] 3 talentos por herói (escolhe 1 por nível): mudam o estilo, não só os números
 - [ ] Arma do Arcanista troca o elemento (Brasa, Geada, Trovão, Seiva) → combos diferentes
