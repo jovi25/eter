@@ -37,6 +37,8 @@ export interface SimEvents {
   heroFired: { targetId: number };
   /** The class skill went off by itself. */
   heroSkill: { cls: HeroClass; x: number; y: number; radius: number; hits: number; reactions: number };
+  /** Second skill (hero level 5) went off. */
+  heroSkill2: { cls: HeroClass; x: number; y: number; radius: number; hits: number; drop?: boolean }; // drop = one hit of the rain
   blockerAttack: { blockerId: number; targetId: number };
   blockerDied: { blockerId: number; x: number; y: number };
   blockerRespawn: { blockerId: number };

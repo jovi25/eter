@@ -108,6 +108,7 @@ export interface EndStats {
   challenges?: { text: string; done: boolean; fresh: boolean }[];
   daily?: { score: number; best: number; record: boolean };
   coins?: number;
+  heroXp?: { name: string; gained: number; level: number; levelUp: boolean; unlock?: string };
 }
 
 export class EndPanel {
@@ -151,7 +152,18 @@ export class EndPanel {
       s.skillName === 'Catalisar' ? `Melhor Catalisar: ${s.bestCatalyze} reações` : `${s.skillName}: ${s.skillCasts}×`,
       `Bênçãos: ${s.boons}   •   Abates: ${s.kills}`,
     ];
+    if (s.heroXp) lines[2] = `${s.heroXp.name}: +${s.heroXp.gained} XP  (nível ${s.heroXp.level})`;
     lines.forEach((l, i) => p.add(uiText(scene, 0, -88 + i * 34, l, 22, i === 1 ? '#ffe34d' : PAL.uiText, 5)));
+    if (s.heroXp?.levelUp) {
+      // Level up: a gold line over the stats, popping in after the stars.
+      const lvl = uiText(scene, 0, -88 + 2 * 34, `★ NÍVEL ${s.heroXp.level}! ${s.heroXp.unlock ? 'Novo: ' + s.heroXp.unlock : ''}`, 21, PAL.goldCss, 6).setWordWrapWidth(560);
+      const bg = scene.add.image(0, -88 + 2 * 34, 'px').setTint(0x2a1a4d).setDisplaySize(580, Math.max(34, lvl.height + 6));
+      p.add([bg, lvl]);
+      for (const o of [bg, lvl]) {
+        o.setAlpha(0);
+        scene.tweens.add({ targets: o, alpha: 1, delay: 1500, duration: 300, onStart: () => playSfx('star', 1.3) });
+      }
+    }
     if (s.daily) {
       p.add(uiText(scene, 0, 66, 'PONTUAÇÃO DO DIA', 22, PAL.uiDim, 5));
       p.add(uiText(scene, 0, 108, `${s.daily.score}`, 54, '#ffffff', 9));

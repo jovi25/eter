@@ -1,5 +1,6 @@
 import type { Element } from './elements';
 import type { HeroClass } from './heroes';
+import type { TalentId } from './talents';
 import type { TowerId } from './towers';
 
 /**
@@ -20,6 +21,9 @@ export interface SimModifiers {
   heroDamageMult: number; // equipment / level
   heroAttackSpeedMult: number; // Wolf card
   heroClass: HeroClass;
+  /** Fase 8: the equipped talent (null = none) and the level-5 second skill. */
+  heroTalent: TalentId | null;
+  heroSkill2: boolean;
   // Run-time knobs changed by Bênçãos (src/data/boons.ts)
   burnDpsMult: number;
   chainBonus: number; // extra lightning jumps
@@ -46,6 +50,8 @@ export function defaultModifiers(): SimModifiers {
     heroDamageMult: 1,
     heroAttackSpeedMult: 1,
     heroClass: 'mage',
+    heroTalent: null,
+    heroSkill2: false,
     burnDpsMult: 1,
     chainBonus: 0,
     reactionDamageMult: 1,

@@ -18,6 +18,8 @@ import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
+import { HeroPanel } from '../ui/HeroPanel';
+import { TALENTS, WEAPONS } from '../../data/talents';
 
 const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> = {
   v1: { x: 192, y: 1008, enemy: 'slime' },
@@ -200,8 +202,19 @@ export class WorldMapScene extends Phaser.Scene {
 
     // Hero picker
     c.add(uiText(this, 0, -122, 'Escolha o herói', 24, PAL.uiText, 5));
-    const role = uiText(this, 0, 92, HEROES[save.data.hero].role, 18, PAL.uiDim, 4).setWordWrapWidth(560);
-    c.add(role);
+    // Hero sheet: level, talent, second skill, weapon (Fase 8).
+    const hc = save.data.hero;
+    const talent = save.data.heroes[hc].talent;
+    c.add(
+      new Button(this, 0, 104, {
+        width: 560,
+        height: 56,
+        label: `Nv ${save.heroLevel(hc)} • ${talent ? TALENTS[talent].name : 'Talentos'}${hc === 'mage' ? ' • ' + WEAPONS[save.data.weapon].name.split(' ').pop() : ''}  ▸`,
+        fontSize: 22,
+        color: 0x5a3fb0,
+        onClick: () => new HeroPanel(this, hc, () => this.showStageCard(id, false)),
+      }),
+    );
     HERO_ORDER.forEach((cls, i) => {
       const def = HEROES[cls];
       const x = (i - 1.5) * 146;

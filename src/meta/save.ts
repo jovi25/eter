@@ -1,14 +1,15 @@
 // Player progress, saved in localStorage as versioned JSON (with migrations) + manual text backup.
 // Pure TypeScript (no Phaser) so it can be unit-tested.
 
-import { HEROES, type HeroClass } from '../data/heroes';
+import { HERO_ORDER, HEROES, type HeroClass } from '../data/heroes';
+import { HERO_LEVELS, MAX_HERO_LEVEL, SKILL2, TALENTS, WEAPONS, heroLevel, type TalentId, type WeaponElement, type WeaponId } from '../data/talents';
 import type { BoonId } from '../data/boons';
 import { COINS, LOCKED_BOONS, MAX_RELIC_LEVEL, RELIC_IDS, RELIC_SLOTS, isHighRarity, nextChestSeed, rollChest, type ChestReward, type RelicId } from '../data/relics';
 import { ENEMIES } from '../data/enemies';
 import { REACTIONS } from '../data/reactions';
 import { RIFT, STAGE_ORDER, type CampaignStageId, type StageId } from '../data/stages';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -31,10 +32,24 @@ export interface SaveData {
   equipped: RelicId[]; // up to RELIC_SLOTS
   unlockedBoons: BoonId[];
   chest: { seed: number; pending: ChestReward | null; opened: number; sinceEpic: number };
+  // ── v7: hero levels, talents, Arcanista weapon ──
+  heroes: Record<HeroClass, HeroProgress>;
+  weapon: WeaponId;
+}
+
+export interface HeroProgress {
+  xp: number;
+  talent: TalentId | null;
+}
+
+function freshHeroes(xp = 0): Record<HeroClass, HeroProgress> {
+  const out = {} as Record<HeroClass, HeroProgress>;
+  for (const cls of HERO_ORDER) out[cls] = { xp, talent: null };
+  return out;
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember' };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -45,7 +60,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember' };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -67,7 +82,22 @@ export function migrate(raw: unknown): SaveData {
     // v6: Relicários. Everyone gets enough coins for a first chest.
     out = { ...out, version: 6, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
   }
+  if (out.version < 7) {
+    // v7: hero levels. Veterans start where their campaign progress says (7 XP per star earned).
+    const stars = STAGE_ORDER.reduce((s, id) => s + clampInt(out.stages?.[id]?.stars, 0, 3), 0);
+    out = { ...out, version: 7, heroes: freshHeroes(Math.min(HERO_LEVELS.xp[MAX_HERO_LEVEL - 1]!, stars * 7)), weapon: 'ember' };
+  }
   if (!(out.hero in HEROES)) out.hero = 'mage';
+  const hs = freshHeroes();
+  for (const cls of HERO_ORDER) {
+    const p = out.heroes?.[cls];
+    const xp = clampInt(p?.xp, 0, 1e9);
+    const t = p?.talent;
+    const okTalent = typeof t === 'string' && t in TALENTS && TALENTS[t].cls === cls && TALENTS[t].level <= heroLevel(xp);
+    hs[cls] = { xp, talent: okTalent ? t : null };
+  }
+  out.heroes = hs;
+  if (!(typeof out.weapon === 'string' && out.weapon in WEAPONS && WEAPONS[out.weapon].level <= heroLevel(hs.mage.xp))) out.weapon = 'ember';
   out.coins = clampInt(out.coins, 0, 1e9);
   const rel: SaveData['relics'] = {};
   for (const id of RELIC_IDS) {
@@ -251,6 +281,46 @@ export class SaveStore {
     this.data.riftBest = wave;
     this.persist();
     return true;
+  }
+
+  // ───────────── Heróis (v7) ─────────────
+
+  heroLevel(cls: HeroClass): number {
+    return heroLevel(this.data.heroes[cls].xp);
+  }
+
+  /** Add XP after a match. Returns the level before and after. */
+  addHeroXp(cls: HeroClass, n: number): { before: number; after: number } {
+    const before = this.heroLevel(cls);
+    if (n > 0) {
+      this.data.heroes[cls].xp += Math.round(n);
+      this.persist();
+    }
+    return { before, after: this.heroLevel(cls) };
+  }
+
+  /** Equip a talent (null = none). Only talents of that hero, already unlocked. */
+  setTalent(cls: HeroClass, id: TalentId | null): boolean {
+    if (id && (TALENTS[id].cls !== cls || TALENTS[id].level > this.heroLevel(cls))) return false;
+    this.data.heroes[cls].talent = id;
+    this.persist();
+    return true;
+  }
+
+  setWeapon(id: WeaponId): boolean {
+    if (WEAPONS[id].level > this.heroLevel('mage')) return false;
+    this.data.weapon = id;
+    this.persist();
+    return true;
+  }
+
+  /** What the match receives for this hero (talent, second skill, weapon element). */
+  heroMods(cls: HeroClass): { heroTalent: TalentId | null; heroSkill2: boolean; heroAffinity: WeaponElement } {
+    return {
+      heroTalent: this.data.heroes[cls].talent,
+      heroSkill2: this.heroLevel(cls) >= HERO_LEVELS.skill2Level && !!SKILL2[cls],
+      heroAffinity: WEAPONS[this.data.weapon].element,
+    };
   }
 
   /** A hero class is available once its unlock stage has been won. */

@@ -13,6 +13,7 @@ import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type Reac
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
+import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { EVOLUTIONS, evolvedLevel, type EvolutionId } from '../data/evolutions';
 import { BOOST, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
@@ -70,6 +71,9 @@ export class Simulation {
   private readonly aliveByWave = new Map<number, number>();
   private readonly clearedWaves = new Set<number>();
   private readonly tmp: Vec2 = { x: 0, y: 0 };
+  /** Melee stats after the talent (Knight hero / Druid's bear). */
+  private readonly heroBlock?: BlockerStats;
+  private readonly bearStats: BlockerStats;
 
   constructor(opts: SimOptions) {
     this.stageId = opts.stage;
@@ -82,6 +86,16 @@ export class Simulation {
     this.rng = new Rng(opts.seed);
     this.boonRng = new Rng((opts.seed ^ 0x9e3779b9) >>> 0);
     this.eventRng = new Rng((opts.seed ^ 0x51ed270b) >>> 0);
+    const base = HEROES[this.mods.heroClass].blocker;
+    const tal = this.mods.heroClass === 'knight' ? this.mods.heroTalent : null;
+    if (base) {
+      if (tal === 'wall') this.heroBlock = { ...base, hp: base.hp * TALENT_NUM.wall.hpMult, maxBlock: TALENT_NUM.wall.maxBlock, damage: base.damage * TALENT_NUM.wall.damageMult };
+      else if (tal === 'duelist') this.heroBlock = { ...base, maxBlock: TALENT_NUM.duelist.maxBlock, damage: base.damage * TALENT_NUM.duelist.damageMult };
+      else this.heroBlock = base;
+    }
+    const eb = TALENT_NUM.elderBear;
+    this.bearStats = this.talent('elderBear') ? { ...BEAR, hp: BEAR.hp * eb.hpMult, maxBlock: eb.maxBlock, damage: BEAR.damage * eb.damageMult } : BEAR;
+    const skill2 = this.mods.heroSkill2 ? SKILL2[this.mods.heroClass].cooldown : 0;
     this.state = {
       tick: 0,
       time: 0,
@@ -105,14 +119,16 @@ export class Simulation {
         y: map.heroStart.y,
         targetX: map.heroStart.x,
         targetY: map.heroStart.y,
-        hp: HEROES[this.mods.heroClass].blocker?.hp ?? 0,
-        maxHp: HEROES[this.mods.heroClass].blocker?.hp ?? 0,
+        hp: this.heroBlock?.hp ?? 0,
+        maxHp: this.heroBlock?.hp ?? 0,
         alive: true,
         respawnTimer: 0,
         blocking: [],
         attackCooldown: 0,
         catalyzeCooldown: 0,
         catalyzeMax: HEROES[this.mods.heroClass].skill.cooldown,
+        skill2Cooldown: skill2 / 2,
+        skill2Max: skill2,
         facing: 1,
         moving: false,
       },
@@ -156,8 +172,8 @@ export class Simulation {
         y: map.heroStart.y + 10,
         postX: map.heroStart.x + 40,
         postY: map.heroStart.y + 10,
-        hp: BEAR.hp,
-        maxHp: BEAR.hp,
+        hp: this.bearStats.hp,
+        maxHp: this.bearStats.hp,
         alive: true,
         respawnTimer: 0,
         blocking: [],
@@ -169,6 +185,11 @@ export class Simulation {
   }
 
   // ───────────────────────────── hero commands ─────────────────────────────
+
+  /** Is this talent equipped (and does it belong to the current hero)? */
+  talent(id: TalentId): boolean {
+    return this.mods.heroTalent === id;
+  }
 
   get heroDef(): HeroDef {
     return HEROES[this.mods.heroClass];
@@ -203,14 +224,16 @@ export class Simulation {
     const element = this.mods.heroAffinity;
     h.catalyzeCooldown = h.catalyzeMax;
     const r2 = c.radius * c.radius;
+    const at = this.catalyzeCenter();
+    const dmgMult = this.talent('comboPact') ? TALENT_NUM.comboPact.damageMult : 1;
     const before = this.totalReactions();
     let hits = 0;
     for (const e of this.state.enemies.slice()) {
-      if (!e.alive || (e.x - h.x) ** 2 + (e.y - h.y) ** 2 > r2) continue;
+      if (!e.alive || (e.x - at.x) ** 2 + (e.y - at.y) ** 2 > r2) continue;
       hits++;
       this.applyHit(e, {
         element,
-        damage: c.damage * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
+        damage: c.damage * dmgMult * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
         burnDps: c.burnDps,
         rootChance: c.rootChance,
         hero: true,
@@ -220,9 +243,25 @@ export class Simulation {
     this.state.stats.catalyzeCasts++;
     this.state.stats.skillCasts++;
     this.state.stats.bestCatalyzeReactions = Math.max(this.state.stats.bestCatalyzeReactions, reactions);
-    this.events.emit('catalyzed', { x: h.x, y: h.y, radius: c.radius, element, hits, reactions });
-    this.events.emit('heroSkill', { cls: 'mage', x: h.x, y: h.y, radius: c.radius, hits, reactions });
+    this.events.emit('catalyzed', { x: at.x, y: at.y, radius: c.radius, element, hits, reactions });
+    this.events.emit('heroSkill', { cls: 'mage', x: at.x, y: at.y, radius: c.radius, hits, reactions });
     return true;
+  }
+
+  /** Where Catalisar goes off: around the hero, or (Catalisador Distante) on the biggest enemy group. */
+  catalyzeCenter(): { x: number; y: number; count: number } {
+    const h = this.state.hero;
+    const r = HERO.catalyze.radius;
+    if (!this.talent('farCatalyst')) return { x: h.x, y: h.y, count: this.enemiesNear(h.x, h.y, r).length };
+    const r2 = TALENT_NUM.farCatalyst.searchRadius ** 2;
+    let best = { x: h.x, y: h.y, count: 0 };
+    for (const e of this.state.enemies) {
+      if (!e.alive) continue;
+      let n = 0;
+      for (const o of this.state.enemies) if (o.alive && (o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= r2) n++;
+      if (n > best.count) best = { x: e.x, y: e.y, count: n };
+    }
+    return best;
   }
 
   private totalReactions(): number {
@@ -246,23 +285,30 @@ export class Simulation {
       const towers = this.towersNear(h.x, h.y, sk.radius);
       const busy = towers.some((t) => this.findTarget(t));
       if (!busy) return;
+      if (this.talent('focus')) {
+        // Foco: all the blessing on the strongest tower around her.
+        const best = towers.reduce((a, t) => (t.level * 100 + t.boost * 10 + (t.evo ? 1000 : 0) > a.level * 100 + a.boost * 10 + (a.evo ? 1000 : 0) ? t : a));
+        best.blessTime = TALENT_NUM.focus.duration;
+        this.skillDone(h, sk.radius, 1, 0);
+        return;
+      }
       for (const t of towers) t.blessTime = PRIEST.blessDuration;
       this.skillDone(h, sk.radius, towers.length, 0);
       return;
     }
-    const near = this.enemiesNear(h.x, h.y, sk.radius);
-    if (near.length < sk.minTargets) return;
     if (cls === 'mage') {
-      this.castCatalyze();
+      if (this.catalyzeCenter().count >= sk.minTargets) this.castCatalyze();
       return;
     }
+    const near = this.enemiesNear(h.x, h.y, sk.radius);
+    if (near.length < sk.minTargets) return;
     const before = this.totalReactions();
     if (cls === 'knight') {
       for (const e of near) this.applyHit(e, { element: 'physical', damage: KNIGHT_SPIN.damage * this.mods.heroDamageMult, hero: true });
     } else if (cls === 'druid') {
       for (const e of near) {
         this.applyHit(e, { element: 'nature', damage: DRUID_FURY.damage * this.mods.heroDamageMult, hero: true });
-        if (e.alive && this.canBeRooted(e)) this.root(e, DRUID_FURY.rootDuration);
+        if (e.alive && this.canBeRooted(e)) this.root(e, DRUID_FURY.rootDuration + (this.talent('hungrySoil') ? TALENT_NUM.hungrySoil.furyRootBonus : 0));
       }
       const bear = this.state.summons.find((s) => s.kind === 'bear' && s.alive);
       if (bear) bear.hp = Math.min(bear.maxHp, bear.hp + bear.maxHp * 0.3);
@@ -284,14 +330,22 @@ export class Simulation {
   /** Towers near the Sacerdotisa attack faster. */
   private towerRateMult(t: TowerState): number {
     let m = this.runeMult(t, 'rateMult');
-    if (this.mods.heroClass !== 'priest' || !this.state.hero.alive) return m;
+    if (this.mods.heroClass !== 'priest' || !this.state.hero.alive || this.talent('smite')) return m;
     const h = this.state.hero;
-    if ((t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= PRIEST.auraRadius ** 2) m *= PRIEST.auraRateMult;
+    const choir = this.talent('choir');
+    const radius = choir ? TALENT_NUM.choir.auraRadius : PRIEST.auraRadius;
+    if ((t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= radius ** 2) m *= choir ? TALENT_NUM.choir.auraRateMult : PRIEST.auraRateMult;
     return m;
   }
 
   private blessMult(t: TowerState): number {
-    return (t.blessTime > 0 ? PRIEST.blessDamageMult : 1) * (1 + BOOST.damagePerLevel * t.boost) * this.runeMult(t, 'damageMult');
+    const bless = t.blessTime > 0 ? (this.talent('focus') ? TALENT_NUM.focus.damageMult : PRIEST.blessDamageMult) : 1;
+    let m = bless * (1 + BOOST.damagePerLevel * t.boost) * this.runeMult(t, 'damageMult');
+    if (this.talent('banner') && this.state.hero.alive) {
+      const h = this.state.hero;
+      if ((t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= TALENT_NUM.banner.radius ** 2) m *= TALENT_NUM.banner.damageMult;
+    }
+    return m;
   }
 
   /** Product of the runes of one kind that reach this tower. */
@@ -331,15 +385,87 @@ export class Simulation {
     const h = this.state.hero;
     if (h.catalyzeCooldown > 0) h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - DT);
     const def = this.heroDef;
-    if (def.blocker) {
+    if (def.blocker && this.heroBlock) {
       // Knight: the hero itself holds the line around its post.
-      this.updateBlocker(h, def.blocker, h.targetX, h.targetY, true);
+      this.updateBlocker(h, this.heroBlock, h.targetX, h.targetY, true);
     } else {
       this.walkTo(h, h.targetX, h.targetY, HERO.speed);
       this.heroRangedAttack();
     }
-    for (const s of this.state.summons) this.updateBlocker(s, BEAR, s.postX, s.postY, false);
+    for (const s of this.state.summons) this.updateBlocker(s, this.bearStats, s.postX, s.postY, false);
     if (h.alive) this.tryAutoSkill();
+    if (h.skill2Max > 0) {
+      if (h.skill2Cooldown > 0) h.skill2Cooldown = Math.max(0, h.skill2Cooldown - DT);
+      if (h.skill2Cooldown <= 0 && h.alive && this.state.result === 'playing' && this.trySkill2()) h.skill2Cooldown = h.skill2Max;
+    }
+  }
+
+  /** Second skill (hero level 5). Returns true when it went off. */
+  private trySkill2(): boolean {
+    const h = this.state.hero;
+    const cls = this.mods.heroClass;
+    const sk = SKILL2[cls];
+    let hits = 0;
+    let x = h.x;
+    let y = h.y;
+    if (cls === 'mage') {
+      // Chuva Elemental: hits of the weapon element on random enemies around her.
+      const near = this.enemiesNear(h.x, h.y, sk.radius);
+      if (near.length < SKILL2_NUM.rain.minTargets) return false;
+      const element = this.mods.heroAffinity;
+      for (let i = 0; i < SKILL2_NUM.rain.hits; i++) {
+        const alive = near.filter((e) => e.alive);
+        if (!alive.length) break;
+        const e = alive[this.rng.int(0, alive.length - 1)]!;
+        hits++;
+        this.events.emit('heroSkill2', { cls, x: e.x, y: e.y, radius: 40, hits: 0, drop: true });
+        this.applyHit(e, {
+          element,
+          damage: SKILL2_NUM.rain.damage * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
+          burnDps: HERO.catalyze.burnDps,
+          rootChance: HERO.catalyze.rootChance,
+          hero: true,
+        });
+      }
+    } else if (cls === 'knight') {
+      // Grito de Guerra: everything around becomes Fragile.
+      const near = this.enemiesNear(h.x, h.y, sk.radius);
+      if (near.length < SKILL2_NUM.warcry.minTargets) return false;
+      for (const e of near) {
+        e.fragileTime = STATUS.fragile.duration;
+        this.events.emit('statusApplied', { enemyId: e.id, status: 'fragile' });
+      }
+      hits = near.length;
+    } else if (cls === 'druid') {
+      // Chamado Selvagem: the bear comes back at once (or heals fully) and roots what is around it.
+      const bear = this.state.summons.find((s) => s.kind === 'bear');
+      if (!bear) return false;
+      if (!bear.alive) {
+        bear.alive = true;
+        bear.hp = bear.maxHp;
+        bear.x = bear.postX;
+        bear.y = bear.postY;
+        this.events.emit('blockerRespawn', { blockerId: bear.id });
+      } else if (bear.hp > bear.maxHp * 0.5 && bear.blocking.length < 2) return false;
+      bear.hp = bear.maxHp;
+      for (const e of this.enemiesNear(bear.x, bear.y, sk.radius)) {
+        if (this.canBeRooted(e)) {
+          this.root(e, SKILL2_NUM.wildCall.rootDuration);
+          hits++;
+        }
+      }
+      x = bear.x;
+      y = bear.y;
+    } else {
+      // Graça: one life back for the crystal.
+      if (this.state.lives >= ECONOMY.startLives) return false;
+      this.state.lives++;
+      this.events.emit('livesChanged', { lives: this.state.lives, delta: 1 });
+      hits = 1;
+    }
+    this.state.stats.skillCasts++;
+    this.events.emit('heroSkill2', { cls, x, y, radius: sk.radius, hits });
+    return true;
   }
 
   private walkTo(b: BlockerState, x: number, y: number, speed: number): boolean {
@@ -381,25 +507,51 @@ export class Simulation {
     }
     if (!best) return;
     const element = a.element === 'affinity' ? this.mods.heroAffinity : a.element;
-    this.state.projectiles.push({
-      id: this.nextId++,
-      towerId: 0,
-      targetId: best.id,
-      x: h.x,
-      y: h.y - 84,
-      tx: best.x,
-      ty: best.y,
-      speed: a.projectileSpeed,
-      damage: a.damage * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
-      element,
-      crit: false,
-      splashRadius: 0,
-      splashFactor: 0,
-      burnDps: a.burnDps ?? 0,
-      rootChance: a.rootChance ?? 0,
-      chillStacks: 1,
-      alive: true,
-    });
+    // Talents reshape the shot.
+    let dmg = a.damage;
+    let splashRadius = 0;
+    let splashFactor = 0;
+    let rootChance = a.rootChance ?? (a.element === 'affinity' && element === 'nature' ? (WEAPONS.sap.rootChance ?? 0) : 0);
+    const targets = [best];
+    if (this.talent('tripleShot')) {
+      dmg *= TALENT_NUM.tripleShot.damageMult;
+      const others = this.state.enemies
+        .filter((e) => e.alive && e !== best && (e.x - h.x) ** 2 + (e.y - h.y) ** 2 <= a.range * a.range)
+        .sort((p, q) => (p.x - h.x) ** 2 + (p.y - h.y) ** 2 - ((q.x - h.x) ** 2 + (q.y - h.y) ** 2));
+      targets.push(...others.slice(0, TALENT_NUM.tripleShot.targets - 1));
+    }
+    if (this.talent('elderBear')) dmg *= TALENT_NUM.elderBear.druidDamageMult;
+    if (this.talent('bramble')) {
+      splashRadius = TALENT_NUM.bramble.splashRadius;
+      splashFactor = TALENT_NUM.bramble.splashFactor;
+      rootChance = TALENT_NUM.bramble.rootChance;
+    }
+    if (this.talent('smite')) {
+      dmg *= TALENT_NUM.smite.damageMult;
+      splashRadius = TALENT_NUM.smite.splashRadius;
+      splashFactor = TALENT_NUM.smite.splashFactor;
+    }
+    for (const t of targets) {
+      this.state.projectiles.push({
+        id: this.nextId++,
+        towerId: 0,
+        targetId: t.id,
+        x: h.x,
+        y: h.y - 84,
+        tx: t.x,
+        ty: t.y,
+        speed: a.projectileSpeed,
+        damage: dmg * this.mods.heroDamageMult * this.mods.elementDamageMult[element],
+        element,
+        crit: false,
+        splashRadius,
+        splashFactor,
+        burnDps: a.burnDps ?? 0,
+        rootChance,
+        chillStacks: 1,
+        alive: true,
+      });
+    }
     h.facing = best.x >= h.x ? 1 : -1;
     h.attackCooldown = 1 / (a.rate * this.mods.heroAttackSpeedMult);
     this.events.emit('heroFired', { targetId: best.id });
@@ -454,6 +606,7 @@ export class Simulation {
         b.attackCooldown = 1 / stats.rate;
         const dmg = stats.damage * (isHero ? this.mods.heroDamageMult : 1);
         this.applyHit(target, { element: 'physical', damage: dmg, hero: isHero });
+        if (isHero && !target.alive && this.talent('duelist')) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * TALENT_NUM.duelist.healOnKill);
         this.events.emit('blockerAttack', { blockerId: b.id, targetId: target.id });
       }
       // Held enemies that are close enough hit back.
@@ -1283,7 +1436,8 @@ export class Simulation {
       mult = REACTIONS[found.reaction].damageMult * comboMult * this.mods.reactionDamageMult;
       this.state.stats.reactions[found.reaction]++;
       const h = this.state.hero;
-      h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - HERO.catalyze.cooldownPerReaction);
+      const back = this.talent('comboPact') ? TALENT_NUM.comboPact.cooldownPerReaction : HERO.catalyze.cooldownPerReaction;
+      h.catalyzeCooldown = Math.max(0, h.catalyzeCooldown - back);
       this.events.emit('reactionTriggered', {
         enemyId: e.id,
         reaction: found.reaction,
@@ -1452,6 +1606,7 @@ export class Simulation {
     }
     dmg *= eff;
     if (e.fragileTime > 0) dmg *= 1 + STATUS.fragile.damageTakenBonus;
+    if (e.rootTime > 0 && this.talent('hungrySoil')) dmg *= TALENT_NUM.hungrySoil.rootedDamageTaken;
     const final = Math.max(1, Math.round(dmg));
     e.hp -= final;
     if (opts.towerType) this.state.stats.damageByTower[opts.towerType] += final;

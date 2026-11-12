@@ -3,7 +3,7 @@ import { BOONS, type BoonDef } from '../../src/data/boons';
 import {
   CHEST_ODDS, CHEST_PITY, COINS, LOCKED_BOONS, MAX_RELIC_LEVEL, RELIC_IDS, RELICS, matchCoins, nextChestSeed, rollChest, type Collection,
 } from '../../src/data/relics';
-import { migrate, SaveStore } from '../../src/meta/save';
+import { migrate, SAVE_VERSION, SaveStore } from '../../src/meta/save';
 import { Simulation } from '../../src/sim/simulation';
 
 const mem = () => {
@@ -57,7 +57,7 @@ describe('coins', () => {
 describe('save v6 (Relicários)', () => {
   it('old saves get coins for a first chest', () => {
     const s = migrate({ version: 5, createdAt: 1, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] } });
-    expect(s.version).toBe(6);
+    expect(s.version).toBe(SAVE_VERSION);
     expect(s.coins).toBe(COINS.chestPrice);
   });
 

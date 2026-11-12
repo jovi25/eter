@@ -403,3 +403,17 @@ Medido com um jogador-robô que constrói nos melhores espaços e melhora as tor
 - Só Arqueiros: perde na onda 10. Build com combos (Vinha + Braseiro + Gelo): vence 3★ em ~3 min 08 s, com 25–70 reações.
 - O teste `design check` em `tests/sim/match.test.ts` trava essa intenção: combos vencem a fase 1 em 150–240 s.
 - Ajustes feitos a partir dos valores do kickoff: recompensa de abate maior (Gosma 9, Lobo 8, Golem 20, Morcego 11), bônus de onda 20 + 4×onda, torres elementais com dano próprio comparável ao Arqueiro, Arauto com 1300 de vida.
+
+## Fase 8 — Heróis com identidade
+Cada herói sobe de nível jogando (1 XP por onda vencida, +5 na vitória; níveis em 10/30/60/100 XP). Saves antigos começam com 7 XP por estrela.
+Nos níveis 2, 3 e 4 libera um talento; o jogador equipa **1** na ficha do herói (botão abaixo dos retratos no cartão da fase).
+
+| Herói | Nv 2 | Nv 3 | Nv 4 | 2ª habilidade (nv 5) |
+|---|---|---|---|---|
+| Arcanista | Catalisador Distante (Catalisar no maior grupo) | Disparo Triplo (3 alvos, 60%) | Pacto do Combo (1,2 s por reação, −40% dano) | Chuva Elemental (6 golpes, 18 s) |
+| Cavaleiro | Muralha (segura 4, +50% vida, −30% dano) | Duelista (segura 1, ×2,2 dano, cura 15% por abate) | Estandarte (torres perto +18% dano) | Grito de Guerra (Frágil em volta, 16 s) |
+| Druida | Urso Ancião (urso +70% vida, segura 3, +40%) | Espinheiro (espinhos em área) | Solo Sedento (enraizados +25% dano) | Chamado Selvagem (urso volta/cura e enraíza, 20 s) |
+| Sacerdotisa | Coro (aura 300, +12%) | Foco (Bênção numa torre, +110%, 7 s) | Luz Punitiva (ataque ×3 em área, sem aura) | Graça (+1 vida, 30 s) |
+
+**Armas do Arcanista:** Brasa (fogo), Geada (gelo), Trovão (raio, nv 2: não marca, só detona), Seiva (natureza, nv 3: enraíza).
+Números em . Desafio do dia não usa talentos/arma/2ª habilidade.

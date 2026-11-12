@@ -64,10 +64,12 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Desempenho: formas vetoriais viram imagens prontas (o maior custo do quadro), raios em imagens, números sem animações,
       textos reaproveitados; sem limitador de fps (causava engasgos)
 
-### Fase 8 — Heróis com identidade
-- [ ] 3 talentos por herói (escolhe 1 por nível): mudam o estilo, não só os números
-- [ ] Arma do Arcanista troca o elemento (Brasa, Geada, Trovão, Seiva) → combos diferentes
-- [ ] 2ª habilidade automática por classe em nível alto
+### Fase 8 — Heróis com identidade ✔
+- [x] Nível de herói (1–5) jogando com ele: 1 XP por onda vencida + 5 na vitória
+- [x] 3 talentos por herói (liberados nos níveis 2, 3 e 4; equipa 1): mudam o estilo, não só os números
+- [x] Arma do Arcanista troca o elemento (Brasa, Geada, Trovão nv 2, Seiva nv 3) → combos diferentes
+- [x] 2ª habilidade automática por classe no nível 5
+- [x] Desafio do dia ignora talentos, arma e 2ª habilidade (igual para todos)
 - *Aceite:* dois jogadores com o mesmo herói jogam de formas diferentes.
 
 ### Fase 9 — Região 2 e chefes com mecânica

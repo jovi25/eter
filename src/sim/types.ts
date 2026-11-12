@@ -151,6 +151,8 @@ export interface HeroState extends BlockerState {
   targetY: number;
   catalyzeCooldown: number; // seconds until the class skill is ready (0 = ready) — name kept from Phase 3
   catalyzeMax: number;
+  skill2Cooldown: number; // second skill (hero level 5); skill2Max 0 = not unlocked
+  skill2Max: number;
 }
 
 export interface SummonState extends BlockerState {

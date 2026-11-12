@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { matchXp, SKILL2, unlockAt } from '../../data/talents';
 import { economyOn, fitCamera, frameCap } from '../perf';
 import { quality } from '../quality';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
@@ -208,7 +209,8 @@ export class BattleScene extends Phaser.Scene {
     this.sim = new Simulation({
       stage: this.stageId,
       seed,
-      modifiers: { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons] },
+      // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
+      modifiers: { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily ? {} : save.heroMods(this.heroClass)) },
       relics: this.daily ? [] : save.loadout(),
     });
     if (this.daily) {
@@ -448,6 +450,23 @@ export class BattleScene extends Phaser.Scene {
       const u = unitOf(r.blockerId);
       if (u) this.fx.shockwave(u.x, u.y, 0xffffff, 1.2);
       playSfx('ready');
+    });
+
+    // Second skill (hero level 5).
+    ev.on('heroSkill2', (sk) => {
+      const color = sk.cls === 'mage' ? ELEMENTS[this.sim.mods.heroAffinity].color : HERO_COLORS[sk.cls];
+      if (sk.drop) {
+        // One hit of the Chuva Elemental.
+        this.fx.shockwave(sk.x, sk.y - 10, color, 0.9, 300);
+        this.fx.burst(sk.x, sk.y - 30, color, 8);
+        return;
+      }
+      this.hero.cast();
+      if (sk.radius > 0) this.fx.shockwave(sk.x, sk.y - 20, color, sk.radius / 54, 500);
+      this.fx.popLabel(this.hero.x, this.hero.y - 140, `${SKILL2[sk.cls].name.toUpperCase()}!`, `#${color.toString(16).padStart(6, '0')}`);
+      if (sk.cls === 'priest') this.fx.popLabel(this.hero.x, this.hero.y - 96, '+1 VIDA', '#9be89b');
+      playSfx(sk.cls === 'priest' ? 'upgrade' : 'catalyze', 1.25);
+      vibrate(20);
     });
 
     ev.on('catalyzed', (c) => {
@@ -690,6 +709,11 @@ export class BattleScene extends Phaser.Scene {
       }
       const riftWave = g.won ? this.sim.state.totalWaves : Math.max(0, this.sim.state.wave - 1);
       const rift = isRift ? { wave: riftWave, record: getSave().recordRift(riftWave), best: getSave().data.riftBest } : undefined;
+      // Hero XP: waves cleared with this hero (+ a bonus for winning).
+      const xp = matchXp(riftWave, g.won);
+      const lv = save.addHeroXp(this.heroClass, xp);
+      const unlocked = lv.after > lv.before ? unlockAt(this.heroClass, lv.after) : undefined;
+      const heroXp = { name: HEROES[this.heroClass].name, gained: xp, level: lv.after, levelUp: lv.after > lv.before, unlock: unlocked };
       const coins = matchCoins({
         mode: this.daily ? 'daily' : isRift ? 'rift' : 'stage',
         won: g.won,
@@ -723,6 +747,7 @@ export class BattleScene extends Phaser.Scene {
             challenges,
             daily,
             coins,
+            heroXp,
           },
           { onStats: () => new StatsPanel(this, this.matchReport()), onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
         );
