@@ -4,7 +4,7 @@ import { ELEMENTS } from '../../data/elements';
 import { MAX_LEVEL, TOWERS } from '../../data/towers';
 import type { TowerState } from '../../sim/types';
 import { DEPTH, unitDepth } from './layers';
-import { quality } from '../quality';
+import { quality, addBlend } from '../quality';
 import { EVOLUTIONS, evolvedLevel } from '../../data/evolutions';
 
 class TowerView {
@@ -20,7 +20,7 @@ class TowerView {
       .image(0, 4, 'spark')
       .setScale(5.5, 3.2)
       .setTint(ELEMENTS[TOWERS[t.type].element].color)
-      .setBlendMode(Phaser.BlendModes.ADD)
+      .setBlendMode(addBlend())
       .setVisible(false);
     const base = scene.add.image(0, 6, 'tower_base');
     this.top = scene.add.image(0, -22, `tower_${t.type}`).setOrigin(0.5, 0.6);
@@ -44,12 +44,12 @@ class TowerView {
     this.pips.forEach((p) => p.setVisible(false));
     if (!this.crown) {
       // Glowing rune ring on the ground in the evolution's colour + a floating star crown.
-      const ring = this.scene.add.image(0, 14, 'ring').setScale(1.5, 0.7).setTint(def.color).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.85);
+      const ring = this.scene.add.image(0, 14, 'ring').setScale(1.5, 0.7).setTint(def.color).setBlendMode(addBlend()).setAlpha(0.85);
       this.root.addAt(ring, 0);
-      this.scene.tweens.add({ targets: ring, alpha: 0.4, scaleX: 1.7, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      if (!quality.low) this.scene.tweens.add({ targets: ring, alpha: 0.4, scaleX: 1.7, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.crown = this.scene.add.image(0, -92, 'star').setScale(0.5).setTint(def.color);
       this.root.add(this.crown);
-      this.scene.tweens.add({ targets: this.crown, y: -94, angle: 15, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      if (!quality.low) this.scene.tweens.add({ targets: this.crown, y: -94, angle: 15, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
     if (def.aura && !this.snow) {
       const r = evolvedLevel(t.type, t.evo).range;
@@ -59,11 +59,11 @@ class TowerView {
         speedY: { min: 30, max: 70 },
         speedX: { min: -30, max: -10 },
         lifespan: 1400,
-        frequency: 45,
+        frequency: quality.low ? 140 : 45,
         scale: { start: 0.7, end: 0.2 },
         alpha: { start: 0.95, end: 0 },
         tint: [0xffffff, 0xd8f6ff],
-        blendMode: Phaser.BlendModes.ADD,
+        blendMode: addBlend(),
       }).setDepth(DEPTH.fx - 1);
       const key = `stormfield_${Math.round(r)}`;
       ensureBaked(this.scene, key, { x0: -r - 3, y0: -r - 3, w: 2 * r + 6, h: 2 * r + 6 }, (g) => {
@@ -130,7 +130,7 @@ export class TowerLayer {
 
   fired(id: number): void {
     const v = this.views.get(id);
-    if (!v) return;
+    if (!v || quality.low) return;
     // Always squash relative to the level's base size (reading the current scale would creep mid-tween).
     const s = v.baseScale;
     this.scene.tweens.killTweensOf(v.top);

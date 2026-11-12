@@ -5,7 +5,7 @@ import { REACTIONS, type ReactionId } from '../../data/reactions';
 import { FONT, PAL } from '../art/palette';
 import { NUM_FONT } from '../art/textures';
 import { LabelPool } from '../ui/LabelPool';
-import { fxCount, quality } from '../quality';
+import { fxCount, quality, addBlend } from '../quality';
 import { DEPTH } from './layers';
 
 const toCss = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
@@ -20,7 +20,8 @@ export class FxLayer {
   private anim: { sx: number; sy: number; dx: number; dy: number; age: number; big: boolean; live: boolean }[] = [];
   readonly labels: LabelPool;
   private numberIdx = 0;
-  private rings: Phaser.GameObjects.Image[] = [];
+  private rings: Phaser.GameObjects.Image[] = []; // idle rings
+  private waves: { ring: Phaser.GameObjects.Image; age: number; life: number; size: number }[] = [];
   private coins: Phaser.GameObjects.Image[] = [];
   private boltPool: Phaser.GameObjects.Image[] = [];
   private boltsLive: { segs: Phaser.GameObjects.Image[]; age: number }[] = [];
@@ -36,7 +37,7 @@ export class FxLayer {
         lifespan: { min: 250, max: 550 },
         scale: { start: 0.9, end: 0 },
         alpha: { start: 1, end: 0 },
-        blendMode: Phaser.BlendModes.ADD,
+        blendMode: addBlend(),
       })
       .setDepth(DEPTH.fx);
     this.hitSparks = scene.add
@@ -67,7 +68,7 @@ export class FxLayer {
         scale: { start: 0.55, end: 0 },
         alpha: { start: 0.9, end: 0 },
         tint: [0xff5a1f, 0xff9d2e, 0xffe27a],
-        blendMode: Phaser.BlendModes.ADD,
+        blendMode: addBlend(),
       })
       .setDepth(DEPTH.fx);
 
@@ -107,7 +108,7 @@ export class FxLayer {
     for (let i = 1; i < path.length; i++) {
       const a = path[i - 1]!;
       const b = path[i]!;
-      const img = this.boltPool.pop() ?? this.scene.add.image(0, 0, 'bolt').setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.fx + 1);
+      const img = this.boltPool.pop() ?? this.scene.add.image(0, 0, 'bolt').setOrigin(0, 0.5).setBlendMode(addBlend()).setDepth(DEPTH.fx + 1);
       img
         .setPosition(a.x, a.y)
         .setRotation(Math.atan2(b.y - a.y, b.x - a.x))
@@ -214,11 +215,9 @@ export class FxLayer {
     this.debris.explode(fxCount(count), x, y);
   }
 
-  private flameFlip = false;
-
   /** A burning rock falling from the sky onto (x, y). */
   meteor(x: number, y: number, color: number, onImpact: () => void): void {
-    const rock = this.scene.add.image(x + 140, y - 520, 'spark').setTint(color).setScale(2.6).setDepth(DEPTH.fx).setBlendMode(Phaser.BlendModes.ADD);
+    const rock = this.scene.add.image(x + 140, y - 520, 'spark').setTint(color).setScale(2.6).setDepth(DEPTH.fx).setBlendMode(addBlend());
     const core = this.scene.add.image(x + 140, y - 520, 'spark').setTint(0xfff3a8).setScale(1.2).setDepth(DEPTH.fx + 1);
     this.scene.tweens.add({
       targets: [rock, core],
@@ -236,28 +235,37 @@ export class FxLayer {
   }
 
   flame(x: number, y: number): void {
-    this.flameFlip = !this.flameFlip;
-    if (quality.low && this.flameFlip) return;
+    if (quality.low) return;
     this.flames.emitParticleAt(x, y, 1);
   }
 
   shockwave(x: number, y: number, color: number, size = 1.4, duration = 380): void {
-    const ring = this.rings.find((r) => !r.visible) ?? this.newRing();
+    // Rings pile up fast in a combo (dozens alive at once): cap them, and animate by hand (no tween each).
+    const cap = quality.low ? 3 : 10;
+    if (this.waves.length >= cap) return;
+    const ring = this.rings.pop() ?? this.newRing();
     ring.setPosition(x, y).setTint(color).setScale(0.1).setAlpha(1).setVisible(true);
-    this.scene.tweens.add({
-      targets: ring,
-      scale: size,
-      alpha: 0,
-      duration,
-      ease: 'Cubic.easeOut',
-      onComplete: () => ring.setVisible(false),
-    });
+    this.waves.push({ ring, age: 0, life: duration, size });
+  }
+
+  private updateWaves(dtMs: number): void {
+    for (let i = this.waves.length - 1; i >= 0; i--) {
+      const w = this.waves[i]!;
+      w.age += dtMs;
+      const k = w.age / w.life;
+      if (k >= 1) {
+        w.ring.setVisible(false);
+        this.rings.push(w.ring);
+        this.waves.splice(i, 1);
+        continue;
+      }
+      const p = 1 - Math.pow(1 - k, 3);
+      w.ring.setScale(0.1 + (w.size - 0.1) * p).setAlpha(1 - p);
+    }
   }
 
   private newRing(): Phaser.GameObjects.Image {
-    const r = this.scene.add.image(0, 0, 'ring').setDepth(DEPTH.fx).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
-    this.rings.push(r);
-    return r;
+    return this.scene.add.image(0, 0, 'ring').setDepth(DEPTH.fx).setBlendMode(addBlend()).setVisible(false);
   }
 
   /** MMO-style bouncing damage number. */
@@ -313,6 +321,7 @@ export class FxLayer {
   /** Moves/fades the damage numbers (one loop instead of 2–3 tweens per number). */
   update(dtMs: number): void {
     if (this.boltsLive.length) this.updateBolts(dtMs);
+    if (this.waves.length) this.updateWaves(dtMs);
     const LIFE = 680;
     for (let i = 0; i < this.anim.length; i++) {
       const a = this.anim[i]!;
@@ -341,7 +350,7 @@ export class FxLayer {
     this.burst(x, y, def.color, 14);
     this.shockwave(x, y, def.color, reaction === 'wildfire' ? 1.3 : 1.0);
     const now = this.scene.time.now;
-    if (now - this.lastBannerAt < 700) return;
+    if (now - this.lastBannerAt < (quality.low ? 1500 : 700)) return;
     this.lastBannerAt = now;
     const b = this.labels.get(def.name, combo >= 5 ? 46 : 40, toCss(def.color), 10);
     const bx = Phaser.Math.Clamp(x, 170, GAME_WIDTH - 170);
@@ -354,6 +363,7 @@ export class FxLayer {
 
   /** Coins fly from (x,y) to the gold counter, then call onArrive. */
   coinsTo(x: number, y: number, tx: number, ty: number, count: number, onArrive: () => void): void {
+    if (quality.low) count = 1;
     for (let i = 0; i < count; i++) {
       const c = this.coins.find((k) => !k.visible) ?? this.newCoin();
       c.setPosition(x, y).setScale(0.8).setAlpha(1).setVisible(true);
@@ -402,7 +412,7 @@ export class FxLayer {
   }
 
   private newOrb(): Phaser.GameObjects.Image {
-    const o = this.scene.add.image(0, 0, 'hero_orb').setDepth(DEPTH.hud + 3).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    const o = this.scene.add.image(0, 0, 'hero_orb').setDepth(DEPTH.hud + 3).setBlendMode(addBlend()).setVisible(false);
     this.orbs.push(o);
     return o;
   }

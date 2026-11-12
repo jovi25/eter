@@ -534,7 +534,7 @@ export class BattleScene extends Phaser.Scene {
         this.fx.shockwave(a.x, a.y, 0x6ad44a, 1.4);
       }
       if (a.ability === 'supercharge') this.shake(90, 0.003);
-      if (t) this.fx.popLabel(t.x, t.y - 110, `${name}!`, color);
+      if (t && !quality.low) this.fx.popLabel(t.x, t.y - 110, `${name}!`, color);
     });
 
     ev.on('towerBuilt', (b) => {

@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { addBlend } from '../quality';
 import { bakeInPlace } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ENEMIES } from '../../data/enemies';
@@ -75,7 +76,7 @@ export class Hud {
     this.callBtn.setDepth(DEPTH.hud);
     this.callSub = uiText(scene, callX, GAME_HEIGHT - 116, '', 20, PAL.goldCss, 5).setDepth(DEPTH.hud);
     if (cb.onAltar) {
-      this.altarGlow = scene.add.image(452, GAME_HEIGHT - 58, 'spark').setScale(5).setTint(0xc77dff).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0).setDepth(DEPTH.hud);
+      this.altarGlow = scene.add.image(452, GAME_HEIGHT - 58, 'spark').setScale(5).setTint(0xc77dff).setBlendMode(addBlend()).setAlpha(0).setDepth(DEPTH.hud);
       this.altarBtn = new Button(scene, 452, GAME_HEIGHT - 58, { width: 150, height: 78, label: 'ALTAR', fontSize: 22, color: 0x8a3fd0, onClick: cb.onAltar });
       this.altarBtn.setDepth(DEPTH.hud);
       scene.tweens.add({ targets: this.altarGlow, scale: 6.5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

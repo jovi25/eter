@@ -1,4 +1,6 @@
 import * as Phaser from 'phaser';
+import { economyOn } from '../perf';
+import { addBlend } from '../quality';
 import { ensureBaked } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { Vec2 } from '../../data/maps';
@@ -54,7 +56,7 @@ export class MapView {
 
     const end = paths[0]!.at(-1)!;
     const glowImg = scene.add.image(end.x, end.y - 10, 'spark').setDepth(DEPTH.decor).setScale(7).setTint(0xa77bff).setAlpha(0.35);
-    glowImg.setBlendMode(Phaser.BlendModes.ADD);
+    glowImg.setBlendMode(addBlend());
     scene.tweens.add({ targets: glowImg, alpha: 0.6, scale: 8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.crystal = scene.add.image(end.x, end.y - 24, 'crystal').setDepth(unitDepth(end.y)).setScale(0.68);
     scene.tweens.add({ targets: this.crystal, y: end.y - 34, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -190,7 +192,7 @@ export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: read
     const img = scene.add.image(x, y, k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
     if (k === 'tree') {
       img.setScale(0.78 + rng.next() * 0.35);
-      scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.03, duration: 1800 + rng.int(0, 900), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      if (!economyOn()) scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.03, duration: 1800 + rng.int(0, 900), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
     placed++;
   }

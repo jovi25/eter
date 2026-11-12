@@ -23,7 +23,7 @@ const game = new Phaser.Game({
     powerPreference: 'high-performance',
     antialias: true, // smooth texture filtering (cheap)
     antialiasGL: false, // no MSAA on the screen buffer: expensive on phones, invisible with this art
-    maxTextures: 1, // one texture per batch → the simplest pixel program (see the atlas in textures.ts)
+    maxTextures: 8, // few textures per batch: short pixel program, and texts/UI still batch with the atlas
   },
   scene: [BootScene, WorldMapScene, BattleScene, CodexScene, RelicScene],
 });

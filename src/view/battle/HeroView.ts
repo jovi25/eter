@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { addBlend } from '../quality';
 import { ELEMENTS, type Element } from '../../data/elements';
 import { HEROES, PRIEST, type HeroClass } from '../../data/heroes';
 import type { BlockerState, HeroState, SummonState } from '../../sim/types';
@@ -86,10 +87,10 @@ export class HeroView {
     // Arm container sits on the shoulder; everything inside rotates with the arm.
     const arm = scene.add.image(0, 0, `${key}_arm`).setOrigin(RIG.shoulder.x / RIG.w, RIG.shoulder.y / RIG.h).setScale(S);
     const tip = { x: (st.tip.x - RIG.shoulder.x) * S, y: (st.tip.y - RIG.shoulder.y) * S };
-    this.flash = scene.add.image(tip.x, tip.y, 'spark').setTint(this.color).setBlendMode(Phaser.BlendModes.ADD).setScale(0).setAlpha(0);
+    this.flash = scene.add.image(tip.x, tip.y, 'spark').setTint(this.color).setBlendMode(addBlend()).setScale(0).setAlpha(0);
     this.armC = scene.add.container((RIG.shoulder.x - ox) * S, (RIG.shoulder.y - RIG.feetY) * S, [arm, this.flash]);
     if (hero.cls === 'mage') {
-      this.orb = scene.add.image(tip.x, tip.y, 'hero_orb').setTint(this.color).setBlendMode(Phaser.BlendModes.ADD).setScale(0.8);
+      this.orb = scene.add.image(tip.x, tip.y, 'hero_orb').setTint(this.color).setBlendMode(addBlend()).setScale(0.8);
       this.armC.add(this.orb);
       scene.tweens.add({ targets: this.orb, scale: 1.05, alpha: 0.75, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }

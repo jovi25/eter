@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { addBlend } from '../quality';
 import { bakeInPlace } from '../ui/bake';
 import type { HeroState } from '../../sim/types';
 import { PAL } from '../art/palette';
@@ -25,7 +26,7 @@ export class CatalyzeButton {
   constructor(private scene: Phaser.Scene, x: number, y: number, color: number, label: string, icon: string) {
     this.x = x;
     this.y = y;
-    this.halo = scene.add.image(0, 0, 'spark').setScale(7).setTint(color).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.6);
+    this.halo = scene.add.image(0, 0, 'spark').setScale(7).setTint(color).setBlendMode(addBlend()).setAlpha(0.6);
     const bg = scene.add.graphics();
     bg.fillStyle(PAL.ink, 1);
     bg.fillCircle(0, 2, R + 5);

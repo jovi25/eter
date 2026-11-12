@@ -291,6 +291,18 @@ Relato: menos de 10 fps num celular fraco em fase normal. A cena é leve em CPU;
   Modo econômico: Automático (adapta), Ligado (começa em 80%), Desligado (100% fixo). Voltar a Automático zera o aprendizado.
 - Não verificado em aparelho real: depende de teste do jogador. O contador mostra a resolução atual (ex.: "GL 65%").
 
+### Desempenho em celular fraco (rodada 4)
+Print do aparelho: 21 fps com "GL 50%". Baixar a resolução não resolveu, logo o gargalo é o trabalho por objeto/efeito.
+Medido em luta intensa (modo econômico): 113 chamadas de desenho, 28 trocas de mistura, 60 envios de buffer e ~58 ondas de
+choque vivas por quadro. Mudanças:
+- `addBlend()`: em modo econômico brilhos e faíscas usam mistura normal (cada troca normal↔aditiva quebrava o lote).
+- Ondas de choque: no máximo 10 (3 no modo leve), animadas à mão, sem tween.
+- `maxTextures: 8` (era 1): textos e UI voltam a entrar no mesmo lote do atlas.
+- Modo leve: sem chamas, 1 moeda voando por abate, sem rótulo de habilidade de torre, sem animação ociosa em árvores/torres,
+  faíscas a 1/3, no máximo 2 números de dano por quadro.
+Resultado no mesmo cenário: 22 chamadas de desenho, 0 trocas de mistura, 24 envios de buffer.
+O contador agora mostra "quadro X ms" (tempo de CPU do quadro inteiro): se for bem menor que 1000/fps, o limite é a GPU.
+
 ## 4. Coleção e evolução (desenho antigo, substituído pela Fase 7)
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.

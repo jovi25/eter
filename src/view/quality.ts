@@ -19,7 +19,7 @@ let slowMs = 0;
 
 /** Call once per frame with the measured fps and the real frame time. */
 export function updateQuality(game: Phaser.Game, fps: number, dtMs: number): void {
-  quality.numbersLeft = quality.low ? 3 : 8;
+  quality.numbersLeft = quality.low ? 2 : 8;
   // Ignore frames from a hidden / throttled tab: they say nothing about the phone's speed.
   if ((typeof document !== 'undefined' && document.hidden) || dtMs > 400) return;
   if (fps < LOW_FPS) {
@@ -43,5 +43,14 @@ export function updateQuality(game: Phaser.Game, fps: number, dtMs: number): voi
 
 /** Scale a particle count for the current quality. */
 export function fxCount(n: number): number {
-  return quality.low ? Math.max(1, Math.ceil(n / 2)) : n;
+  return quality.low ? Math.max(1, Math.ceil(n / 3)) : n;
+}
+
+/**
+ * Blend mode for glows and sparks. Additive looks best, but every switch between normal and additive
+ * sprites forces the renderer to start a new batch (a draw call) — dozens per frame in a busy fight.
+ * On devices in economy mode everything uses the normal blend, so the whole fight batches together.
+ */
+export function addBlend(): number {
+  return economyOn() ? 0 /* NORMAL */ : 1 /* ADD */;
 }
