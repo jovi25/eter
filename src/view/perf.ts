@@ -11,7 +11,9 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../data/config';
 import { getSettings } from './settings';
 
 const LEVELS = [1, 0.8, 0.65, 0.5];
-const LEVEL_KEY = 'eter.perf.level';
+const LEVEL_KEY = 'eter.perf.level.v2'; // v2: everyone re-learns after the draw-call fixes
+const NO_RES_KEY = 'eter.perf.nores'; // lowering the resolution did not help on this device
+const LOW_FX_KEY = 'eter.perf.lowfx'; // this device needs the light effects
 
 function weakDevice(): boolean {
   try {
@@ -29,11 +31,30 @@ function loadLevel(): number {
   } catch {
     /* ignore */
   }
-  return weakDevice() ? 1 : 0;
+  return 0;
+}
+
+function flag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setFlag(key: string, on: boolean): void {
+  try {
+    if (on) localStorage.setItem(key, '1');
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Level found for this device (index into LEVELS). Ignored while the mode is "Desligado". */
 let learned = loadLevel();
+let resUseless = flag(NO_RES_KEY);
+let lowFx = flag(LOW_FX_KEY) || weakDevice();
 
 function levelNow(): number {
   const mode = getSettings().economy;
@@ -46,9 +67,18 @@ export function renderScale(): number {
   return LEVELS[levelNow()]!;
 }
 
-/** Light effects: explicitly on, or the device already had to lower its resolution. */
+/** Light effects: explicitly on, or this device showed it needs them. */
 export function economyOn(): boolean {
-  return levelNow() > 0;
+  const mode = getSettings().economy;
+  if (mode === 'off') return false;
+  return mode === 'on' || lowFx || learned > 0;
+}
+
+/** The game had to switch to light effects: start that way next time. */
+export function rememberLowFx(): void {
+  if (lowFx) return;
+  lowFx = true;
+  setFlag(LOW_FX_KEY, true);
 }
 
 /** Every scene calls this first: shows the 720×1280 world in a possibly smaller canvas. */
@@ -70,7 +100,7 @@ export function applyScale(game: Phaser.Game): void {
 
 /** The frame rate is too low: go one resolution level down. Returns false at the floor (or when disabled). */
 export function dropResolution(game: Phaser.Game): boolean {
-  if (getSettings().economy === 'off' || learned >= LEVELS.length - 1) return false;
+  if (getSettings().economy === 'off' || resUseless || learned >= LEVELS.length - 1) return false;
   learned++;
   try {
     localStorage.setItem(LEVEL_KEY, String(learned));
@@ -81,9 +111,29 @@ export function dropResolution(game: Phaser.Game): boolean {
   return true;
 }
 
+/**
+ * The last drop did not raise the frame rate: this phone is limited by its processor, not by pixels.
+ * Go back up one level (sharper image for the same speed) and never lower the resolution again.
+ */
+export function undoDropResolution(game: Phaser.Game): void {
+  if (learned > 0) learned--;
+  resUseless = true;
+  setFlag(NO_RES_KEY, true);
+  try {
+    localStorage.setItem(LEVEL_KEY, String(learned));
+  } catch {
+    /* ignore */
+  }
+  applyScale(game);
+}
+
 /** Forget what was learned (the game adapts again if it needs to). */
 export function resetLearned(game: Phaser.Game): void {
   learned = 0;
+  resUseless = false;
+  lowFx = weakDevice();
+  setFlag(NO_RES_KEY, false);
+  setFlag(LOW_FX_KEY, false);
   try {
     localStorage.removeItem(LEVEL_KEY);
   } catch {

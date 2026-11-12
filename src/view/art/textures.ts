@@ -1025,9 +1025,9 @@ const ATLAS_PAD = 2;
  * Every sprite keeps its own key: each key is registered as a tiny Texture whose single frame points into the atlas.
  */
 export function generateTextures(scene: Phaser.Scene): void {
-  generateNumberFont(scene);
   if (scene.textures.exists(ATLAS_KEY)) return;
   const jobs: Job[] = [];
+  jobs.push({ key: NUM_FONT, w: NUM_CELL.w * NUM_CHARS.length, h: NUM_CELL.h, draw: drawNumberFont });
   const paint = (key: string, w: number, h: number, fn: (c: CanvasRenderingContext2D) => void) => {
     if (!scene.textures.exists(key)) jobs.push({ key, w, h, draw: fn });
   };
@@ -1066,6 +1066,7 @@ export function generateTextures(scene: Phaser.Scene): void {
     for (const [part, draw] of Object.entries(parts)) paint(`${key}_${part}`, RIG.w, RIG.h, (c) => draw(c, HERO_STYLES[key]));
   }
   buildAtlas(scene, jobs);
+  registerNumberFont(scene);
 }
 
 /** Shelf-pack the jobs (tallest first) and register one texture key per sprite, all sharing the atlas. */
@@ -1134,11 +1135,7 @@ const NUM_CHARS = '0123456789!+<>IMUNEx%';
 const NUM_CELL = { w: 26, h: 40 };
 
 /** Pre-render digits once and register them as a bitmap font (tinted per use). */
-function generateNumberFont(scene: Phaser.Scene): void {
-  if (scene.cache.bitmapFont.exists(NUM_FONT)) return;
-  const tex = scene.textures.createCanvas(NUM_FONT, NUM_CELL.w * NUM_CHARS.length, NUM_CELL.h);
-  if (!tex) return;
-  const c = tex.getContext();
+function drawNumberFont(c: CanvasRenderingContext2D): void {
   c.font = 'bold 30px "Trebuchet MS", "Segoe UI", Roboto, system-ui, sans-serif';
   c.textAlign = 'center';
   c.textBaseline = 'middle';
@@ -1163,7 +1160,11 @@ function generateNumberFont(scene: Phaser.Scene): void {
       c.fillText(ch, x, y);
     }
   });
-  tex.refresh();
+}
+
+/** The digits sit inside the sprite atlas (same texture as the sprites = same draw call). */
+function registerNumberFont(scene: Phaser.Scene): void {
+  if (scene.cache.bitmapFont.exists(NUM_FONT)) return;
   scene.cache.bitmapFont.add(
     NUM_FONT,
     Phaser.GameObjects.RetroFont.Parse(scene, {

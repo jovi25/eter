@@ -42,7 +42,7 @@ export class BuildMenu {
       sellRune: (index: number) => void;
     },
   ) {
-    this.range = scene.add.graphics().setDepth(DEPTH.range);
+    this.range = scene.add.graphics().setDepth(DEPTH.range).setVisible(false);
   }
 
   get isOpen(): boolean {
@@ -55,7 +55,7 @@ export class BuildMenu {
     this.root = null;
     this.options = [];
     this.openTowerId = null;
-    this.range.clear();
+    this.range.clear().setVisible(false);
     this.scene.tweens.add({ targets: r, scale: 0.5, alpha: 0, duration: 120, onComplete: () => r.destroy() });
   }
 
@@ -98,7 +98,7 @@ export class BuildMenu {
     const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, 1026);
     const def = TOWERS[tower.type];
     const lvl = this.sim.levelOf(tower);
-    this.range.clear();
+    this.range.clear().setVisible(true);
     this.range.fillStyle(ELEMENTS[def.element].color, 0.12);
     const range = lvl.range * this.sim.mods.rangeMult;
     this.range.fillCircle(tower.x, tower.y, range);
@@ -155,7 +155,7 @@ export class BuildMenu {
     const r = this.sim.state.runes[index];
     if (!r) return;
     const root = this.makeRoot(r.x, r.y, 190, 250, 1000);
-    this.range.clear();
+    this.range.clear().setVisible(true);
     const color = r.kind ? RUNES[r.kind].color : 0xd8d0ff;
     this.range.fillStyle(color, 0.1);
     this.range.fillCircle(r.x, r.y, RUNE_RULES.radius);

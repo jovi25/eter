@@ -586,7 +586,6 @@ export class BattleScene extends Phaser.Scene {
         case 'tomb':
           this.fx.shockwave(u.x, u.y, 0x9fe8ff, u.radius / 40, 700);
           for (const p of u.targets) this.fx.burst(p.x, p.y - 20, 0xd8f6ff, 10);
-          this.cameras.main.flash(160, 190, 235, 255);
           this.shake(260, 0.007);
           playSfx('reaction_shatter');
           break;
@@ -606,7 +605,6 @@ export class BattleScene extends Phaser.Scene {
           break;
         case 'skyStrike':
           for (const p of u.targets) this.fx.lightning([{ x: p.x + 20, y: p.y - 420 }, { x: p.x, y: p.y }]);
-          this.cameras.main.flash(120, 255, 250, 200);
           this.shake(200, 0.006);
           playSfx('reaction_overload');
           break;

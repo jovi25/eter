@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { addBlend } from '../quality';
-import { bakeInPlace } from '../ui/bake';
+import { bakeInPlace, bakeText } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ENEMIES } from '../../data/enemies';
 import type { Simulation } from '../../sim/simulation';
@@ -33,7 +33,7 @@ export class Hud {
   private comboText: Phaser.GameObjects.BitmapText;
   private comboSub: Phaser.GameObjects.BitmapText;
   private boss: Phaser.GameObjects.Container;
-  private bossFill: Phaser.GameObjects.Rectangle;
+  private bossFill: Phaser.GameObjects.Image;
   private last = { gold: -1, lives: -1, wave: -1, call: '', altar: '' };
   private altarBtn: Button | null = null;
   private altarGlow: Phaser.GameObjects.Image | null = null;
@@ -91,10 +91,15 @@ export class Hud {
 
     // boss bar
     const bossName = uiText(scene, 0, -22, ENEMIES.herald.name.toUpperCase(), 24, '#bff4ff', 5);
-    const bossBg = scene.add.rectangle(0, 8, 460, 24, PAL.ink).setStrokeStyle(3, 0xffffff);
-    this.bossFill = scene.add.rectangle(-226, 8, 452, 16, 0x6fe6ff).setOrigin(0, 0.5);
+    const bossRim = scene.add.image(0, 8, 'px').setDisplaySize(466, 30).setTint(0xffffff);
+    const bossBg = scene.add.image(0, 8, 'px').setDisplaySize(460, 24).setTint(PAL.ink);
+    this.bossFill = scene.add.image(-226, 8, 'px').setOrigin(0, 0.5).setDisplaySize(452, 16).setTint(0x6fe6ff);
     const mvp = uiText(scene, -262, 8, 'MVP', 22, '#ffd34d', 5);
-    this.boss = scene.add.container(GAME_WIDTH / 2 + 20, 132, [bossBg, this.bossFill, bossName, mvp]).setDepth(DEPTH.hud).setVisible(false);
+    this.boss = scene.add.container(GAME_WIDTH / 2 + 20, 132, [bossRim, bossBg, this.bossFill, bossName, mvp]).setDepth(DEPTH.hud).setVisible(false);
+    bakeText(bossName);
+    bakeText(mvp);
+    bakeText(comboWord);
+    bakeText(comboSubWord);
   }
 
   setSpeed(speed: number): void {
@@ -155,7 +160,7 @@ export class Hud {
 
     const boss = s.enemies.find((e) => e.isBoss);
     this.boss.setVisible(!!boss);
-    if (boss) this.bossFill.width = 452 * Math.max(0, boss.hp / boss.maxHp);
+    if (boss) this.bossFill.setDisplaySize(Math.max(1, 452 * Math.max(0, boss.hp / boss.maxHp)), 16);
   }
 
   pulseGold(): void {

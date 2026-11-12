@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { economyOn } from '../perf';
 import { addBlend } from '../quality';
-import { ensureBaked } from '../ui/bake';
+import { ensureBaked, stamp } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { Vec2 } from '../../data/maps';
 import { Rng } from '../../sim/rng';
@@ -73,11 +73,15 @@ export class MapView {
   }
 }
 
+let bgCanvas: HTMLCanvasElement | null = null;
+
 /** Paint grass + every road into one canvas texture; returns the full-screen image. */
 export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: string): Phaser.GameObjects.Image {
-  if (scene.textures.exists(key)) scene.textures.remove(key);
-  const tex = scene.textures.createCanvas(key, GAME_WIDTH, GAME_HEIGHT)!;
-  const c = tex.getContext();
+  // Painted off-screen, then stamped into the shared UI atlas (so the background costs no extra draw call).
+  bgCanvas ??= document.createElement('canvas');
+  bgCanvas.width = GAME_WIDTH;
+  bgCanvas.height = GAME_HEIGHT;
+  const c = bgCanvas.getContext('2d')!;
   const rng = new Rng(77);
 
   // Grass: base gradient + soft blotches + blades.
@@ -138,6 +142,11 @@ export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: st
     [1, 'rgba(10,20,10,0.45)'],
   ]);
   c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  if (stamp(scene, 'scene_bg', bgCanvas, GAME_WIDTH, GAME_HEIGHT, true)) return scene.add.image(0, 0, 'scene_bg').setOrigin(0);
+  // No room in the atlas: a texture of its own.
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const tex = scene.textures.createCanvas(key, GAME_WIDTH, GAME_HEIGHT)!;
+  tex.getContext().drawImage(bgCanvas, 0, 0);
   tex.refresh();
   return scene.add.image(0, 0, key).setOrigin(0);
 }

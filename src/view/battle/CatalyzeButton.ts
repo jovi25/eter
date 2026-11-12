@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { addBlend } from '../quality';
-import { bakeInPlace } from '../ui/bake';
+import { baked, bakeInPlace, bakeText } from '../ui/bake';
 import type { HeroState } from '../../sim/types';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
@@ -16,7 +16,7 @@ export class CatalyzeButton {
   readonly x: number;
   readonly y: number;
   private root: Phaser.GameObjects.Container;
-  private pie: Phaser.GameObjects.Graphics;
+  private pie: Phaser.GameObjects.Image;
   private secs: Phaser.GameObjects.Text;
   private halo: Phaser.GameObjects.Image;
   private wasReady = true;
@@ -40,9 +40,15 @@ export class CatalyzeButton {
     const img = scene.add.image(0, -6, icon).setScale(icon === 'icon_catalyze' ? 0.85 : 0.42);
     const text = uiText(scene, 0, 38, label.toUpperCase(), label.length > 12 ? 13 : 16, PAL.uiText, 4);
     const auto = uiText(scene, 0, -R + 4, 'AUTO', 13, PAL.goldCss, 4);
-    this.pie = scene.add.graphics();
+    // Cooldown shade: a dark disc cropped from the top (an Image — a Graphics would cost extra draw calls).
+    this.pie = baked(scene, 'skill_shade', { x0: -R, y0: -R, w: 2 * R, h: 2 * R }, (g) => {
+      g.fillStyle(0x0b0716, 0.62);
+      g.fillCircle(0, 0, R - 2);
+    }).setVisible(false);
     this.secs = uiText(scene, 0, -4, '', 40, '#ffffff', 7);
     this.root = scene.add.container(x, y, [this.halo, bgImg, img, text, auto, this.pie, this.secs]).setDepth(DEPTH.hud + 2);
+    bakeText(text);
+    bakeText(auto);
     scene.tweens.add({ targets: this.halo, scale: 8.5, alpha: 0.9, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 
@@ -51,12 +57,10 @@ export class CatalyzeButton {
     const stepKey = ready ? -1 : Math.ceil(hero.catalyzeCooldown * 12);
     if (stepKey === this.lastStep) return;
     this.lastStep = stepKey;
-    this.pie.clear();
+    this.pie.setVisible(!ready);
     if (!ready) {
-      const frac = hero.catalyzeCooldown / hero.catalyzeMax;
-      this.pie.fillStyle(0x0b0716, 0.62);
-      this.pie.slice(0, 0, R - 2, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2, false);
-      this.pie.fillPath();
+      const frac = Math.min(1, hero.catalyzeCooldown / hero.catalyzeMax);
+      this.pie.setCrop(0, 0, 2 * R, 2 * R * frac);
       this.secs.setText(`${Math.ceil(hero.catalyzeCooldown)}`);
     } else {
       this.secs.setText('');

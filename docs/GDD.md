@@ -303,6 +303,20 @@ choque vivas por quadro. Mudanças:
 Resultado no mesmo cenário: 22 chamadas de desenho, 0 trocas de mistura, 24 envios de buffer.
 O contador agora mostra "quadro X ms" (tempo de CPU do quadro inteiro): se for bem menor que 1000/fps, o limite é a GPU.
 
+### Desempenho em celular fraco (rodada 5): o custo é a chamada de desenho
+Medido: a simulação quase não custa (0,05 ms); 86% do quadro é desenho, e o que pesa é cada **chamada de desenho**
+(uma imagem com textura própria custa tanto quanto 19 inimigos do atlas). Cada textura separada, cada Graphics e cada
+Rectangle abre um lote novo. Mudanças:
+- **Atlas de UI** (`src/view/ui/bake.ts`): fundo do mapa, barras do HUD, botões, auras e rótulos fixos vão para uma
+  segunda textura 2048² compartilhada (enviada à GPU uma vez por quadro em que algo novo entra).
+- Fonte de dígitos dentro do atlas de sprites. `bakeText` para textos que nunca mudam.
+- Sem Graphics/Rectangle visíveis na luta: alcance só existe com menu aberto, recarga da habilidade é imagem recortada,
+  barra do chefe usa imagens.
+Resultado em luta intensa: 113 → 22 → **3 a 4 chamadas de desenho por quadro**.
+- Resolução adaptativa agora é um teste: se 4 s depois de baixar o fps não subir 20%, desfaz e nunca mais baixa
+  naquele aparelho (o limite é o processador). Aparelhos recomeçam em 100%.
+- Sem clarões brancos de tela na batalha (pedido do jogador). Na abertura do Relicário eles continuam.
+
 ## 4. Coleção e evolução (desenho antigo, substituído pela Fase 7)
 
 - **Torres como cartas:** nível de coleção 1–5; duplicatas enchem a barra. +8% dano por nível.
