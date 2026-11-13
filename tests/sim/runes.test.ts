@@ -5,13 +5,28 @@ import { STAGES } from '../../src/data/stages';
 import { Simulation } from '../../src/sim/simulation';
 import { record } from '../helpers';
 
+function segDist(pts: { x: number; y: number }[], x: number, y: number): number {
+  let best = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
+    best = Math.min(best, Math.hypot(a.x + dx * t - x, a.y + dy * t - y));
+  }
+  return best;
+}
+
 describe('Runas', () => {
   it('rune stones never sit on the road or a tower slot', () => {
     for (const m of Object.values(MAPS)) {
-      expect(m.runes.length).toBe(2);
+      expect(m.runes.length).toBe(m.height ? m.runes.length : 2);
+      expect(m.runes.length).toBeGreaterThanOrEqual(2);
       for (const r of m.runes) {
         for (const s of m.slots) expect(Math.hypot(s.x - r.x, s.y - r.y)).toBeGreaterThan(80);
         for (const p of m.paths) for (const q of p) expect(Math.hypot(q.x - r.x, q.y - r.y)).toBeGreaterThan(40);
+        for (const p of m.paths) expect(segDist(p, r.x, r.y), `rune ${r.x},${r.y} on the road`).toBeGreaterThanOrEqual(48);
         const crystal = m.paths[0]!.at(-1)!;
         expect(Math.hypot(crystal.x - r.x, crystal.y - r.y)).toBeGreaterThan(130); // the Cristal sprite is big
         expect(Math.hypot(m.heroStart.x - r.x, m.heroStart.y - r.y)).toBeGreaterThan(50);

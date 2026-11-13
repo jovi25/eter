@@ -18,6 +18,9 @@ export type TipId =
   | 'maxLevel'
   | 'runes'
   | 'boss'
+  | 'scroll'
+  | 'gate'
+  | 'shield'
   | 'rift'
   | 'altar';
 
@@ -51,4 +54,8 @@ export const TIPS: Record<TipId, TipDef> = {
   // ── Depois do tutorial ──
   rift: { title: 'Fenda Infinita', text: '40 ondas cada vez mais duras. Quanto mais longe, mais moedas para o Relicário.' },
   altar: { title: 'Altar de Éter', text: 'Ouro sobrando? Toque no ALTAR e troque ouro por uma Bênção extra.' },
+  // ── Região 2 ──
+  scroll: { title: 'Mapa maior', text: 'Os mapas dos Ermos são mais altos que a tela: arraste para cima e para baixo. As setas ▲ ▼ contam os inimigos fora da tela.' },
+  gate: { title: 'Comporta', text: 'Toque na placa da Comporta para mandar os próximos inimigos pelo outro caminho. Os que já passaram não mudam.' },
+  shield: { title: 'Escudo elemental', text: 'Este chefe quase não sente dano enquanto o escudo está de pé. Só a reação escrita nele quebra o escudo: monte as torres certas!' },
 };

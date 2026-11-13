@@ -81,9 +81,15 @@ export function rememberLowFx(): void {
   setFlag(LOW_FX_KEY, true);
 }
 
-/** Every scene calls this first: shows the 720×1280 world in a possibly smaller canvas. */
+/**
+ * Every scene calls this first: shows the 720-wide world in a possibly smaller canvas.
+ * Origin top-left: world (0, scrollY) is the screen's top-left corner at any zoom, and objects pinned
+ * with scroll factor 0 (HUD, panels) stay where they are when a tall map scrolls.
+ */
 export function fitCamera(scene: Phaser.Scene): void {
-  scene.cameras.main.setZoom(renderScale()).centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+  const cam = scene.cameras.main;
+  cam.setOrigin(0, 0).setZoom(renderScale());
+  cam.scrollX = 0;
 }
 
 /** Resize the canvas to the current level and re-aim every running scene's camera. */

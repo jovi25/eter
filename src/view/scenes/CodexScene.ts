@@ -78,7 +78,7 @@ export class CodexScene extends Phaser.Scene {
       g.fillRoundedRect(-104, -92, 208, 190, 20);
       g.fillStyle(seen ? 0x3d2a6a : 0x241a3a, 1);
       g.fillRoundedRect(-99, -87, 198, 180, 17);
-      const img = this.add.image(0, -16, `enemy_${id}`).setScale(id === 'herald' ? 0.75 : 1.15);
+      const img = this.add.image(0, -16, `enemy_${id}`).setScale(ENEMIES[id].boss ? 0.75 : 1.15);
       if (!seen) img.setTint(0x0d0a16).setAlpha(0.85);
       c.add([g, img, uiText(this, 0, 66, seen ? ENEMIES[id].name : '???', 19, seen ? PAL.uiText : PAL.uiDim, 4)]);
       c.setSize(208, 190).setInteractive({ useHandCursor: true });
@@ -104,7 +104,7 @@ export class CodexScene extends Phaser.Scene {
     g.fillStyle(0x2a1a4d, 1);
     g.fillRoundedRect(-295, -255, 590, 510, 26);
     c.add([shade, g]);
-    c.add(this.add.image(0, -150, `enemy_${id}`).setScale(id === 'herald' ? 1.1 : 1.8));
+    c.add(this.add.image(0, -150, `enemy_${id}`).setScale(ENEMIES[id].boss ? 1.1 : 1.8));
     c.add(uiText(this, 0, -50, ENEMIES[id].name, 36, '#ffffff', 7));
     enemyFacts(id).forEach((f, i) => c.add(uiText(this, 0, -6 + i * 40, f, 23, i === 0 ? PAL.goldCss : PAL.uiText, 5)));
     c.add(uiText(this, 0, 228, 'toque fora para fechar', 18, PAL.uiDim, 4));

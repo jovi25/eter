@@ -35,6 +35,11 @@ export interface EnemyState {
   // boss only
   bossCycleTimer: number;
   chillImmuneTime: number;
+  // Região 2 bosses: elemental shield
+  shield: ReactionId | null;
+  shieldHits: number; // reactions still needed to break it
+  shieldPhase: number; // index of the last shield raised
+  shieldGrace: number; // seconds after a break before the next shield may rise
 }
 
 export interface TowerState {
@@ -125,6 +130,7 @@ export interface SimState {
   altarBuys: number; // Altar de Éter purchases this match
   runes: { x: number; y: number; kind: RuneKind | null }[]; // rune stones of this map (empty when the stage has none)
   rerolls: number; // offers re-rolled this match
+  gate: number; // Comporta: which of map.gate.paths new enemies take (0 or 1)
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;

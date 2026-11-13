@@ -72,11 +72,14 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Desafio do dia ignora talentos, arma e 2ª habilidade (igual para todos)
 - *Aceite:* dois jogadores com o mesmo herói jogam de formas diferentes.
 
-### Fase 9 — Região 2 e chefes com mecânica
-- [ ] **Mapas maiores** (pedido do jogador): 1,5 a 2 telas de altura com a câmera rolando (arrastar com o dedo), 10–14 espaços de torre e 3–4 pedras rúnicas
-- [ ] 5 fases novas com um elemento de mapa novo (pontes que abrem/fecham, portal que troca de lado)
-- [ ] 2 chefes com fases (escudo elemental que só quebra com a reação certa)
-- [ ] Torre nova de elemento duplo por fusão
+### Fase 9 — Região 2 e chefes com mecânica ✔
+- [x] **Mapas maiores**: 1,5 tela de altura (1920 px), arrastar para rolar, barra de posição e contador ▲▼ de inimigos fora da tela; 10–14 espaços e 3–4 pedras rúnicas
+- [x] Região 2 "Ermos de Âmbar": 5 fases de 12 ondas, chão dourado e árvores de outono, músicas próprias, abas de região no mapa
+- [x] Elemento novo: **Comporta** (tocar troca o caminho dos próximos inimigos) nas fases 2 e 5
+- [x] 2 chefes com **escudo elemental** em fases (Sentinela de Âmbar, Devorador de Éter); o cartão da fase mostra os escudos antes
+
+### Fase 9b — Torre de fusão (adiada)
+- [ ] Torre nova de elemento duplo por fusão (separada para não inchar a Fase 9)
 - *Aceite:* a região 2 exige montar a build pensando no chefe.
 
 ### Fase 10 — Polimento e balanceamento

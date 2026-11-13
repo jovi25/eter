@@ -17,7 +17,7 @@ export class LabelPool {
     const key = `${size}|${color}|${text}`;
     const list = this.free.get(key);
     const t = list?.pop();
-    if (t) return t.setVisible(true).setAlpha(1).setScale(1).setAngle(0);
+    if (t) return t.setVisible(true).setAlpha(1).setScale(1).setAngle(0).setScrollFactor(1);
     this.count++;
     const made = this.scene.add
       .text(0, 0, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: `${size}px`, color, stroke: PAL.inkCss, strokeThickness: stroke, align: 'center' })

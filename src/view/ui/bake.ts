@@ -21,10 +21,14 @@ const SIZE = 2048;
 const PAD = 2;
 const MAX_AREA = 420_000; // bigger than this (full-screen panels) gets its own texture
 const TRANSLATE = 16; // Phaser.GameObjects.Graphics Commands.TRANSLATE
+/** Scene background column, reserved when the atlas is created (tall maps are up to this size). */
+export const BG_KEY = 'scene_bg';
+export const BG_MAX = { w: 720, h: 1920 };
+const LEFT = PAD + BG_MAX.w + PAD; // everything else is packed to the right of the background
 
 let uid = 0;
 let atlas: Phaser.Textures.CanvasTexture | null = null;
-const cursor = { x: PAD, y: PAD, shelf: 0 };
+const cursor = { x: LEFT, y: PAD, shelf: 0 };
 let dirty = false;
 let scratch: HTMLCanvasElement | null = null;
 const regions = new Map<string, { x: number; y: number; w: number; h: number }>();
@@ -32,13 +36,14 @@ const regions = new Map<string, { x: number; y: number; w: number; h: number }>(
 function getAtlas(scene: Phaser.Scene): Phaser.Textures.CanvasTexture | null {
   if (atlas) return atlas;
   atlas = scene.textures.createCanvas(UI_ATLAS, SIZE, SIZE);
+  regions.set(BG_KEY, { x: PAD, y: PAD, w: BG_MAX.w, h: BG_MAX.h });
   return atlas;
 }
 
 function alloc(w: number, h: number, big: boolean): { x: number; y: number } | null {
-  if ((!big && w * h > MAX_AREA) || w + PAD * 2 > SIZE) return null;
+  if ((!big && w * h > MAX_AREA) || LEFT + w + PAD > SIZE) return null;
   if (cursor.x + w + PAD > SIZE) {
-    cursor.x = PAD;
+    cursor.x = LEFT;
     cursor.y += cursor.shelf + PAD;
     cursor.shelf = 0;
   }
@@ -75,13 +80,15 @@ export function stamp(scene: Phaser.Scene, key: string, src: HTMLCanvasElement, 
   const a = getAtlas(scene);
   if (!a) return false;
   let at = reuse ? regions.get(key) : undefined;
+  if (at && (w > at.w || h > at.h)) return false; // the reserved place is too small
   if (!at) {
     const p = alloc(w, h, reuse);
     if (!p) return false;
     at = { ...p, w, h };
     regions.set(key, at);
-    registerFrame(scene, key, at.x, at.y, w, h);
   }
+  // (Re)register: a reused place can hold a smaller picture this time (e.g. a one-screen map after a tall one).
+  if (!scene.textures.exists(key) || reuse) registerFrame(scene, key, at.x, at.y, w, h);
   const ctx = a.getContext();
   ctx.clearRect(at.x - 1, at.y - 1, w + 2, h + 2);
   ctx.drawImage(src, 0, 0, w, h, at.x, at.y, w, h);

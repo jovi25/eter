@@ -34,6 +34,8 @@ export class Hud {
   private comboSub: Phaser.GameObjects.BitmapText;
   private boss: Phaser.GameObjects.Container;
   private bossFill: Phaser.GameObjects.Image;
+  private bossName!: Phaser.GameObjects.Text;
+  private bossType = '';
   private last = { gold: -1, lives: -1, wave: -1, call: '', altar: '' };
   private altarBtn: Button | null = null;
   private altarGlow: Phaser.GameObjects.Image | null = null;
@@ -90,13 +92,12 @@ export class Hud {
     this.combo = scene.add.container(GAME_WIDTH / 2 - 10, 196, [comboWord, this.comboText, this.comboSub, comboSubWord]).setDepth(DEPTH.hud).setVisible(false);
 
     // boss bar
-    const bossName = uiText(scene, 0, -22, ENEMIES.herald.name.toUpperCase(), 24, '#bff4ff', 5);
+    const bossName = (this.bossName = uiText(scene, 0, -22, '', 24, '#bff4ff', 5));
     const bossRim = scene.add.image(0, 8, 'px').setDisplaySize(466, 30).setTint(0xffffff);
     const bossBg = scene.add.image(0, 8, 'px').setDisplaySize(460, 24).setTint(PAL.ink);
     this.bossFill = scene.add.image(-226, 8, 'px').setOrigin(0, 0.5).setDisplaySize(452, 16).setTint(0x6fe6ff);
     const mvp = uiText(scene, -262, 8, 'MVP', 22, '#ffd34d', 5);
     this.boss = scene.add.container(GAME_WIDTH / 2 + 20, 132, [bossRim, bossBg, this.bossFill, bossName, mvp]).setDepth(DEPTH.hud).setVisible(false);
-    bakeText(bossName);
     bakeText(mvp);
     bakeText(comboWord);
     bakeText(comboSubWord);
@@ -160,6 +161,10 @@ export class Hud {
 
     const boss = s.enemies.find((e) => e.isBoss);
     this.boss.setVisible(!!boss);
+    if (boss && boss.type !== this.bossType) {
+      this.bossType = boss.type;
+      this.bossName.setText(ENEMIES[boss.type].name.toUpperCase());
+    }
     if (boss) this.bossFill.setDisplaySize(Math.max(1, 452 * Math.max(0, boss.hp / boss.maxHp)), 16);
   }
 
@@ -186,7 +191,7 @@ export class Hud {
   }
 
   floatText(x: number, y: number, text: string, color: string): void {
-    const t = this.labels.get(text, 30, color, 6).setPosition(x, y).setDepth(DEPTH.hud + 2);
+    const t = this.labels.get(text, 30, color, 6).setPosition(x, y).setDepth(DEPTH.hud + 2).setScrollFactor(0);
     this.scene.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => this.labels.release(t) });
   }
 

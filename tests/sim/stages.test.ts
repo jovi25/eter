@@ -89,6 +89,7 @@ describe('maps', () => {
         }
         expect(seen.size * 8, `slot ${i} reaches too little road`).toBeGreaterThanOrEqual(250);
         expect(Math.min(s.x, 720 - s.x), `slot ${i} too close to the screen edge`).toBeGreaterThanOrEqual(90);
+        expect(s.y, `slot ${i} under the bottom bar`).toBeLessThanOrEqual((map.height ?? 1280) - 130);
       }
     });
     it(`${id}: all paths end at the same crystal and stay on screen`, () => {
@@ -100,7 +101,7 @@ describe('maps', () => {
           expect(pt.x).toBeGreaterThanOrEqual(48);
           expect(pt.x).toBeLessThanOrEqual(672);
           expect(pt.y).toBeGreaterThanOrEqual(96);
-          expect(pt.y).toBeLessThanOrEqual(1150);
+          expect(pt.y).toBeLessThanOrEqual((map.height ?? 1280) - 130);
         }
       }
     });
@@ -124,10 +125,10 @@ describe('multi-path stages', () => {
     expect(sim.state.lives).toBe(19);
   });
 
-  it('every stage has 10 waves and starts the hero on its map', () => {
+  it('Região 1 has 10 waves, Região 2 has 12, and starts the hero on its map', () => {
     for (const id of STAGE_ORDER) {
       const st = STAGES[id];
-      expect(st.waves, id).toHaveLength(10);
+      expect(st.waves, id).toHaveLength(id.startsWith('a') ? 12 : 10);
       const sim = new Simulation({ stage: id, seed: 1 });
       expect(sim.state.hero.x).toBe(MAPS[st.map].heroStart.x);
     }

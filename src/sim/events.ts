@@ -47,6 +47,12 @@ export interface SimEvents {
   waveStarted: { wave: number; early: boolean; bonus: number };
   waveCleared: { wave: number; bonus: number };
   bossAbility: { enemyId: number; x: number; y: number };
+  /** Região 2 boss shields. */
+  shieldUp: { enemyId: number; reaction: ReactionId; hits: number };
+  shieldHit: { enemyId: number; reaction: ReactionId; left: number; x: number; y: number };
+  shieldBroken: { enemyId: number; reaction: ReactionId; x: number; y: number };
+  /** Comporta switched: new enemies take this path. */
+  gateToggled: { path: number };
   goldChanged: { gold: number; delta: number };
   livesChanged: { lives: number; delta: number };
   gameOver: { won: boolean; stars: number };

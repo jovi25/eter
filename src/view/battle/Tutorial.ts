@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { pin } from '../ui/uiLayer';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { TIPS, type TipId } from '../../data/tutorial';
 import { playSfx } from '../audio/sfx';
@@ -82,8 +83,11 @@ export class Tutorial {
     const tip = TIPS[p.id];
     markSeen(p.id);
     const target = p.target?.() ?? null;
+    // Tall maps: scroll the target into view first (targets are in world coordinates).
+    if (target) (s as Phaser.Scene & { focusOn?: (y: number) => void }).focusOn?.(target.y);
+    const scrollY = s.cameras.main.scrollY;
     // Card on the half of the screen away from the target.
-    const cardY = target && target.y < GAME_HEIGHT / 2 ? 900 : 300;
+    const cardY = target && target.y - scrollY < GAME_HEIGHT / 2 ? 900 : 300;
     const shade = s.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.35).setDepth(DEPTH.panel - 2).setInteractive();
     const c = s.add.container(GAME_WIDTH / 2, cardY).setDepth(DEPTH.panel - 1);
     const g = s.add.graphics();
@@ -99,13 +103,15 @@ export class Tutorial {
     const ok = new Button(s, 200, 82, { width: 170, height: 58, label: 'Entendi', fontSize: 24, color: 0x3aa655, onClick: () => this.close() });
     const tag = uiText(s, -270, 84, 'Dica', 18, PAL.uiDim, 4).setOrigin(0, 0.5);
     c.add([g, bulb, title, text, ok, tag]);
+    pin(shade);
+    pin(c);
     c.setScale(0.6).setAlpha(0);
     s.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
     this.objs.push(shade, c);
     if (target) {
       const ring = s.add.image(target.x, target.y, 'ring').setDepth(DEPTH.panel - 1).setScale(1.6).setTint(0xffe34d).setAlpha(0.9);
       s.tweens.add({ targets: ring, scale: 2.1, alpha: 0.3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      const above = target.y > 200;
+      const above = target.y - scrollY > 200;
       const arrow = uiText(s, target.x, target.y + (above ? -86 : 86), above ? '▼' : '▲', 56, '#ffe34d', 8).setDepth(DEPTH.panel - 1);
       s.tweens.add({ targets: arrow, y: arrow.y + (above ? 16 : -16), duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.objs.push(ring, arrow);

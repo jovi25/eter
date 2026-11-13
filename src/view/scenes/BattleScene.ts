@@ -1,4 +1,8 @@
 import * as Phaser from 'phaser';
+import { GateView, ShieldLayer } from '../battle/RegionTwoView';
+import { MAPS } from '../../data/maps';
+import { ScrollHint } from '../battle/ScrollHint';
+import { asUi } from '../ui/uiLayer';
 import { matchXp, SKILL2, unlockAt } from '../../data/talents';
 import { economyOn, fitCamera, frameCap } from '../perf';
 import { quality } from '../quality';
@@ -7,7 +11,7 @@ import { ECONOMY } from '../../data/economy';
 import { ENEMIES, type EnemyId } from '../../data/enemies';
 import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTION_IDS, REACTIONS } from '../../data/reactions';
-import { STAGE_ORDER, type CampaignStageId, type StageId } from '../../data/stages';
+import { regionOf, STAGE_ORDER, type CampaignStageId, type StageId } from '../../data/stages';
 import { matchCoins } from '../../data/relics';
 import { getSave } from '../../meta/save';
 import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
@@ -109,13 +113,19 @@ export class BattleScene extends Phaser.Scene {
         break;
       case 'v3':
         t.request('runes', () => sim.state.runes[0] ?? null);
-        t.request('skill', () => ({ x: GAME_WIDTH - 82, y: GAME_HEIGHT - 76 }));
+        t.request('skill', () => ({ x: GAME_WIDTH - 82, y: GAME_HEIGHT - 76 + this.cameras.main.scrollY }));
         break;
       case 'v4':
         t.request('fewSlots');
         break;
       case 'rift':
         t.request('rift');
+        break;
+      case 'a1':
+        t.request('scroll');
+        break;
+      case 'a2':
+        t.request('gate', () => (sim.gateDef ? { x: sim.gateDef.x, y: sim.gateDef.y } : null));
         break;
     }
     const ev = sim.events;
@@ -138,6 +148,13 @@ export class BattleScene extends Phaser.Scene {
       else if (Object.keys(def.resist).length > 0) t.request('resist', where);
     });
     ev.on('boonChosen', () => t.request('boon'));
+    ev.on('shieldUp', (sh) => {
+      const where = () => {
+        const e = sim.state.enemies.find((x) => x.id === sh.enemyId);
+        return e ? { x: e.x, y: e.y } : null;
+      };
+      t.request('shield', where);
+    });
     ev.on('towerUpgraded', (u) => {
       if (u.level < MAX_LEVEL) return;
       const tw = sim.getTower(u.towerId);
@@ -149,13 +166,13 @@ export class BattleScene extends Phaser.Scene {
   private checkTips(): void {
     const s = this.sim.state;
     const t = this.tutorial;
-    if (s.wavePhase === 'countdown' && s.wave === 1) t.request('callWave', () => ({ x: this.stageId === 'rift' ? 222 : 290, y: GAME_HEIGHT - 58 }));
+    if (s.wavePhase === 'countdown' && s.wave === 1) t.request('callWave', () => ({ x: this.stageId === 'rift' ? 222 : 290, y: GAME_HEIGHT - 58 + this.cameras.main.scrollY }));
     if (s.wave >= 2 && s.wavePhase !== 'prep') {
       const tw = s.towers.find((x) => x.level < MAX_LEVEL && (this.sim.upgradeCost(x) ?? Infinity) <= s.gold);
       if (tw) t.request('upgrade', () => ({ x: tw.x, y: tw.y }));
     }
     const altar = this.sim.altarCost();
-    if (altar !== null && s.gold >= altar) t.request('altar', () => ({ x: 452, y: GAME_HEIGHT - 58 }));
+    if (altar !== null && s.gold >= altar) t.request('altar', () => ({ x: 452, y: GAME_HEIGHT - 58 + this.cameras.main.scrollY }));
   }
 
   /** Rows for the stats screen. */
@@ -169,7 +186,7 @@ export class BattleScene extends Phaser.Scene {
 
   private toMap(): void {
     this.cameras.main.fadeOut(220, 11, 7, 22);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap'));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', { region: Math.max(0, regionOf(this.stageId)) }));
   }
 
   /** First time a specialist enemy shows up in a match: a short card with its weaknesses. */
@@ -240,8 +257,11 @@ export class BattleScene extends Phaser.Scene {
     this.projectiles = new ProjectileLayer(this);
     this.hero = new HeroView(this, this.sim.state.hero, this.sim.mods.heroAffinity);
     this.fx = new FxLayer(this);
+    // Região 2: Comporta and boss shields.
+    this.shields = new ShieldLayer(this, this.enemies);
+    if (this.sim.gateDef) new GateView(this, this.sim, this.fx, () => !this.paused && !this.ended && !this.picker && !this.dragging);
     this.enemies.onBurning = (x, y) => this.fx.flame(x, y);
-    this.hud = new Hud(this, {
+    this.hud = asUi(this, () => new Hud(this, {
       onSpeed: () => {
         this.speed = this.speed === 1 ? 2 : 1;
         this.hud.setSpeed(this.speed);
@@ -259,7 +279,7 @@ export class BattleScene extends Phaser.Scene {
         this.menu.close();
         this.sim.callNextWave();
       },
-    });
+    }));
     this.menu = new BuildMenu(this, this.sim, {
       build: (slot, type) => this.sim.build(slot, type),
       upgrade: (id) => this.sim.upgrade(id),
@@ -272,16 +292,17 @@ export class BattleScene extends Phaser.Scene {
     // Skill indicator (heroes cast on their own).
     const cls = this.sim.mods.heroClass;
     const skillColor = cls === 'mage' ? ELEMENTS[this.sim.mods.heroAffinity].color : HERO_COLORS[cls];
-    this.catalyzeBtn = new CatalyzeButton(
+    this.catalyzeBtn = asUi(this, () => new CatalyzeButton(
       this,
       GAME_WIDTH - 82,
       GAME_HEIGHT - 76,
       skillColor,
       HEROES[cls].skill.name,
       cls === 'mage' ? 'icon_catalyze' : HEROES[cls].texture,
-    );
+    ));
     this.summons = this.sim.state.summons.map((s) => new SummonView(this, s));
-    this.debug = new DebugOverlay(this, () => ({ tick: this.sim.state.tick, seed: this.sim.state.seed }), 8, GAME_HEIGHT - 150, DEPTH.debug);
+    this.debug = asUi(this, () => new DebugOverlay(this, () => ({ tick: this.sim.state.tick, seed: this.sim.state.seed }), 8, GAME_HEIGHT - 150, DEPTH.debug));
+    this.setupScroll();
 
     this.setupInput();
     this.wireEvents();
@@ -292,11 +313,15 @@ export class BattleScene extends Phaser.Scene {
   // ───────────────────────────── input ─────────────────────────────
 
   private setupInput(): void {
+    // A tap counts only where it started (a release after a drag, or after closing a card, does nothing).
+    this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      this.downOn = this.paused || this.ended || !!this.picker || !!this.tutorial?.blocking ? 'blocked' : (over[0] ?? null);
+    });
     this.sim.slots.forEach((s, i) => {
       const zone = this.add.zone(s.x, s.y, 110, 110).setInteractive({ useHandCursor: true });
-      zone.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+      zone.on('pointerup', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
-        if (this.paused || this.ended || this.picker) return;
+        if (this.paused || this.ended || this.picker || this.dragging || this.downOn !== zone) return;
         const tower = this.sim.towerAt(i);
         playSfx('ui', 0.8);
         if (tower) this.menu.openTower(tower);
@@ -305,25 +330,77 @@ export class BattleScene extends Phaser.Scene {
     });
     this.sim.state.runes.forEach((r, i) => {
       const zone = this.add.zone(r.x, r.y - 10, 84, 84).setInteractive({ useHandCursor: true });
-      zone.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+      zone.on('pointerup', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
-        if (this.paused || this.ended || this.picker) return;
+        if (this.paused || this.ended || this.picker || this.dragging || this.downOn !== zone) return;
         playSfx('ui', 0.9);
         this.menu.openRune(i);
       });
     });
     // Tap on free ground: closes an open menu, otherwise walks the hero there.
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (over.length > 0 || this.paused || this.ended || this.picker) return;
+    this.input.on('pointerup', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (over.length > 0 || this.paused || this.ended || this.picker || this.dragging || this.downOn !== null) return;
       if (this.menu.isOpen) {
         this.menu.close();
         return;
       }
-      if (p.worldY < 110 || p.worldY > GAME_HEIGHT - 110) return; // HUD bars
+      const screenY = p.worldY - this.cameras.main.scrollY;
+      if (screenY < 110 || screenY > GAME_HEIGHT - 110) return; // HUD bars
       this.sim.moveHero(p.worldX, p.worldY);
       const h = this.sim.state.hero;
       this.hero.showMarker(h.targetX, h.targetY);
     });
+  }
+
+  // ───────────────────────────── tall maps: drag to scroll ─────────────────────────────
+
+  private shields!: ShieldLayer;
+  private downOn: Phaser.GameObjects.GameObject | 'blocked' | null = null;
+  private dragging = false;
+  private dragFrom: { y: number; scroll: number } | null = null;
+  private scrollMax = 0;
+  private scrollHint: ScrollHint | null = null;
+
+  private setupScroll(): void {
+    const cam = this.cameras.main;
+    this.dragging = false;
+    this.dragFrom = null;
+    this.scrollMax = Math.max(0, (MAPS[this.sim.stage.map].height ?? GAME_HEIGHT) - GAME_HEIGHT);
+    this.scrollHint = null;
+    if (this.scrollMax <= 0) {
+      cam.scrollY = 0;
+      return;
+    }
+    // Start looking at the crystal end, where the hero stands.
+    this.scrollTo(this.sim.state.hero.y - GAME_HEIGHT * 0.55);
+    this.scrollHint = asUi(this, () => new ScrollHint(this, (dir) => this.scrollTo(cam.scrollY + dir * GAME_HEIGHT * 0.6, true)));
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.dragging = false;
+      this.dragFrom = { y: p.y, scroll: cam.scrollY };
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!p.isDown || !this.dragFrom || this.picker || this.ended) return;
+      const dy = (p.y - this.dragFrom.y) / cam.zoom;
+      if (!this.dragging && Math.abs(dy) > 14) this.dragging = true;
+      if (this.dragging) this.scrollTo(this.dragFrom.scroll - dy);
+    });
+    // A drag ends after the taps of this release were ignored.
+    this.input.on('pointerup', () => this.time.delayedCall(0, () => (this.dragging = false)));
+  }
+
+  scrollTo(y: number, smooth = false): void {
+    const cam = this.cameras.main;
+    const to = Phaser.Math.Clamp(y, 0, this.scrollMax);
+    this.tweens.killTweensOf(cam);
+    if (smooth) this.tweens.add({ targets: cam, scrollY: to, duration: 350, ease: 'Cubic.easeOut' });
+    else cam.scrollY = to;
+  }
+
+  /** Bring a world point into view (used by tips). */
+  focusOn(y: number): void {
+    const cam = this.cameras.main;
+    if (this.scrollMax <= 0) return;
+    if (y < cam.scrollY + 160 || y > cam.scrollY + GAME_HEIGHT - 200) this.scrollTo(y - GAME_HEIGHT / 2);
   }
 
   private setPaused(on: boolean): void {
@@ -331,11 +408,11 @@ export class BattleScene extends Phaser.Scene {
     this.paused = on;
     this.menu.close();
     if (on) {
-      this.pausePanel = new PausePanel(this, {
+      this.pausePanel = asUi(this, () => new PausePanel(this, {
         onResume: () => this.setPaused(false),
         onRestart: () => this.scene.restart(this.again()),
         onExit: () => this.toMap(),
-      });
+      }));
     } else {
       this.pausePanel?.destroy();
       this.pausePanel = null;
@@ -493,7 +570,7 @@ export class BattleScene extends Phaser.Scene {
       this.fx.burst(p.x, p.y + 20, 0xffffff, 8);
       playSfx('kill');
       const coins = Math.min(4, Math.max(1, Math.round(k.gold / 6)));
-      this.fx.coinsTo(k.x, k.y - 20, this.hud.goldIconPos.x, this.hud.goldIconPos.y, coins, () => {
+      this.fx.coinsTo(k.x, k.y - 20, this.hud.goldIconPos.x, this.hud.goldIconPos.y + this.cameras.main.scrollY, coins, () => {
         this.hud.pulseGold();
         playSfx('coin');
       });
@@ -519,10 +596,34 @@ export class BattleScene extends Phaser.Scene {
         playSfx('coin', 1.3);
       }
       if (!s.isBoss) return;
-      this.fx.bigBanner(`CHEFE MVP\n${ENEMIES.herald.name.toUpperCase()}`, '#bff4ff', 52, 1300);
+      this.fx.bigBanner(`CHEFE MVP\n${ENEMIES[s.type].name.toUpperCase()}`, '#bff4ff', 52, 1300);
       playSfx('boss');
       this.shake(500, 0.008);
       vibrate([60, 60, 120]);
+    });
+
+    ev.on('shieldUp', (sh) => {
+      const e = this.sim.state.enemies.find((x) => x.id === sh.enemyId);
+      this.shields.up(sh.enemyId, sh.reaction, sh.hits, (e ? ENEMIES[e.type].radius : 44) * 1.3);
+      const name = REACTIONS[sh.reaction].name;
+      this.fx.bigBanner(`ESCUDO: ${name}`, `#${REACTIONS[sh.reaction].color.toString(16).padStart(6, '0')}`, 54, 1100);
+      if (e) this.fx.shockwave(e.x, e.y - 30, REACTIONS[sh.reaction].color, 2.4, 600);
+      playSfx('boss_cast');
+    });
+    ev.on('shieldHit', (sh) => {
+      this.shields.setHits(sh.enemyId, sh.reaction, sh.left);
+      this.fx.shockwave(sh.x, sh.y - 30, REACTIONS[sh.reaction].color, 1.6, 350);
+      playSfx('reaction_melt', 1.3);
+      vibrate(15);
+    });
+    ev.on('shieldBroken', (sh) => {
+      this.shields.down(sh.enemyId);
+      this.fx.bigBanner('ESCUDO QUEBRADO!', PAL.goldCss, 64, 900, true);
+      for (let i = 0; i < 3; i++) this.fx.shockwave(sh.x, sh.y - 30, i % 2 ? 0xffffff : REACTIONS[sh.reaction].color, 1.8 + i, 500);
+      this.fx.burst(sh.x, sh.y - 30, REACTIONS[sh.reaction].color, 30);
+      this.shake(300, 0.01);
+      playSfx('mvp', 1.3);
+      vibrate([40, 30, 60]);
     });
 
     ev.on('bossAbility', (b) => {
@@ -580,7 +681,7 @@ export class BattleScene extends Phaser.Scene {
     ev.on('runeSold', (r) => {
       const st = this.sim.state.runes[r.index]!;
       showRune(this.map, this, r.index, st.x, st.y, null);
-      this.fx.coinsTo(st.x, st.y, this.hud.goldIconPos.x, this.hud.goldIconPos.y, 3, () => this.hud.pulseGold());
+      this.fx.coinsTo(st.x, st.y, this.hud.goldIconPos.x, this.hud.goldIconPos.y + this.cameras.main.scrollY, 3, () => this.hud.pulseGold());
       playSfx('sell');
     });
 
@@ -659,12 +760,12 @@ export class BattleScene extends Phaser.Scene {
       this.towers.remove(s.towerId);
       this.map.slotImages[s.slot]?.setVisible(true);
       const pos = this.sim.slots[s.slot]!;
-      this.fx.coinsTo(pos.x, pos.y, this.hud.goldIconPos.x, this.hud.goldIconPos.y, 3, () => this.hud.pulseGold());
+      this.fx.coinsTo(pos.x, pos.y, this.hud.goldIconPos.x, this.hud.goldIconPos.y + this.cameras.main.scrollY, 3, () => this.hud.pulseGold());
       playSfx('sell');
     });
 
     ev.on('altarUsed', (a) => {
-      this.fx.coinsTo(this.hud.goldIconPos.x, this.hud.goldIconPos.y, 452, GAME_HEIGHT - 58, 5, () => undefined);
+      this.fx.coinsTo(this.hud.goldIconPos.x, this.hud.goldIconPos.y + this.cameras.main.scrollY, 452, GAME_HEIGHT - 58 + this.cameras.main.scrollY, 5, () => undefined);
       this.hud.floatText(452, GAME_HEIGHT - 150, `-${a.cost}`, PAL.goldCss);
       playSfx('boon');
     });
@@ -728,7 +829,7 @@ export class BattleScene extends Phaser.Scene {
       const onNext = g.won && next ? () => this.scene.restart(this.again(next)) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
-        new EndPanel(
+        asUi(this, () => new EndPanel(
           this,
           {
             won: g.won,
@@ -749,8 +850,8 @@ export class BattleScene extends Phaser.Scene {
             coins,
             heroXp,
           },
-          { onStats: () => new StatsPanel(this, this.matchReport()), onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
-        );
+          { onStats: () => asUi(this, () => new StatsPanel(this, this.matchReport())), onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
+        ));
       });
     });
   }
@@ -784,7 +885,7 @@ export class BattleScene extends Phaser.Scene {
       this.menu.close();
       const fromAltar = this.altarOffer;
       const cost = this.sim.rerollCost();
-      this.picker = new BoonPicker(
+      this.picker = asUi(this, () => new BoonPicker(
         this,
         this.sim.state.boonOffers[0]!,
         (i) => {
@@ -807,7 +908,7 @@ export class BattleScene extends Phaser.Scene {
             },
           },
         },
-      );
+      ));
     }
     if (!this.paused && !this.picker && !this.tutorial.blocking && this.sim.state.result === 'playing') {
       if (this.hitstopMs > 0) {
@@ -842,6 +943,8 @@ export class BattleScene extends Phaser.Scene {
     this.fx.update(dtMs);
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
+    this.shields.update(this.sim);
+    this.scrollHint?.update(this.sim, this.cameras.main.scrollY);
     this.menu.refresh();
     logicMs.value = logicMs.value * 0.9 + (performance.now() - t0) * 0.1;
     this.debug.update();

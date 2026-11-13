@@ -3,7 +3,7 @@ import { ELEMENTS, type Element } from './elements';
 import { ENEMIES, type EnemyId } from './enemies';
 import { REACTION_TABLE, REACTIONS, type ReactionId } from './reactions';
 
-export const CODEX_ENEMIES: EnemyId[] = ['slime', 'wolf', 'bat', 'golem', 'salamander', 'yeti', 'skeleton', 'shaman', 'mudling', 'colossus', 'treasure', 'herald'];
+export const CODEX_ENEMIES: EnemyId[] = ['slime', 'wolf', 'bat', 'golem', 'salamander', 'yeti', 'skeleton', 'shaman', 'mudling', 'colossus', 'treasure', 'herald', 'sentinel', 'devourer'];
 
 export const REACTION_EFFECT: Record<ReactionId, string> = {
   wildfire: '×2 de dano e o fogo pula para quem está perto',
@@ -43,6 +43,7 @@ export function enemyFacts(id: EnemyId): string[] {
   }
   if (d.livesCost === 0) facts.push('Não tira vida: só foge com o ouro');
   else if (d.livesCost > 1) facts.push(`Tira ${d.livesCost} vidas se chegar ao cristal`);
-  if (d.boss) facts.push('Chefe: fica imune a Resfriado e chama ajuda');
+  if (d.boss?.shields) facts.push(`Chefe com escudos: ${d.boss.shields.reactions.map((r) => REACTIONS[r].name).join(' → ')}`);
+  else if (d.boss) facts.push('Chefe: fica imune a Resfriado e chama ajuda');
   return facts;
 }

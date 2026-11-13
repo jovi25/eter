@@ -138,6 +138,7 @@ export class Simulation {
       altarBuys: 0,
       runes: this.stage.runes ? map.runes.map((p) => ({ x: p.x, y: p.y, kind: null })) : [],
       rerolls: 0,
+      gate: 0,
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
@@ -851,7 +852,8 @@ export class Simulation {
     this.pending = [];
     for (const g of def.groups) {
       for (let i = 0; i < g.count; i++) {
-        const path = g.path !== undefined ? Math.min(g.path, this.paths.length - 1) : i % this.paths.length;
+        // On a Comporta map, free groups take whatever branch is open when they spawn (-1 = decide then).
+        const path = g.path !== undefined ? Math.min(g.path, this.paths.length - 1) : this.gateDef ? -1 : i % this.paths.length;
         this.pending.push({ at: (g.delay ?? 0) + i * g.interval, enemy: g.enemy, path });
       }
     }
@@ -875,7 +877,7 @@ export class Simulation {
     const elapsed = s.time - this.waveStartTime;
     while (this.pending.length > 0 && this.pending[0]!.at <= elapsed + 1e-9) {
       const p = this.pending.shift()!;
-      this.spawnEnemy(p.enemy, { wave: s.wave, path: p.path });
+      this.spawnEnemy(p.enemy, { wave: s.wave, path: p.path < 0 ? this.gatePath() : p.path });
     }
     if (this.pending.length === 0) {
       if (s.wave < s.totalWaves) {
@@ -941,12 +943,57 @@ export class Simulation {
       fragileTime: 0,
       bossCycleTimer: def.boss?.cycle ?? 0,
       chillImmuneTime: 0,
+      shield: null,
+      shieldHits: 0,
+      shieldPhase: -1,
+      shieldGrace: 0,
     };
     s.enemies.push(e);
     this.enemyById.set(e.id, e);
     this.aliveByWave.set(wave, (this.aliveByWave.get(wave) ?? 0) + 1);
     this.events.emit('enemySpawned', { enemyId: e.id, type, isBoss: e.isBoss });
+    if (def.boss?.shields) this.raiseShield(e, 0);
     return e;
+  }
+
+  // ───────────── Região 2: boss shields & Comporta ─────────────
+
+  private raiseShield(e: EnemyState, phase: number): void {
+    const sh = ENEMIES[e.type].boss?.shields;
+    if (!sh || phase >= sh.reactions.length) return;
+    e.shieldPhase = phase;
+    e.shield = sh.reactions[phase]!;
+    e.shieldHits = sh.hits;
+    this.events.emit('shieldUp', { enemyId: e.id, reaction: e.shield, hits: e.shieldHits });
+  }
+
+  /** The next shield rises when hp falls to its threshold (after a short break). */
+  private tickShield(e: EnemyState): void {
+    const sh = ENEMIES[e.type].boss?.shields;
+    if (!sh || e.shield) return;
+    if (e.shieldGrace > 0) {
+      e.shieldGrace = Math.max(0, e.shieldGrace - DT);
+      return;
+    }
+    const next = e.shieldPhase + 1;
+    if (next < sh.reactions.length && e.hp / e.maxHp <= sh.at[next]!) this.raiseShield(e, next);
+  }
+
+  get gateDef(): { x: number; y: number; paths: [number, number] } | undefined {
+    return MAPS[this.stage.map].gate;
+  }
+
+  gatePath(): number {
+    const g = this.gateDef;
+    return g ? g.paths[this.state.gate]! : 0;
+  }
+
+  /** Comporta: send the next enemies down the other branch. */
+  toggleGate(): boolean {
+    if (!this.gateDef || this.state.result !== 'playing') return false;
+    this.state.gate = this.state.gate === 0 ? 1 : 0;
+    this.events.emit('gateToggled', { path: this.gatePath() });
+    return true;
   }
 
   getEnemy(id: number): EnemyState | undefined {
@@ -1007,14 +1054,17 @@ export class Simulation {
     const boss = ENEMIES[e.type].boss;
     if (!boss) return;
     if (e.chillImmuneTime > 0) e.chillImmuneTime = Math.max(0, e.chillImmuneTime - DT);
+    this.tickShield(e);
     e.bossCycleTimer -= DT;
     if (e.bossCycleTimer > 0) return;
     e.bossCycleTimer += boss.cycle;
-    e.chillImmuneTime = boss.chillImmuneDuration;
-    // Shake off the cold when the immunity kicks in.
-    e.chillStacks = 0;
-    e.chillTime = 0;
-    e.frozenTime = 0;
+    if (boss.chillImmuneDuration > 0) {
+      // Shake off the cold when the immunity kicks in.
+      e.chillImmuneTime = boss.chillImmuneDuration;
+      e.chillStacks = 0;
+      e.chillTime = 0;
+      e.frozenTime = 0;
+    }
     for (let i = 0; i < boss.summon.count; i++) {
       this.spawnEnemy(boss.summon.enemy, {
         wave: e.wave,
@@ -1430,6 +1480,16 @@ export class Simulation {
     if (!e.alive) return;
     const found = this.findReaction(e, hit.element);
     let mult = 1;
+    if (found && e.shield === found.reaction) {
+      // The right reaction cracks the shield; the breaking hit already lands at full strength.
+      e.shieldHits--;
+      if (e.shieldHits <= 0) {
+        const r = e.shield;
+        e.shield = null;
+        e.shieldGrace = ENEMIES[e.type].boss?.shields?.grace ?? 0;
+        this.events.emit('shieldBroken', { enemyId: e.id, reaction: r, x: e.x, y: e.y });
+      } else this.events.emit('shieldHit', { enemyId: e.id, reaction: e.shield, left: e.shieldHits, x: e.x, y: e.y });
+    }
     if (found) {
       this.consumeAura(e, found.aura);
       const comboMult = this.bumpCombo();
@@ -1606,6 +1666,7 @@ export class Simulation {
     }
     dmg *= eff;
     if (e.fragileTime > 0) dmg *= 1 + STATUS.fragile.damageTakenBonus;
+    if (e.shield) dmg *= ENEMIES[e.type].boss?.shields?.taken ?? 1;
     if (e.rootTime > 0 && this.talent('hungrySoil')) dmg *= TALENT_NUM.hungrySoil.rootedDamageTaken;
     const final = Math.max(1, Math.round(dmg));
     e.hp -= final;

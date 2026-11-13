@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { pin } from '../ui/uiLayer';
 import { GAME_WIDTH } from '../../data/config';
 import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTIONS, type ReactionId } from '../../data/reactions';
@@ -190,6 +191,7 @@ export class FxLayer {
       .text(0, 16, info, { fontFamily: FONT, fontStyle: 'bold', fontSize: '19px', color: PAL.uiText, stroke: PAL.inkCss, strokeThickness: 4, align: 'center', wordWrap: { width: 610 } })
       .setOrigin(0.5);
     c.add([g, t1, t2]);
+    pin(c);
     c.setAlpha(0).setY(130);
     this.scene.tweens.add({ targets: c, alpha: 1, y: 170, duration: 250, ease: 'Back.easeOut' });
     this.scene.tweens.add({ targets: c, alpha: 0, delay: 2600, duration: 350, onComplete: () => c.destroy() });
@@ -448,7 +450,7 @@ export class FxLayer {
       this.scene.tweens.killTweensOf(old);
       this.scene.tweens.add({ targets: old, alpha: 0, duration: 90, onComplete: () => this.labels.release(old) });
     }
-    const b = this.labels.get(text, size, color, 12).setPosition(GAME_WIDTH / 2, 560).setDepth(DEPTH.banner + 1).setScale(3).setAlpha(0);
+    const b = this.labels.get(text, size, color, 12).setPosition(GAME_WIDTH / 2, 560).setDepth(DEPTH.banner + 1).setScale(3).setAlpha(0).setScrollFactor(0);
     this.scene.tweens.add({ targets: b, scale: 1, alpha: 1, duration: 280, ease: 'Back.easeOut' });
     this.scene.tweens.add({ targets: b, alpha: 0, y: 520, delay: 280 + hold, duration: 300, onComplete: () => this.labels.release(b) });
     this.currentBanner = b;

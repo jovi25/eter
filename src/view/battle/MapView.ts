@@ -1,9 +1,9 @@
 import * as Phaser from 'phaser';
 import { economyOn } from '../perf';
 import { addBlend } from '../quality';
-import { ensureBaked, stamp } from '../ui/bake';
+import { BG_KEY, ensureBaked, stamp } from '../ui/bake';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
-import type { Vec2 } from '../../data/maps';
+import { MAPS, type MapTheme, type Vec2 } from '../../data/maps';
 import { Rng } from '../../sim/rng';
 import type { Simulation } from '../../sim/simulation';
 import { radial, type Ctx } from '../art/paint';
@@ -41,8 +41,10 @@ export class MapView {
 
   constructor(scene: Phaser.Scene, sim: Simulation) {
     const paths = sim.paths.map((p) => p.points as Vec2[]);
-    paintMapBackground(scene, paths, 'map_bg').setDepth(DEPTH.ground);
-    placeDecor(scene, paths, [...sim.slots, ...sim.state.runes], 2024);
+    const def = MAPS[sim.stage.map];
+    const height = def.height ?? GAME_HEIGHT;
+    paintMapBackground(scene, paths, 'map_bg', height, def.theme).setDepth(DEPTH.ground);
+    placeDecor(scene, paths, [...sim.slots, ...sim.state.runes], 2024, Math.round(30 * (height / GAME_HEIGHT)), height, def.theme);
 
     // One portal per distinct road start.
     const starts = new Map<string, Vec2>();
@@ -75,37 +77,64 @@ export class MapView {
 
 let bgCanvas: HTMLCanvasElement | null = null;
 
-/** Paint grass + every road into one canvas texture; returns the full-screen image. */
-export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: string): Phaser.GameObjects.Image {
+/** Ground colours per region. */
+const GROUND: Record<MapTheme, { top: string; bottom: string; light: string; dark: string; bladeDark: string; bladeLight: string; road: [string, string, string, string]; vignette: string }> = {
+  meadow: {
+    top: '#5fa64a',
+    bottom: '#4b9140',
+    light: 'rgba(140,205,95,0.35)',
+    dark: 'rgba(40,100,45,0.3)',
+    bladeDark: 'rgba(45,110,50,0.75)',
+    bladeLight: 'rgba(150,215,100,0.6)',
+    road: ['#7d5c33', '#c9a46a', 'rgba(232,200,140,0.55)', 'rgba(250,225,170,0.35)'],
+    vignette: 'rgba(10,20,10,0.45)',
+  },
+  // Region 2: Ermos de Âmbar — dry golden grass, red earth roads.
+  amber: {
+    top: '#c79a4a',
+    bottom: '#a97a36',
+    light: 'rgba(246,214,130,0.35)',
+    dark: 'rgba(120,70,30,0.3)',
+    bladeDark: 'rgba(130,80,30,0.7)',
+    bladeLight: 'rgba(250,220,140,0.6)',
+    road: ['#6a3420', '#b5603a', 'rgba(220,140,90,0.5)', 'rgba(250,190,140,0.3)'],
+    vignette: 'rgba(40,15,5,0.45)',
+  },
+};
+
+/** Paint grass + every road into one canvas texture; returns the background image (world size). */
+export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: string, height = GAME_HEIGHT, theme: MapTheme = 'meadow'): Phaser.GameObjects.Image {
+  const H = height;
+  const pal = GROUND[theme];
   // Painted off-screen, then stamped into the shared UI atlas (so the background costs no extra draw call).
   bgCanvas ??= document.createElement('canvas');
   bgCanvas.width = GAME_WIDTH;
-  bgCanvas.height = GAME_HEIGHT;
+  bgCanvas.height = H;
   const c = bgCanvas.getContext('2d')!;
   const rng = new Rng(77);
 
   // Grass: base gradient + soft blotches + blades.
-  const base = c.createLinearGradient(0, 0, 0, GAME_HEIGHT);
-  base.addColorStop(0, '#5fa64a');
-  base.addColorStop(1, '#4b9140');
+  const base = c.createLinearGradient(0, 0, 0, H);
+  base.addColorStop(0, pal.top);
+  base.addColorStop(1, pal.bottom);
   c.fillStyle = base;
-  c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-  for (let i = 0; i < 90; i++) {
+  c.fillRect(0, 0, GAME_WIDTH, H);
+  for (let i = 0; i < Math.round(90 * (H / GAME_HEIGHT)); i++) {
     const x = rng.int(0, GAME_WIDTH);
-    const y = rng.int(0, GAME_HEIGHT);
+    const y = rng.int(0, H);
     const r = rng.int(40, 130);
     const light = rng.chance(0.5);
     c.fillStyle = radial(c, x, y, r, [
-      [0, light ? 'rgba(140,205,95,0.35)' : 'rgba(40,100,45,0.3)'],
+      [0, light ? pal.light : pal.dark],
       [1, 'rgba(0,0,0,0)'],
     ]);
     c.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  for (let i = 0; i < 420; i++) {
+  for (let i = 0; i < Math.round(420 * (H / GAME_HEIGHT)); i++) {
     const x = rng.int(0, GAME_WIDTH);
-    const y = rng.int(0, GAME_HEIGHT);
+    const y = rng.int(0, H);
     const h = rng.int(5, 11);
-    c.strokeStyle = rng.chance(0.5) ? 'rgba(45,110,50,0.75)' : 'rgba(150,215,100,0.6)';
+    c.strokeStyle = rng.chance(0.5) ? pal.bladeDark : pal.bladeLight;
     c.lineWidth = 2;
     c.lineCap = 'round';
     c.beginPath();
@@ -130,22 +159,33 @@ export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: st
     }
   };
   layer(92, 'rgba(20,50,20,0.35)', 6);
-  layer(86, '#7d5c33');
-  layer(74, '#c9a46a');
-  layer(44, 'rgba(232,200,140,0.55)');
-  layer(16, 'rgba(250,225,170,0.35)');
+  layer(86, pal.road[0]);
+  layer(74, pal.road[1]);
+  layer(44, pal.road[2]);
+  layer(16, pal.road[3]);
   for (const pts of paths) pebbles(c, pts, rng);
 
   // Vignette.
-  c.fillStyle = radial(c, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_HEIGHT * 0.75, [
-    [0.55, 'rgba(0,0,0,0)'],
-    [1, 'rgba(10,20,10,0.45)'],
-  ]);
-  c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-  if (stamp(scene, 'scene_bg', bgCanvas, GAME_WIDTH, GAME_HEIGHT, true)) return scene.add.image(0, 0, 'scene_bg').setOrigin(0);
+  // Vignette: only the sides on tall maps (top and bottom are off screen most of the time).
+  if (H > GAME_HEIGHT) {
+    for (const [x0, x1] of [[0, 90], [GAME_WIDTH, GAME_WIDTH - 90]] as const) {
+      const gr = c.createLinearGradient(x0, 0, x1, 0);
+      gr.addColorStop(0, pal.vignette);
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = gr;
+      c.fillRect(Math.min(x0, x1), 0, 90, H);
+    }
+  } else {
+    c.fillStyle = radial(c, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_HEIGHT * 0.75, [
+      [0.55, 'rgba(0,0,0,0)'],
+      [1, pal.vignette],
+    ]);
+    c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  }
+  if (stamp(scene, BG_KEY, bgCanvas, GAME_WIDTH, H, true)) return scene.add.image(0, 0, BG_KEY).setOrigin(0);
   // No room in the atlas: a texture of its own.
   if (scene.textures.exists(key)) scene.textures.remove(key);
-  const tex = scene.textures.createCanvas(key, GAME_WIDTH, GAME_HEIGHT)!;
+  const tex = scene.textures.createCanvas(key, GAME_WIDTH, H)!;
   tex.getContext().drawImage(bgCanvas, 0, 0);
   tex.refresh();
   return scene.add.image(0, 0, key).setOrigin(0);
@@ -174,7 +214,7 @@ function pebbles(c: Ctx, pts: readonly Vec2[], rng: Rng): void {
 }
 
 /** Trees, rocks and flowers on free grass (away from roads and the given spots). */
-export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: readonly Vec2[], seed: number, max = 30): void {
+export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: readonly Vec2[], seed: number, max = 30, height = GAME_HEIGHT, theme: MapTheme = 'meadow'): void {
   const rng = new Rng(seed);
   const clearOf = (x: number, y: number, r: number) => {
     for (const s of keepClear) if (Math.hypot(s.x - x, s.y - y) < 72 + r) return false;
@@ -188,17 +228,17 @@ export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: read
         if (Math.hypot(a.x + dx * t - x, a.y + dy * t - y) < 50 + r) return false;
       }
     }
-    return y > 120 && y < 1170;
+    return y > 120 && y < height - 110;
   };
   let placed = 0;
   for (let tries = 0; tries < 600 && placed < max; tries++) {
     const x = rng.int(20, GAME_WIDTH - 20);
-    const y = rng.int(130, 1160);
+    const y = rng.int(130, height - 120);
     const kind = rng.next();
     const r = kind < 0.42 ? 34 : kind < 0.65 ? 20 : 8;
     if (!clearOf(x, y, r)) continue;
     const k = kind < 0.42 ? 'tree' : kind < 0.65 ? 'rock' : 'flower';
-    const img = scene.add.image(x, y, k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
+    const img = scene.add.image(x, y, k === 'tree' && theme === 'amber' ? 'tree_amber' : k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
     if (k === 'tree') {
       img.setScale(0.78 + rng.next() * 0.35);
       if (!economyOn()) scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.03, duration: 1800 + rng.int(0, 900), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

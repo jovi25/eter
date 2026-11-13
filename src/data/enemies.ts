@@ -1,4 +1,5 @@
 import type { Element } from './elements';
+import type { ReactionId } from './reactions';
 
 export type EnemyId =
   | 'slime'
@@ -12,12 +13,19 @@ export type EnemyId =
   | 'mudling'
   | 'colossus'
   | 'treasure'
-  | 'herald';
+  | 'herald'
+  | 'sentinel'
+  | 'devourer';
 
 export interface BossDef {
   cycle: number; // every N seconds...
   chillImmuneDuration: number; // ...becomes immune to Chilled for this long
   summon: { enemy: EnemyId; count: number; goldMult: number; hpMult: number; spacing: number }; // hpMult × base hp, no wave scaling
+  /**
+   * Região 2: elemental shields. Shield i rises when hp falls to at[i] (at[0] = 1: on arrival). While it is up the
+   * boss takes only `taken` of the damage; `hits` reactions of the named kind on the boss break it.
+   */
+  shields?: { reactions: ReactionId[]; at: number[]; hits: number; taken: number; grace: number };
 }
 
 /**
@@ -145,6 +153,44 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
       cycle: 6,
       chillImmuneDuration: 2,
       summon: { enemy: 'slime', count: 3, goldMult: 0.3, hpMult: 1, spacing: 28 },
+    },
+  },
+
+  // ── Região 2 bosses: elemental shields that only the right reaction breaks ──
+  sentinel: {
+    name: 'Sentinela de Âmbar',
+    hp: 2600,
+    speed: 40,
+    gold: 120,
+    livesCost: 20, attack: 50,
+    resist: { physical: 0.2 },
+    rootImmune: true,
+    flying: false,
+    scalesWithWave: false,
+    radius: 44,
+    boss: {
+      cycle: 8,
+      chillImmuneDuration: 0,
+      summon: { enemy: 'wolf', count: 2, goldMult: 0.3, hpMult: 1.5, spacing: 30 },
+      shields: { reactions: ['melt', 'overload', 'wildfire'], at: [1, 0.66, 0.33], hits: 3, taken: 0.3, grace: 3 },
+    },
+  },
+  devourer: {
+    name: 'Devorador de Éter',
+    hp: 3400,
+    speed: 36,
+    gold: 200,
+    livesCost: 20, attack: 60,
+    resist: {},
+    rootImmune: true,
+    flying: false,
+    scalesWithWave: false,
+    radius: 48,
+    boss: {
+      cycle: 7,
+      chillImmuneDuration: 0,
+      summon: { enemy: 'bat', count: 3, goldMult: 0.3, hpMult: 1.5, spacing: 26 },
+      shields: { reactions: ['superconduct', 'wildfire', 'shatter', 'melt'], at: [1, 0.75, 0.5, 0.25], hits: 3, taken: 0.3, grace: 3 },
     },
   },
 };

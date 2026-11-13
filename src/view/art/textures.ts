@@ -211,6 +211,22 @@ const DRAW: Record<AssetKey, Drawer> = {
       }
     },
   },
+  // Região 2: autumn tree (amber and red leaves, no fruit).
+  tree_amber: {
+    w: 100,
+    h: 116,
+    draw: (c, cx, cy) => {
+      softShadow(c, cx, cy + 46, 38, 12, 0.35);
+      shape(c, roundRect(cx - 7, cy + 4, 14, 44, 5), linear(c, cx - 7, 0, cx + 7, 0, [[0, '#8a6038'], [1, '#5a3c20']]), INK, 3);
+      const leaf = (x: number, y: number, r: number, warm: boolean) =>
+        shape(c, circle(x, y, r), radial(c, x, y, r * 1.2, warm ? [[0, '#ffd27a'], [0.55, '#f0962e'], [1, '#a8501c']] : [[0, '#ffb07a'], [0.55, '#d9542e'], [1, '#8a2a1c']], x - r * 0.4, y - r * 0.5), INK, 3);
+      leaf(cx - 22, cy + 2, 22, false);
+      leaf(cx + 22, cy + 2, 22, true);
+      leaf(cx, cy - 18, 30, true);
+      leaf(cx - 6, cy + 10, 20, false);
+      gloss(c, cx - 10, cy - 32, 12, 6, 0.45);
+    },
+  },
   rock: {
     w: 60,
     h: 48,
@@ -616,6 +632,80 @@ const DRAW: Record<AssetKey, Drawer> = {
     },
   },
 
+  // Região 2 boss: a walking amber monolith with a cracked crystal core.
+  enemy_sentinel: {
+    w: 150,
+    h: 150,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy + 6, 72, 0xffb347, 0.4);
+      // stone arms
+      for (const s of [-1, 1]) {
+        shape(c, roundRect(cx + s * 52 - 13, cy - 4, 26, 52, 12), linear(c, 0, cy - 4, 0, cy + 48, [[0, '#d9a35a'], [1, '#7a4a22']]), INK, 3.5);
+        shape(c, ellipse(cx + s * 52, cy + 50, 15, 10), '#5a3418', INK, 3);
+      }
+      // body: tall faceted block
+      shape(c, poly([[cx - 40, cy + 58], [cx + 40, cy + 58], [cx + 46, cy - 20], [cx + 24, cy - 56], [cx - 24, cy - 56], [cx - 46, cy - 20]]),
+        linear(c, cx - 46, cy - 56, cx + 46, cy + 58, [[0, '#f0c27a'], [0.5, '#c4823e'], [1, '#6e3e1c']]), INK, 4);
+      // facets
+      c.strokeStyle = 'rgba(80,40,15,0.55)';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx - 24, cy - 56); c.lineTo(cx - 14, cy - 18); c.lineTo(cx - 40, cy + 58);
+      c.moveTo(cx + 24, cy - 56); c.lineTo(cx + 14, cy - 18); c.lineTo(cx + 40, cy + 58);
+      c.stroke();
+      // glowing core
+      glow(c, cx, cy + 14, 26, 0xffe680, 0.9);
+      shape(c, poly([[cx, cy - 6], [cx + 14, cy + 14], [cx, cy + 34], [cx - 14, cy + 14]]), linear(c, 0, cy - 6, 0, cy + 34, [[0, '#fffbe0'], [1, '#ffb020']]), INK, 2.5);
+      // eye slit
+      shape(c, roundRect(cx - 26, cy - 36, 52, 12, 6), '#2a1206', INK, 2.5);
+      for (const s of [-1, 1]) glow(c, cx + s * 11, cy - 30, 7, 0xffd34d, 1);
+      gloss(c, cx - 22, cy - 40, 12, 6, 0.5);
+    },
+  },
+  // Região 2 final boss: a hungry violet maw that swallows light.
+  enemy_devourer: {
+    w: 160,
+    h: 160,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 78, 0x9b5cff, 0.55);
+      // tendrils
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI * (0.15 + i * 0.14);
+        const s = i < 3 ? -1 : 1;
+        shape(c, (k) => {
+          k.moveTo(cx + s * 30, cy + 20);
+          k.quadraticCurveTo(cx + s * (52 + i * 3), cy + 30 + Math.sin(a) * 20, cx + s * (60 - i * 2), cy + 60 - i * 4);
+          k.quadraticCurveTo(cx + s * 40, cy + 40, cx + s * 22, cy + 34);
+          k.closePath();
+        }, linear(c, 0, cy + 20, 0, cy + 64, [[0, '#6a3fb0'], [1, '#2a1250']]), INK, 2.5);
+      }
+      // body
+      shape(c, ellipse(cx, cy + 4, 50, 46), bodyGrad(c, cx, cy + 4, 50, 0x7a48d0), INK, 4);
+      // crown of crystals
+      const tips: [number, number][] = [[-30, 22], [-15, 34], [0, 44], [15, 34], [30, 22]];
+      for (const [x, h] of tips) {
+        shape(c, poly([[cx + x - 8, cy - 32], [cx + x + 8, cy - 32], [cx + x, cy - 34 - h]]), linear(c, 0, cy - 34 - h, 0, cy - 32, [[0, '#f3e9ff'], [1, '#b48cff']]), INK, 2.5);
+      }
+      // maw
+      shape(c, ellipse(cx, cy + 18, 30, 18), '#140626', INK, 3);
+      c.fillStyle = '#ffffff';
+      for (let i = -2; i <= 2; i++) {
+        c.beginPath();
+        c.moveTo(cx + i * 11 - 5, cy + 4);
+        c.lineTo(cx + i * 11 + 5, cy + 4);
+        c.lineTo(cx + i * 11, cy + 14);
+        c.closePath();
+        c.fill();
+      }
+      glow(c, cx, cy + 22, 12, 0x6fe6ff, 0.8);
+      // three eyes
+      for (const [x, y, r] of [[-22, -12, 8], [22, -12, 8], [0, -22, 6]] as const) {
+        shape(c, circle(cx + x, cy + y, r), '#140626', INK, 2);
+        glow(c, cx + x, cy + y, r - 1, 0xff4fd8, 1);
+      }
+      gloss(c, cx - 22, cy - 18, 14, 7, 0.5);
+    },
+  },
   enemy_treasure: {
     w: 76,
     h: 70,

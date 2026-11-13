@@ -47,6 +47,12 @@ it('all stages × strategies × seeds', () => {
     v3: ['brazier', 'storm', 'brazier', 'frost', 'archer', 'brazier', 'storm', 'vine'],
     v4: ['archer', 'brazier', 'frost', 'vine', 'archer'],
     v5: ['vine', 'brazier', 'frost', 'storm', 'brazier', 'frost', 'storm', 'archer'],
+    // Região 2: more slots → bigger builds, planned around the boss shields.
+    a1: ['vine', 'brazier', 'frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'archer', 'brazier'],
+    a2: ['brazier', 'vine', 'frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'archer', 'brazier', 'frost', 'vine'],
+    a3: ['frost', 'brazier', 'storm', 'vine', 'frost', 'brazier', 'storm', 'vine', 'brazier', 'frost', 'storm', 'archer'],
+    a4: ['vine', 'brazier', 'frost', 'storm', 'brazier', 'frost', 'storm', 'vine', 'archer', 'brazier'],
+    a5: ['frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'brazier', 'vine', 'frost', 'brazier', 'storm', 'archer', 'vine', 'frost'],
   };
   for (const st of STAGE_ORDER) {
     const out: string[] = [];

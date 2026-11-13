@@ -417,3 +417,12 @@ Nos níveis 2, 3 e 4 libera um talento; o jogador equipa **1** na ficha do heró
 
 **Armas do Arcanista:** Brasa (fogo), Geada (gelo), Trovão (raio, nv 2: não marca, só detona), Seiva (natureza, nv 3: enraíza).
 Números em . Desafio do dia não usa talentos/arma/2ª habilidade.
+
+## Fase 9 — Região 2: Ermos de Âmbar
+- **Mapas altos** (720×1920): a câmera rola arrastando o dedo; HUD fixo (fator de rolagem 0, câmera com origem no canto). Toques só valem onde começaram (arrastar não constrói nem move o herói). Barra de posição à direita e abas ▲ N / ▼ N com inimigos fora da tela (tocar rola).
+- **5 fases** (a1–a5, 12 ondas): Cânion, Comporta, Escadaria (chefe), Confluência (2 portais), Abismo (comporta + chefe final). Abre ao vencer a fase 5. Desafio do dia continua só na Região 1.
+- **Comporta**: placa no ponto onde a estrada se divide; tocar troca o ramo dos próximos inimigos (os que já entraram não mudam). Cerca listrada mostra o ramo fechado.
+- **Escudo elemental** dos chefes: enquanto de pé o chefe recebe 30% do dano; 3 reações do tipo escrito no escudo o quebram (o golpe que quebra acerta cheio). O próximo escudo sobe quando a vida cai ao limite (3 s de folga).
+  - Sentinela de Âmbar (2600 de vida): DERRETIMENTO → SOBRECARGA → INCÊNDIO (100%/66%/33%).
+  - Devorador de Éter (3400): SUPERCONDUÇÃO → INCÊNDIO → ESTILHAÇO → DERRETIMENTO (100/75/50/25%).
+- Robôs (sem relíquias nem talentos): vencem a maioria das fases a1–a4; no a5 o chefe chega ao cristal com ~30–40% de vida (final difícil de propósito).

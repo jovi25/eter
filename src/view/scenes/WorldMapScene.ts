@@ -12,7 +12,9 @@ import { COINS } from '../../data/relics';
 import { playMusic, setMusicIntensity } from '../audio/music';
 import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
-import { RIFT, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
+import { REGIONS, RIFT, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
+import { ENEMIES } from '../../data/enemies';
+import { REACTIONS } from '../../data/reactions';
 import { getSave } from '../../meta/save';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
@@ -27,6 +29,12 @@ const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> =
   v3: { x: 192, y: 672, enemy: 'yeti' },
   v4: { x: 528, y: 480, enemy: 'shaman' },
   v5: { x: 360, y: 288, enemy: 'herald' },
+  // Região 2: the same climb, mirrored.
+  a1: { x: 528, y: 1008, enemy: 'golem' },
+  a2: { x: 192, y: 864, enemy: 'wolf' },
+  a3: { x: 528, y: 672, enemy: 'sentinel' },
+  a4: { x: 192, y: 480, enemy: 'bat' },
+  a5: { x: 360, y: 288, enemy: 'devourer' },
 };
 
 const TRAIL = [
@@ -40,6 +48,10 @@ const TRAIL = [
   { x: 528, y: 288 },
   { x: 360, y: 288 },
 ];
+const TRAILS = [TRAIL, TRAIL.map((p) => ({ x: GAME_WIDTH - p.x, y: p.y }))];
+
+/** Region shown last (the map opens there again). */
+let lastRegion = -1;
 
 /** Region 1 map: 5 stages along a trail; stars; locked stages; save backup. */
 export class WorldMapScene extends Phaser.Scene {
@@ -47,21 +59,37 @@ export class WorldMapScene extends Phaser.Scene {
     super('WorldMap');
   }
 
-  create(): void {
+
+
+  create(data?: { region?: number }): void {
     fitCamera(this);
     frameCap(this, 'menu');
-    playMusic('map');
-    setMusicIntensity(0);
     const save = getSave();
-    paintMapBackground(this, [TRAIL], 'world_bg');
-    placeDecor(this, [TRAIL], Object.values(NODES).flatMap((n) => [n, { x: n.x + (n.x < GAME_WIDTH / 2 ? 110 : -110), y: n.y }]), 99, 26);
+    const open2 = save.isUnlocked(REGIONS[1]!.stages[0]!);
+    // Open where the player is: the region asked for, the last one seen, or the newest unlocked.
+    let region = data?.region ?? (lastRegion >= 0 ? lastRegion : open2 ? 1 : 0);
+    if (region === 1 && !open2) region = 0;
+    lastRegion = region;
+    const amber = region === 1;
+    playMusic(amber ? 'map2' : 'map');
+    setMusicIntensity(0);
+    const trail = TRAILS[region]!;
+    const nodes = REGIONS[region]!.stages.map((id) => NODES[id]);
+    paintMapBackground(this, [trail], 'world_bg', GAME_HEIGHT, amber ? 'amber' : 'meadow');
+    placeDecor(this, [trail], nodes.flatMap((n) => [n, { x: n.x + (n.x < GAME_WIDTH / 2 ? 110 : -110), y: n.y }]).concat(amber ? [] : [{ x: 588, y: 1016 }, { x: 548, y: 1100 }]), 99 + region, 26, GAME_HEIGHT, amber ? 'amber' : 'meadow');
 
     // Header
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
     bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'map_head');
-    uiText(this, GAME_WIDTH / 2, 42, 'Campos de Vellmora', 38, '#f3e9ff', 8);
+    uiText(this, GAME_WIDTH / 2, 42, amber ? 'Ermos de Âmbar' : 'Campos de Vellmora', 38, '#f3e9ff', 8);
+    // Region arrows.
+    if (amber) this.regionArrow(44, '◀', true, false, () => this.scene.restart({ region: 0 }));
+    else {
+      const fresh = open2 && save.stars(REGIONS[1]!.stages[0]!) === 0;
+      this.regionArrow(GAME_WIDTH - 44, '▶', open2, fresh, () => this.scene.restart({ region: 1 }));
+    }
     // Progress chips: stars, challenges, coins
     const chip = (x: number, icon: string, text: string, color: string, scale = 0.8) => {
       const g = this.add.graphics();
@@ -75,8 +103,8 @@ export class WorldMapScene extends Phaser.Scene {
     chip(360, 'icon_check', `${save.challengesDone()}/${TOTAL_CHALLENGES}`, '#9be89b', 0.7);
     chip(570, 'eter_coin', `${save.data.coins}`, '#d6c4ff', 0.75);
 
-    STAGE_ORDER.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
-    this.riftNode();
+    REGIONS[region]!.stages.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
+    if (!amber) this.riftNode();
 
     // Bottom navigation: big painted icons, a dot when something is waiting.
     const foot = this.add.graphics().setDepth(44);
@@ -93,6 +121,28 @@ export class WorldMapScene extends Phaser.Scene {
     this.navItem(450, 'nav_blue', 'icon_codex', 'Códice', false, () => this.go('Codex'));
     this.navItem(630, 'nav_gray', 'icon_gear', 'Opções', false, () => this.showOptionsCard());
     this.cameras.main.fadeIn(250, 11, 7, 22);
+  }
+
+  /** Header arrow to the other region; locked until the previous region's last stage is won. */
+  private regionArrow(x: number, label: string, open: boolean, fresh: boolean, go: () => void): void {
+    const t = uiText(this, x, 42, open ? label : '🔒', 40, open ? PAL.goldCss : PAL.uiDim, 7).setDepth(45);
+    const zone = this.add.zone(x, 42, 90, 90).setDepth(46).setInteractive({ useHandCursor: true });
+    if (fresh) {
+      const tag = uiText(this, x - 50, 92, 'Nova região!', 18, PAL.goldCss, 5).setOrigin(1, 0.5).setDepth(45);
+      this.tweens.add({ targets: [t, tag], scale: 1.15, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    zone.on('pointerdown', () => {
+      if (!open) {
+        playSfx('error');
+        const last = REGIONS[0]!.stages.at(-1)!;
+        const msg = uiText(this, GAME_WIDTH / 2, 160, `Vença ${STAGES[last].name} para abrir`, 22, '#ffffff', 5).setDepth(60);
+        this.tweens.add({ targets: msg, alpha: 0, y: 130, delay: 1200, duration: 400, onComplete: () => msg.destroy() });
+        return;
+      }
+      playSfx('ui');
+      this.cameras.main.fadeOut(160, 11, 7, 22);
+      this.cameras.main.once('camerafadeoutcomplete', go);
+    });
   }
 
   /** The Fenda Infinita: a swirling portal off the main trail, with the player's record. */
@@ -125,7 +175,7 @@ export class WorldMapScene extends Phaser.Scene {
   private node(id: CampaignStageId, index: number, unlocked: boolean, stars: number): void {
     const n = NODES[id];
     const st = STAGES[id];
-    const boss = id === 'v5';
+    const boss = !!ENEMIES[n.enemy].boss;
     const c = this.add.container(n.x, n.y).setDepth(40);
     const g = this.add.graphics();
     const r = boss ? 62 : 52;
@@ -255,15 +305,21 @@ export class WorldMapScene extends Phaser.Scene {
       });
     }
 
+    // Região 2 bosses: show the shields in advance, so the build can be planned.
+    const bossId = st.waves.flatMap((w) => w.groups.map((gr) => gr.enemy)).find((e) => ENEMIES[e].boss?.shields);
+    const shields = bossId ? ENEMIES[bossId].boss!.shields! : null;
+    if (shields) c.add(uiText(this, 0, 232, `Escudos do chefe: ${shields.reactions.map((r) => REACTIONS[r].name).join(' → ')}`, 17, '#ffb38a', 4).setWordWrapWidth(580));
+
     // Equipped Relíquias (they apply to every mode except the daily challenge).
     const eq = save.data.equipped;
-    c.add(uiText(this, eq.length ? -130 : 0, 252, eq.length ? 'Relíquias:' : 'Sem relíquias equipadas', 19, PAL.uiDim, 4));
-    eq.forEach((rid, i) => c.add(this.add.image(-30 + i * 56, 252, `relic_${rid}`).setScale(0.5)));
+    const ry = shields ? 268 : 252;
+    c.add(uiText(this, eq.length ? -130 : 0, ry, eq.length ? 'Relíquias:' : 'Sem relíquias equipadas', 19, PAL.uiDim, 4));
+    eq.forEach((rid, i) => c.add(this.add.image(-30 + i * 56, ry, `relic_${rid}`).setScale(0.5)));
 
     c.add(
-      new Button(this, 0, 316, {
+      new Button(this, 0, shields ? 332 : 316, {
         width: 360,
-        height: 90,
+        height: shields ? 80 : 90,
         label: 'JOGAR',
         fontSize: 42,
         color: 0x3aa655,
