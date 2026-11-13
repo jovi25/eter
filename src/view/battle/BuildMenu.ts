@@ -7,6 +7,7 @@ import type { Simulation } from '../../sim/simulation';
 import type { TowerState } from '../../sim/types';
 import { RUNE_KINDS, RUNE_RULES, RUNES, type RuneKind } from '../../data/runes';
 import { EVOLUTIONS, TOWER_EVOLUTIONS, type EvolutionId } from '../../data/evolutions';
+import { FUSION, FUSIONS, type FusionId } from '../../data/fusions';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
@@ -28,6 +29,9 @@ export class BuildMenu {
   private range: Phaser.GameObjects.Graphics;
   private options: Option[] = [];
   private openTowerId: number | null = null;
+  /** Choosing a fusion partner: tower id → fusion it would make. */
+  private partners: Map<number, FusionId> | null = null;
+  private fuseFrom: TowerState | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -38,6 +42,7 @@ export class BuildMenu {
       boost: (id: number) => void;
       sell: (id: number) => void;
       evolve: (id: number, evo: EvolutionId) => void;
+      fuse: (id: number, partner: number) => void;
       buildRune: (index: number, kind: RuneKind) => void;
       sellRune: (index: number) => void;
     },
@@ -55,6 +60,8 @@ export class BuildMenu {
     this.root = null;
     this.options = [];
     this.openTowerId = null;
+    this.partners = null;
+    this.fuseFrom = null;
     this.range.clear().setVisible(false);
     this.scene.tweens.add({ targets: r, scale: 0.5, alpha: 0, duration: 120, onComplete: () => r.destroy() });
   }
@@ -62,10 +69,11 @@ export class BuildMenu {
   openSlot(slot: number): void {
     this.close();
     const pos = this.sim.slots[slot]!;
-    const root = this.makeRoot(pos.x, pos.y, 156, pos.y < 320 ? 221 : 240, 995);
+    const top = pos.y - this.scene.cameras.main.scrollY < 320; // near the top of the screen
+    const root = this.makeRoot(pos.x, pos.y, 156, top ? 221 : 240, 995);
     // Options on a circle; near the top of the map the arc is flipped so nothing hides under the HUD.
     const n = TOWER_IDS.length;
-    const start = pos.y < 320 ? Math.PI / 2 : -Math.PI / 2;
+    const start = top ? Math.PI / 2 : -Math.PI / 2;
     const offsets = TOWER_IDS.map((_, i) => {
       const a = start + (i * Math.PI * 2) / n;
       return { x: Math.cos(a) * 106, y: Math.sin(a) * 100 };
@@ -94,8 +102,8 @@ export class BuildMenu {
   openTower(tower: TowerState): void {
     this.close();
     this.openTowerId = tower.id;
-    const fork = tower.level >= MAX_LEVEL && !tower.evo;
-    const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, 1026);
+    const fork = tower.level >= MAX_LEVEL && !tower.evo && !tower.fusion;
+    const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, fork ? 920 : 1026);
     const def = TOWERS[tower.type];
     const lvl = this.sim.levelOf(tower);
     this.range.clear().setVisible(true);
@@ -106,7 +114,7 @@ export class BuildMenu {
     this.range.strokeCircle(tower.x, tower.y, range);
 
     const maxed = tower.level >= MAX_LEVEL;
-    const evolving = maxed && !tower.evo; // the fork: choose 1 of 2 final forms
+    const evolving = maxed && !tower.evo && !tower.fusion; // the fork: choose 1 of 2 final forms (or fuse)
     // Below max level: upgrade. At max level: Reforço (repeatable, pricier each time).
     const costNow = () => (maxed ? this.sim.boostCost(tower) : this.sim.upgradeCost(tower));
     const upPos = evolving ? { x: -110, y: 96 } : { x: 0, y: -96 };
@@ -134,7 +142,8 @@ export class BuildMenu {
     sell.cost.setText(`+${this.sim.sellValue(tower)}`).setColor(PAL.goldCss);
     root.add([up.root, sell.root]);
     this.options.push(up);
-    const evoDef = tower.evo ? EVOLUTIONS[tower.evo] : null;
+    const fuDef = tower.fusion ? FUSIONS[tower.fusion] : null;
+    const evoDef = tower.evo ? EVOLUTIONS[tower.evo] : fuDef;
     const title = evoDef ? `${evoDef.name}${tower.boost > 0 ? `  +${tower.boost}` : ''}` : `${def.name}  nv ${tower.level}${tower.boost > 0 ? `  +${tower.boost}` : ''}`;
     root.add(uiText(this.scene, 0, evolving ? -238 : -172, title, 22, evoDef ? `#${evoDef.color.toString(16).padStart(6, '0')}` : PAL.uiText, 5));
     const info = def.abilityInfo;
@@ -145,8 +154,60 @@ export class BuildMenu {
     const ab = uiText(this.scene, 0, evolving ? -212 : -146, abilityText, 17, maxed ? PAL.goldCss : PAL.uiDim, 4);
     ab.setWordWrapWidth(440).setAlign('center');
     root.add(ab);
-    if (evolving) this.evolutionChoices(root, tower, ab);
+    if (evolving) {
+      this.evolutionChoices(root, tower, ab);
+      this.fusionButton(root, tower, ab);
+    }
     this.refresh();
+  }
+
+  /** FUNDIR: a third way at level 3. Tap it, then tap a highlighted tower nearby. */
+  private fusionButton(root: Phaser.GameObjects.Container, tower: TowerState, info: Phaser.GameObjects.Text): void {
+    const cost = this.sim.fusionCost();
+    const opt = this.option(0, 168, 0x8a3fd0, 'icon_catalyze', cost, false, () => {
+      const list = this.sim.fusionCandidates(tower);
+      if (!list.length) {
+        playSfx('error');
+        this.shake(opt.root);
+        info.setText('FUSÃO: precisa de outra torre nível 3 perto, de um elemento que reage com este');
+        return;
+      }
+      if (this.sim.state.gold < this.sim.fusionCost()) {
+        playSfx('error');
+        this.shake(opt.root);
+        return;
+      }
+      playSfx('ui', 1.2);
+      this.partners = new Map(list.map((c) => [c.tower.id, c.fusion]));
+      this.fuseFrom = tower;
+      info.setText('Toque na torre brilhando para fundir');
+      // Highlight the partners (with the name of what they would make) and dim the rest of the menu.
+      root.list.forEach((obj, i) => {
+        if (i > 0 && obj !== info) (obj as unknown as { setVisible(v: boolean): void }).setVisible(false);
+      });
+      this.range.clear().setVisible(true);
+      for (const c of list) {
+        const def = FUSIONS[c.fusion];
+        this.range.lineStyle(6, def.color, 0.95);
+        this.range.strokeCircle(c.tower.x, c.tower.y, 50);
+        this.range.lineStyle(3, def.color, 0.6);
+        this.range.lineBetween(tower.x, tower.y, c.tower.x, c.tower.y);
+        root.add(uiText(this.scene, c.tower.x - root.x, c.tower.y - root.y - 70, def.name, 18, `#${def.color.toString(16).padStart(6, '0')}`, 5));
+      }
+    });
+    root.add(opt.root);
+    this.options.push(opt);
+    root.add(uiText(this.scene, 0, 226, `FUNDIR (perto: ${FUSION.maxDist})`, 14, '#d9b8ff', 4));
+  }
+
+  /** While choosing a fusion: a tap on a highlighted tower fuses it. Returns true when the tap was used. */
+  pickPartner(t: TowerState): boolean {
+    if (!this.partners || !this.fuseFrom) return false;
+    if (!this.partners.has(t.id)) return false;
+    const from = this.fuseFrom;
+    this.actions.fuse(from.id, t.id);
+    this.close();
+    return true;
   }
 
   /** Rune stone: pick Pressa or Poder (or sell the one that is there). Shows the reach and the towers it boosts. */
@@ -255,7 +316,9 @@ export class BuildMenu {
    */
   private makeRoot(x: number, y: number, halfWidth: number, minY: number, maxY: number): Phaser.GameObjects.Container {
     const cx = Phaser.Math.Clamp(x, halfWidth, GAME_WIDTH - halfWidth);
-    const cy = Phaser.Math.Clamp(y, minY, maxY);
+    // Limits are on screen: tall maps scroll, so they follow the camera.
+    const sy = this.scene.cameras.main.scrollY;
+    const cy = Phaser.Math.Clamp(y, sy + minY, sy + maxY);
     const root = this.scene.add.container(cx, cy).setDepth(DEPTH.menu);
     const ring = this.scene.add.image(x - cx, y - cy, 'ring').setScale(1.8).setTint(0xffffff).setAlpha(0.3);
     root.add(ring);

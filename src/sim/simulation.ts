@@ -14,6 +14,7 @@ import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
+import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
 import { EVOLUTIONS, evolvedLevel, type EvolutionId } from '../data/evolutions';
 import { BOOST, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
@@ -662,7 +663,7 @@ export class Simulation {
     if (!this.mods.unlockedTowers.includes(type)) return null;
     const cost = TOWERS[type].levels[0].cost;
     if (s.gold < cost) return null;
-    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, boost: 0, evo: null, ultTimer: 0 };
+    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, boost: 0, evo: null, ultTimer: 0, fusion: null };
     s.towers.push(tower);
     s.stats.built[type]++;
     s.stats.peakTowers = Math.max(s.stats.peakTowers, s.towers.length);
@@ -1112,12 +1113,17 @@ export class Simulation {
   // ───────────────────────────── towers & projectiles ─────────────────────────────
 
   levelOf(t: TowerState): TowerLevel {
+    if (t.fusion) {
+      const f = FUSIONS[t.fusion];
+      return { cost: 0, damage: f.firstDamage, rate: f.rate, range: f.range };
+    }
     if (t.evo) return evolvedLevel(t.type, t.evo);
     return TOWERS[t.type].levels[t.level - 1]!;
   }
 
   private canTarget(t: TowerState, e: EnemyState): boolean {
     if (!e.alive) return false;
+    if (t.fusion) return true; // fused towers reach flyers too
     if (e.flying && !TOWERS[t.type].hitsFlying && !(t.type === 'vine' && this.mods.vineHitsFlying)) return false;
     return true;
   }
@@ -1159,7 +1165,8 @@ export class Simulation {
       if (t.cooldown > 0) continue;
       const target = this.findTarget(t);
       if (!target) continue;
-      this.fire(t, target);
+      if (t.fusion) this.fireFusion(t, target, t.fusion);
+      else this.fire(t, target);
     }
   }
 
@@ -1212,14 +1219,14 @@ export class Simulation {
   /** The tower's special ability, if it is at max level. */
   abilityOf(t: TowerState): TowerAbility | null {
     if (t.evo && !EVOLUTIONS[t.evo].keepAbility) return null;
-    return t.level >= MAX_LEVEL ? TOWERS[t.type].ability : null;
+    return t.level >= MAX_LEVEL && !t.fusion ? TOWERS[t.type].ability : null;
   }
 
   // ───────────────────────────── Evoluções ─────────────────────────────
 
   /** Price of evolving this tower, or null if it can't (not level 3 yet, or already evolved). */
   evolveCost(t: TowerState, evo: EvolutionId): number | null {
-    if (t.level < MAX_LEVEL || t.evo || EVOLUTIONS[evo].tower !== t.type) return null;
+    if (t.level < MAX_LEVEL || t.evo || t.fusion || EVOLUTIONS[evo].tower !== t.type) return null;
     return Math.round(EVOLUTIONS[evo].cost * this.mods.upgradeCostMult);
   }
 
@@ -1307,6 +1314,73 @@ export class Simulation {
     for (const e of this.inRange(t)) {
       this.applyHit(e, { element: TOWERS[t.type].element, damage: dmg, chillStacks: aura.chillStacks, towerId: t.id, towerType: t.type });
     }
+  }
+
+  // ───────────────────────────── Torres de fusão ─────────────────────────────
+
+  fusionCost(): number {
+    return Math.round(FUSION.cost * this.mods.upgradeCostMult);
+  }
+
+  /** Towers this one can fuse with: level 3, not evolved or fused, reacting elements, close enough. */
+  fusionCandidates(t: TowerState): { tower: TowerState; fusion: FusionId }[] {
+    if (t.level < MAX_LEVEL || t.evo || t.fusion) return [];
+    const out: { tower: TowerState; fusion: FusionId }[] = [];
+    for (const u of this.state.towers) {
+      if (u === t || u.level < MAX_LEVEL || u.evo || u.fusion) continue;
+      const fusion = fusionOf(t.type, u.type);
+      if (fusion && (u.x - t.x) ** 2 + (u.y - t.y) ** 2 <= FUSION.maxDist ** 2) out.push({ tower: u, fusion });
+    }
+    return out;
+  }
+
+  /** Fuse partner into tower: the tower keeps its slot, the partner's slot is freed. */
+  fuse(towerId: number, partnerId: number): boolean {
+    const s = this.state;
+    const t = this.getTower(towerId);
+    if (!t || s.result !== 'playing') return false;
+    const c = this.fusionCandidates(t).find((x) => x.tower.id === partnerId);
+    const cost = this.fusionCost();
+    if (!c || s.gold < cost) return false;
+    const p = c.tower;
+    t.fusion = c.fusion;
+    t.invested += p.invested + cost;
+    t.boost += p.boost; // Reforços carry over
+    t.cooldown = 0;
+    s.towers.splice(s.towers.indexOf(p), 1);
+    this.addGold(-cost);
+    this.events.emit('towerFused', { towerId: t.id, partnerId: p.id, partnerSlot: p.slot, fusion: c.fusion });
+    return true;
+  }
+
+  private fireFusion(t: TowerState, target: EnemyState, id: FusionId): void {
+    const f = FUSIONS[id];
+    const [a, b] = f.towers;
+    const towerMult = ((this.mods.towerDamageMult[a] + this.mods.towerDamageMult[b]) / 2) * this.blessMult(t);
+    t.shots++;
+    this.state.projectiles.push({
+      id: this.nextId++,
+      towerId: t.id,
+      towerType: t.type,
+      targetId: target.id,
+      x: t.x,
+      y: t.y,
+      tx: target.x,
+      ty: target.y,
+      speed: FUSION.projectileSpeed,
+      damage: f.firstDamage * towerMult * this.mods.elementDamageMult[f.first],
+      element: f.first,
+      crit: false,
+      splashRadius: 0,
+      splashFactor: 0,
+      burnDps: f.burnDps ?? 0,
+      rootChance: 0,
+      chillStacks: f.chillStacks ?? 1,
+      second: { element: f.second, damage: f.secondDamage * towerMult * this.mods.elementDamageMult[f.second] },
+      alive: true,
+    });
+    t.cooldown = 1 / f.rate;
+    this.events.emit('towerFired', { towerId: t.id, targetId: target.id });
   }
 
   private fire(t: TowerState, target: EnemyState): void {
@@ -1436,6 +1510,8 @@ export class Simulation {
       entangle: p.ability?.id === 'entangle' ? { extra: p.ability.extra, radius: p.ability.radius } : undefined,
     };
     if (target) this.applyHit(target, base);
+    // Fusion: the second element lands right after, on the aura the first one just left.
+    if (target && p.second && target.alive) this.applyHit(target, { ...base, element: p.second.element, damage: p.second.damage, burnDps: 0, rootChance: 0, entangle: undefined });
     if (p.ability?.id === 'firefield') this.createZone(p.tx, p.ty, p.ability.radius, p.ability.duration, p.ability.burnDps);
     if (p.splashRadius > 0) {
       const r2 = p.splashRadius * p.splashRadius;

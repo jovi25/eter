@@ -1,5 +1,6 @@
 import type { Element } from '../data/elements';
 import type { EvolutionId } from '../data/evolutions';
+import type { FusionId } from '../data/fusions';
 import type { RuneKind } from '../data/runes';
 import type { BoonId } from '../data/boons';
 import type { EnemyId } from '../data/enemies';
@@ -51,6 +52,8 @@ export interface SimEvents {
   shieldUp: { enemyId: number; reaction: ReactionId; hits: number };
   shieldHit: { enemyId: number; reaction: ReactionId; left: number; x: number; y: number };
   shieldBroken: { enemyId: number; reaction: ReactionId; x: number; y: number };
+  /** Two towers became one (the partner's slot is free again). */
+  towerFused: { towerId: number; partnerId: number; partnerSlot: number; fusion: FusionId };
   /** Comporta switched: new enemies take this path. */
   gateToggled: { path: number };
   goldChanged: { gold: number; delta: number };

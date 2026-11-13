@@ -47,7 +47,7 @@ export const TIPS: Record<TipId, TipDef> = {
   skill: { title: 'Habilidade do herói', text: 'O botão no canto mostra a habilidade do herói. Ela é usada sozinha, e cada reação diminui o tempo de recarga.' },
   // ── Fase 4 ──
   fewSlots: { title: 'Poucos espaços', text: 'Aqui há só 5 lugares para torres. Melhorar vale mais que espalhar.' },
-  maxLevel: { title: 'Evolução!', text: 'Torre no nível 3? Toque nela e escolha uma de duas Evoluções: um golpe final devastador ou um efeito constante. Depois ainda dá para comprar Reforço.' },
+  maxLevel: { title: 'Evolução!', text: 'Torre no nível 3? Toque nela: escolha uma de duas Evoluções, ou FUNDA com outra torre nível 3 por perto (de um elemento que reage) e libere um espaço. Depois ainda dá para comprar Reforço.' },
   runes: { title: 'Runas', text: 'As pedras rúnicas no chão não ocupam espaço de torre. Uma Runa acelera ou fortalece as torres perto dela.' },
   // ── Fase 5 ──
   boss: { title: 'Chefe MVP', text: 'O Arauto da Geada fica imune a Resfriado de tempos em tempos e chama gosmas. Guarde dano forte para ele.' },

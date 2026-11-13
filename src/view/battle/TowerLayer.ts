@@ -6,6 +6,7 @@ import type { TowerState } from '../../sim/types';
 import { DEPTH, unitDepth } from './layers';
 import { quality, addBlend } from '../quality';
 import { EVOLUTIONS, evolvedLevel } from '../../data/evolutions';
+import { FUSIONS } from '../../data/fusions';
 
 class TowerView {
   readonly root: Phaser.GameObjects.Container;
@@ -76,6 +77,29 @@ class TowerView {
     }
   }
 
+  /** Fused: the partner tower rides on the side, a two-colour ring, the fusion colour on top. */
+  setFusion(t: TowerState): void {
+    if (!t.fusion || this.crown) return;
+    const def = FUSIONS[t.fusion];
+    const partner = def.towers[0] === t.type ? def.towers[1] : def.towers[0];
+    this.baseScale = 1.2;
+    this.top.setScale(this.baseScale).setTint(0xffffff, 0xffffff, def.color, def.color);
+    this.aura.setTint(def.color);
+    this.pips.forEach((p) => p.setVisible(false));
+    const ringA = this.scene.add.image(0, 14, 'ring').setScale(1.55, 0.72).setTint(ELEMENTS[TOWERS[t.type].element].color).setBlendMode(addBlend()).setAlpha(0.85);
+    const ringB = this.scene.add.image(0, 14, 'ring').setScale(1.2, 0.56).setTint(ELEMENTS[TOWERS[partner].element].color).setBlendMode(addBlend()).setAlpha(0.85);
+    this.root.addAt(ringA, 0);
+    this.root.addAt(ringB, 0);
+    const side = this.scene.add.image(30, -34, `tower_${partner}`).setOrigin(0.5, 0.6).setScale(0.62);
+    this.root.add(side);
+    this.crown = this.scene.add.image(0, -92, 'star').setScale(0.5).setTint(def.color);
+    this.root.add(this.crown);
+    if (!quality.low) {
+      this.scene.tweens.add({ targets: [ringA, ringB], angle: 360, duration: 4000, repeat: -1 });
+      this.scene.tweens.add({ targets: this.crown, y: -94, angle: 15, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+  }
+
   setLevel(level: number): void {
     this.pips.forEach((p, i) => p.setVisible(i < level));
     this.baseScale = 1 + (level - 1) * 0.1;
@@ -126,6 +150,21 @@ export class TowerLayer {
     if (!v) return;
     v.setEvolution(t);
     this.scene.tweens.add({ targets: v.root, scaleX: { from: 1.6, to: 1 }, scaleY: { from: 0.5, to: 1 }, duration: 600, ease: 'Elastic.easeOut' });
+  }
+
+  fuse(t: TowerState): void {
+    const v = this.views.get(t.id);
+    if (!v) return;
+    v.setFusion(t);
+    this.scene.tweens.add({ targets: v.root, scaleX: { from: 1.6, to: 1 }, scaleY: { from: 0.5, to: 1 }, duration: 600, ease: 'Elastic.easeOut' });
+  }
+
+  /** The partner flies into the fused tower and disappears. */
+  absorb(id: number, x: number, y: number): void {
+    const v = this.views.get(id);
+    if (!v) return;
+    this.views.delete(id);
+    this.scene.tweens.add({ targets: v.root, x, y: y - 20, scale: 0.2, alpha: 0.3, duration: 380, ease: 'Cubic.easeIn', onComplete: () => v.destroy() });
   }
 
   fired(id: number): void {

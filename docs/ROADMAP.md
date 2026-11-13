@@ -78,8 +78,10 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Elemento novo: **Comporta** (tocar troca o caminho dos próximos inimigos) nas fases 2 e 5
 - [x] 2 chefes com **escudo elemental** em fases (Sentinela de Âmbar, Devorador de Éter); o cartão da fase mostra os escudos antes
 
-### Fase 9b — Torre de fusão (adiada)
-- [ ] Torre nova de elemento duplo por fusão (separada para não inchar a Fase 9)
+### Fase 9b — Torres de fusão ✔
+- [x] Duas torres nível 3 de elementos que reagem, a até 280 px, viram uma (150 de ouro): fica no lugar da primeira e libera o espaço da outra
+- [x] 5 fusões: Gêiser de Vapor, Coração da Queimada, Fornalha Elétrica, Jardim de Geada, Agulha Polar — cada disparo marca e detona a reação no mesmo alvo
+- [x] Menu: botão FUNDIR no nível 3; as parceiras possíveis brilham com o nome da fusão; tocar nela confirma
 - *Aceite:* a região 2 exige montar a build pensando no chefe.
 
 ### Fase 10 — Polimento e balanceamento

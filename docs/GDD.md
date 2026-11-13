@@ -416,7 +416,7 @@ Nos níveis 2, 3 e 4 libera um talento; o jogador equipa **1** na ficha do heró
 | Sacerdotisa | Coro (aura 300, +12%) | Foco (Bênção numa torre, +110%, 7 s) | Luz Punitiva (ataque ×3 em área, sem aura) | Graça (+1 vida, 30 s) |
 
 **Armas do Arcanista:** Brasa (fogo), Geada (gelo), Trovão (raio, nv 2: não marca, só detona), Seiva (natureza, nv 3: enraíza).
-Números em . Desafio do dia não usa talentos/arma/2ª habilidade.
+Números em `src/data/talents.ts`. Desafio do dia não usa talentos/arma/2ª habilidade.
 
 ## Fase 9 — Região 2: Ermos de Âmbar
 - **Mapas altos** (720×1920): a câmera rola arrastando o dedo; HUD fixo (fator de rolagem 0, câmera com origem no canto). Toques só valem onde começaram (arrastar não constrói nem move o herói). Barra de posição à direita e abas ▲ N / ▼ N com inimigos fora da tela (tocar rola).
@@ -426,3 +426,17 @@ Números em . Desafio do dia não usa talentos/arma/2ª habilidade.
   - Sentinela de Âmbar (2600 de vida): DERRETIMENTO → SOBRECARGA → INCÊNDIO (100%/66%/33%).
   - Devorador de Éter (3400): SUPERCONDUÇÃO → INCÊNDIO → ESTILHAÇO → DERRETIMENTO (100/75/50/25%).
 - Robôs (sem relíquias nem talentos): vencem a maioria das fases a1–a4; no a5 o chefe chega ao cristal com ~30–40% de vida (final difícil de propósito).
+
+## Fase 9b — Torres de fusão
+No nível 3 (sem evolução), além das duas Evoluções há **FUNDIR** (150 de ouro): escolhe-se uma torre parceira nível 3 a até 280 px cujo elemento reage com o desta. A torre fica no lugar da primeira, a parceira some e **libera o espaço**; investimento e Reforços somam. Não evolui; aceita Reforço; acerta voadores.
+Cada disparo dá dois golpes no mesmo alvo: o 1º deixa a marca, o 2º detona a reação.
+
+| Fusão | Torres | Reação |
+|---|---|---|
+| Gêiser de Vapor | Braseiro + Gélido | DERRETIMENTO |
+| Coração da Queimada | Braseiro + Vinha | INCÊNDIO |
+| Fornalha Elétrica | Braseiro + Trovão | SOBRECARGA |
+| Jardim de Geada | Gélido + Vinha | GEADA ESPINHOSA |
+| Agulha Polar | Gélido + Trovão | SUPERCONDUÇÃO |
+
+Números em `src/data/fusions.ts`. Combina com os escudos dos chefes da Região 2: uma fusão garante a reação do escudo.

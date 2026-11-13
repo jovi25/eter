@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { FUSIONS } from '../../data/fusions';
 import { GateView, ShieldLayer } from '../battle/RegionTwoView';
 import { MAPS } from '../../data/maps';
 import { ScrollHint } from '../battle/ScrollHint';
@@ -285,6 +286,7 @@ export class BattleScene extends Phaser.Scene {
       upgrade: (id) => this.sim.upgrade(id),
       boost: (id) => this.sim.boost(id),
       evolve: (id, evo) => this.sim.evolve(id, evo),
+      fuse: (id, partner) => this.sim.fuse(id, partner),
       sell: (id) => this.sim.sell(id),
       buildRune: (i, kind) => this.sim.buildRune(i, kind),
       sellRune: (i) => this.sim.sellRune(i),
@@ -323,6 +325,7 @@ export class BattleScene extends Phaser.Scene {
         ev.stopPropagation();
         if (this.paused || this.ended || this.picker || this.dragging || this.downOn !== zone) return;
         const tower = this.sim.towerAt(i);
+        if (tower && this.menu.pickPartner(tower)) return;
         playSfx('ui', 0.8);
         if (tower) this.menu.openTower(tower);
         else this.menu.openSlot(i);
@@ -754,6 +757,23 @@ export class BattleScene extends Phaser.Scene {
         playSfx('ready');
         vibrate([30, 30, 60]);
       }
+    });
+
+    ev.on('towerFused', (f) => {
+      const t = this.sim.getTower(f.towerId);
+      if (!t) return;
+      const def = FUSIONS[f.fusion];
+      this.towers.absorb(f.partnerId, t.x, t.y);
+      this.map.slotImages[f.partnerSlot]?.setVisible(true);
+      this.time.delayedCall(380, () => {
+        this.towers.fuse(t);
+        this.fx.burst(t.x, t.y - 30, def.color, 34);
+        this.fx.shockwave(t.x, t.y, def.color, 3, 700);
+        this.shake(220, 0.006);
+      });
+      this.fx.bigBanner(`FUSÃO!\n${def.name.toUpperCase()}`, `#${def.color.toString(16).padStart(6, '0')}`, 54, 800, true);
+      playSfx('mvp');
+      vibrate([40, 30, 90]);
     });
 
     ev.on('towerSold', (s) => {

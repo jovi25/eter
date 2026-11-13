@@ -1,5 +1,6 @@
 import type { Element } from '../data/elements';
 import type { EvolutionId } from '../data/evolutions';
+import type { FusionId } from '../data/fusions';
 import type { RuneKind } from '../data/runes';
 import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
@@ -56,6 +57,7 @@ export interface TowerState {
   boost: number; // Reforços bought after max level
   evo: EvolutionId | null; // chosen final form (after level 3)
   ultTimer: number; // seconds until the next ultimate / storm tick
+  fusion: FusionId | null; // Torre de fusão (Fase 9b)
 }
 
 export interface ProjectileState {
@@ -77,6 +79,7 @@ export interface ProjectileState {
   rootChance: number;
   chillStacks: number;
   ability?: TowerAbility; // max-level ability riding on this projectile
+  second?: { element: Element; damage: number }; // fusion: a second hit right after the first (sets off the reaction)
   alive: boolean;
 }
 
