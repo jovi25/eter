@@ -97,6 +97,15 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Acessibilidade: todo estado tem ícone próprio (chama nova para Queimando), opção **Textos maiores**
 - [x] Ajustes: Arcanista (ataque 13, Catalisar 36), Sacerdotisa (aura +25%, Bênção +45%), Devorador de Éter 3000 de vida
 
+### Fase 11 — Mapa de Éter e tutorial completo ✔
+- [x] **Mapa de Éter** (tela inicial): cartões das regiões, Modos de jogo (Fenda Infinita, Desafio do dia, vaga "Novo modo"), Relicário/Códice/Opções
+- [x] Região nova abre com **3 estrelas em todas as fases** da anterior (quem já jogou lá mantém o acesso)
+- [x] **Região 1 = tutorial**: 1 Arqueira → 2 + Fogo e Planta → 3 + Gelo e Raio → 4 Evoluir e Fundir → 5 tudo (runas, bênçãos, chefe)
+- [x] Até vencer a fase 5: só o Arcanista, sem relíquias, talentos, Relicário, Fenda e Desafio do dia
+
+### Fase 12 — Região 3
+- [ ] 5 fases novas, tema novo, chefe novo e um elemento de mapa novo
+
 ## No radar (não agora)
 Co-op, nuvem, Passe de Missões e loja de gems (gems nunca compram nada aleatório), guildas, Capacitor para lojas,
 classificação indicativa e ECA Digital antes de qualquer monetização.

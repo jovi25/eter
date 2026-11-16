@@ -17,13 +17,24 @@ describe('Região 2', () => {
     }
   });
 
-  it('opens after the last stage of Região 1', () => {
+  it('opens when every stage of Região 1 has 3 stars', () => {
     const mem = new Map<string, string>();
     const save = new SaveStore({ getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => void mem.set(k, v) });
+    for (const id of REGIONS[0]!.stages) save.recordResult(id, true, 2);
+    expect(save.tutorialDone()).toBe(true);
+    expect(save.isUnlocked('rift')).toBe(true);
     expect(save.isUnlocked('a1')).toBe(false);
-    save.recordResult('v5', true, 1);
+    for (const id of REGIONS[0]!.stages) save.recordResult(id, true, 3);
     expect(save.isUnlocked('a1')).toBe(true);
     expect(save.isUnlocked('a2')).toBe(false);
+  });
+
+  it('a player who already played a region keeps it open', () => {
+    const mem = new Map<string, string>();
+    const save = new SaveStore({ getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => void mem.set(k, v) });
+    save.recordResult('a1', true, 1);
+    expect(save.isUnlocked('a1')).toBe(true);
+    expect(save.isUnlocked('a2')).toBe(true);
   });
 });
 

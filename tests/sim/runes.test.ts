@@ -34,16 +34,17 @@ describe('Runas', () => {
     }
   });
 
-  it('only exist from stage 3 on (and in the Fenda)', () => {
+  it('in the tutorial only the last stage has them (and the Fenda)', () => {
     expect(new Simulation({ stage: 'v1', seed: 1 }).state.runes).toHaveLength(0);
     expect(new Simulation({ stage: 'v2', seed: 1 }).state.runes).toHaveLength(0);
-    expect(new Simulation({ stage: 'v3', seed: 1 }).state.runes).toHaveLength(2);
+    expect(new Simulation({ stage: 'v3', seed: 1 }).state.runes).toHaveLength(0);
+    expect(new Simulation({ stage: 'v5', seed: 1 }).state.runes).toHaveLength(2);
     expect(new Simulation({ stage: 'rift', seed: 1 }).state.runes).toHaveLength(2);
-    expect(STAGES.v4.runes).toBe(true);
+    expect(STAGES.v5.runes).toBe(true);
   });
 
   it('cost gold, boost only towers in reach, and sell back for 70%', () => {
-    const sim = new Simulation({ stage: 'v3', seed: 1 });
+    const sim = new Simulation({ stage: 'v5', seed: 1 });
     const log = record(sim, 'runeBuilt', 'runeSold');
     sim.state.gold = 1000;
     const r = sim.state.runes[0]!;
@@ -64,7 +65,7 @@ describe('Runas', () => {
 
   it('a haste rune makes a nearby tower attack more often', () => {
     const shots = (withRune: boolean) => {
-      const sim = new Simulation({ stage: 'v3', seed: 5 });
+      const sim = new Simulation({ stage: 'v5', seed: 5 });
       sim.state.gold = 5000;
       const r = sim.state.runes[0]!;
       // nearest slot to the rune

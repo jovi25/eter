@@ -447,3 +447,17 @@ Números em `src/data/fusions.ts`. Combina com os escudos dos chefes da Região 
 - **Nevasca Eterna** vira suporte: pulso a cada 1 s, 30% do dano, resfria sem congelar.
 - **Formas finais**: golpe final 320, constante 280–300. Fornalha e Bobina Tesla atacam 2× (não 2,5×); Tesla +1 salto. Fusão custa 200.
 - Venda com dois toques; herói arrastável; "Próxima fase" volta ao cartão da fase.
+
+## Fase 11 — Mapa de Éter e tutorial
+- **Mapa de Éter**: primeira tela. Regiões em cartões (estrelas por região) e Modos de jogo. Região N+1 abre com 3★ em todas as fases da região N (progresso antigo é mantido).
+- **Tutorial (Região 1)** — regras da fase em  (, , , ), aplicadas com :
+
+| Fase | Torres | Novidade |
+|---|---|---|
+| 1 | Arqueira | construir, melhorar, mover o herói, chamar onda |
+| 2 | + Braseiro, Vinha | elementos, INCÊNDIO, fraquezas, duas entradas |
+| 3 | + Gelo, Trovão | congelar, SUPERCONDUÇÃO/ESTILHAÇO, habilidade do herói |
+| 4 | todas | Evoluir (golpe final/constante) e Fundir; 5 espaços |
+| 5 | todas | runas, bênçãos e o chefe Arauto |
+
+- Antes de vencer a fase 5: só o Arcanista; sem relíquias, talentos, Relicário, Fenda e Desafio do dia. Depois, todos os heróis abrem juntos.

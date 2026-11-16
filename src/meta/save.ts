@@ -7,7 +7,7 @@ import type { BoonId } from '../data/boons';
 import { COINS, LOCKED_BOONS, MAX_RELIC_LEVEL, RELIC_IDS, RELIC_SLOTS, isHighRarity, nextChestSeed, rollChest, type ChestReward, type RelicId } from '../data/relics';
 import { ENEMIES } from '../data/enemies';
 import { REACTIONS } from '../data/reactions';
-import { RIFT, STAGE_ORDER, type CampaignStageId, type StageId } from '../data/stages';
+import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, type CampaignStageId, type StageId } from '../data/stages';
 
 export const SAVE_VERSION = 7;
 const KEY = 'eter.save';
@@ -168,11 +168,31 @@ export class SaveStore {
     }
   }
 
+  /** The tutorial (Região 1) ends when its last stage is won: modes, heroes and the Relicário open. */
+  tutorialDone(): boolean {
+    return this.stars(TUTORIAL_LAST) > 0;
+  }
+
+  /** A region opens when every stage of the one before has 3 stars (or the player already played there). */
+  isRegionOpen(r: number): boolean {
+    if (r <= 0) return true;
+    const region = REGIONS[r];
+    if (!region) return false;
+    if (region.stages.some((id) => (this.data.stages[id]?.wins ?? 0) > 0)) return true;
+    return REGIONS[r - 1]!.stages.every((id) => this.stars(id) >= 3);
+  }
+
+  regionStars(r: number): number {
+    return (REGIONS[r]?.stages ?? []).reduce((sum, id) => sum + this.stars(id), 0);
+  }
+
   isUnlocked(id: StageId): boolean {
-    if (id === 'rift') return this.stars(RIFT.unlockAfter) > 0;
-    const i = STAGE_ORDER.indexOf(id);
-    if (i <= 0) return true;
-    return (this.data.stages[STAGE_ORDER[i - 1]!]?.stars ?? 0) > 0;
+    if (id === 'rift') return this.tutorialDone();
+    const r = REGIONS.findIndex((g) => g.stages.includes(id));
+    const stages = REGIONS[r]?.stages ?? [];
+    const i = stages.indexOf(id);
+    if (i <= 0) return this.isRegionOpen(r);
+    return (this.data.stages[stages[i - 1]!]?.stars ?? 0) > 0;
   }
 
   stars(id: CampaignStageId): number {
@@ -325,8 +345,7 @@ export class SaveStore {
 
   /** A hero class is available once its unlock stage has been won. */
   isHeroUnlocked(cls: HeroClass): boolean {
-    const req = HEROES[cls].unlockAfter;
-    return !req || this.stars(req) > 0;
+    return cls === 'mage' || this.tutorialDone();
   }
 
   selectHero(cls: HeroClass): void {

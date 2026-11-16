@@ -137,3 +137,19 @@ describe('multi-path stages', () => {
 
 // keep dummy helper referenced (used by other suites)
 void dummy;
+
+describe('tutorial limits (Região 1)', () => {
+  it('each stage teaches more: towers first, then Evoluir/Fundir, then Bênçãos', () => {
+    const towers = (id: 'v1' | 'v2' | 'v3' | 'v4' | 'v5') => new Simulation({ stage: id, seed: 1, limits: true }).mods.unlockedTowers;
+    expect(towers('v1')).toEqual(['archer']);
+    expect(new Set(towers('v2'))).toEqual(new Set(['archer', 'brazier', 'vine']));
+    expect(towers('v3')).toHaveLength(5);
+    expect(STAGES.v3.evolve).toBe(false);
+    expect(STAGES.v4.evolve).not.toBe(false);
+    expect(STAGES.v4.boons).toBe(false);
+    expect(STAGES.v5.boons).not.toBe(false);
+    const v1 = new Simulation({ stage: 'v1', seed: 1, limits: true });
+    expect(v1.build(0, 'brazier')).toBeNull();
+    expect(v1.build(0, 'archer')).not.toBeNull();
+  });
+});

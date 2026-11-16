@@ -1,5 +1,6 @@
 import type { EnemyId } from './enemies';
 import type { MapId } from './maps';
+import type { TowerId } from './towers';
 
 export interface SpawnGroup {
   enemy: EnemyId;
@@ -19,7 +20,12 @@ export interface StageDef {
   map: MapId;
   hpMult: number; // extra difficulty multiplier for the whole stage
   startGold?: number; // overrides ECONOMY.startGold
-  runes?: boolean; // rune stones available (taught from stage 3 on)
+  runes?: boolean; // rune stones available
+  // ── Tutorial (Região 1): each stage opens a little more of the game ──
+  towers?: TowerId[]; // only these can be built (default: all)
+  evolve?: boolean; // Evoluções allowed (default true)
+  fusion?: boolean; // Torres de fusão allowed (default true)
+  boons?: boolean; // Bênçãos offered between waves (default true)
   waves: WaveDef[];
 }
 
@@ -31,6 +37,9 @@ export const REGIONS: { name: string; stages: CampaignStageId[] }[] = [
   { name: 'Vellmora', stages: ['v1', 'v2', 'v3', 'v4', 'v5'] },
   { name: 'Ermos de Âmbar', stages: ['a1', 'a2', 'a3', 'a4', 'a5'] },
 ];
+/** The tutorial is over once its last stage is won: the rest of the game opens. */
+export const TUTORIAL_LAST: CampaignStageId = 'v5';
+
 export function regionOf(id: StageId): number {
   return REGIONS.findIndex((r) => r.stages.includes(id as CampaignStageId));
 }
@@ -70,9 +79,14 @@ export const STAGES: Record<StageId, StageDef> = {
     startGold: 220,
     waves: Array.from({ length: RIFT.waves }, (_, i) => riftWave(i + 1)),
   },
+
   v1: {
     name: 'Campos de Vellmora I',
-    subtitle: 'O primeiro portal',
+    subtitle: 'Tutorial 1 — a Arqueira: construa, melhore e mova o herói',
+    towers: ['archer'],
+    evolve: false,
+    fusion: false,
+    boons: false,
     map: 'meadow',
     hpMult: 1,
     waves: [
@@ -90,29 +104,35 @@ export const STAGES: Record<StageId, StageDef> = {
   },
   v2: {
     name: 'Campos de Vellmora II',
-    subtitle: 'Duas entradas — chifrudos imunes a fogo',
+    subtitle: 'Tutorial 2 — Fogo e Planta: juntos viram INCÊNDIO',
+    towers: ['archer', 'brazier', 'vine'],
+    evolve: false,
+    fusion: false,
+    boons: false,
     map: 'twin',
-    hpMult: 0.9,
+    hpMult: 0.75,
     startGold: 150,
     waves: [
-      { groups: [g('slime', 5, 1.1, 0, 0), g('slime', 5, 1.1, 0.5, 1)] },
-      { groups: [g('salamander', 6, 1.2)] },
-      { groups: [g('wolf', 6, 0.6, 0, 0), g('skeleton', 4, 1.2, 1, 1)] },
-      { groups: [g('salamander', 5, 1.0, 0, 1), g('slime', 6, 0.8, 1, 0)] },
-      { groups: [g('skeleton', 8, 0.9)] },
-      { groups: [g('golem', 4, 2.0), g('bat', 6, 0.8, 2)] },
-      { groups: [g('salamander', 8, 0.7), g('wolf', 6, 0.5, 3)] },
-      { groups: [g('skeleton', 6, 0.8, 0, 0), g('salamander', 6, 0.8, 0, 1)] },
-      { groups: [g('golem', 5, 1.5), g('skeleton', 6, 0.7, 2), g('bat', 6, 0.7, 4)] },
-      { groups: [g('colossus', 1, 0, 0, 0), g('salamander', 8, 0.6, 1, 1), g('skeleton', 6, 0.8, 3)] },
+      { groups: [g('slime', 3, 1.2, 0, 0), g('slime', 3, 1.2, 0.6, 1)] },
+      { groups: [g('slime', 8, 1.0)] },
+      { groups: [g('salamander', 5, 1.2)] },
+      { groups: [g('golem', 3, 2.2), g('slime', 4, 1.0, 2)] },
+      { groups: [g('wolf', 6, 0.8)] },
+      { groups: [g('salamander', 6, 1.0), g('slime', 6, 0.8, 2)] },
+      { groups: [g('golem', 4, 1.8), g('wolf', 4, 0.7, 3)] },
+      { groups: [g('bat', 5, 1.0), g('slime', 6, 0.8, 2)] },
+      { groups: [g('salamander', 8, 0.7), g('golem', 3, 2.0, 2)] },
+      { groups: [g('colossus', 1, 0), g('slime', 8, 0.8, 2), g('salamander', 4, 1.0, 4)] },
     ],
   },
   v3: {
-    runes: true,
     name: 'Pântano de Vellmora',
-    subtitle: 'O Anel — gelo e lama',
+    subtitle: 'Tutorial 3 — Gelo e Raio: congelar, quebrar e combinar',
+    evolve: false,
+    fusion: false,
+    boons: false,
     map: 'ring',
-    hpMult: 1.2,
+    hpMult: 1,
     startGold: 170,
     waves: [
       { groups: [g('slime', 10, 0.8)] },
@@ -128,12 +148,12 @@ export const STAGES: Record<StageId, StageDef> = {
     ],
   },
   v4: {
-    runes: true,
     name: 'Desfiladeiro de Vellmora',
-    subtitle: 'Corredor curto — poucos espaços',
+    subtitle: 'Tutorial 4 — poucos espaços: Evoluir (golpe final ou constante) e Fundir',
+    boons: false,
     map: 'corridor',
     hpMult: 1.08,
-    startGold: 200,
+    startGold: 320,
     waves: [
       { groups: [g('wolf', 8, 0.7)] },
       { groups: [g('shaman', 5, 1.4)] },
@@ -150,9 +170,9 @@ export const STAGES: Record<StageId, StageDef> = {
   v5: {
     runes: true,
     name: 'Trono da Geada',
-    subtitle: 'Bifurcação — o Arauto da Geada',
+    subtitle: 'Tutorial 5 — tudo liberado: runas, bênçãos e o Arauto da Geada',
     map: 'fork',
-    hpMult: 0.9,
+    hpMult: 0.8,
     startGold: 200,
     waves: [
       { groups: [g('slime', 10, 0.7)] },

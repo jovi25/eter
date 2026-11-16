@@ -17,7 +17,10 @@ function slotOrder(sim: Simulation): number[] {
 }
 
 export function play(stage: StageId, plan: TowerId[], seed: number, heroClass: HeroClass = 'mage', boonPick = 0) {
-  const sim = new Simulation({ stage, seed, modifiers: { heroClass } });
+  const sim = new Simulation({ stage, seed, modifiers: { heroClass }, limits: true });
+  // Tutorial stages only allow some towers: robots swap the rest for an allowed one.
+  const allowed = sim.mods.unlockedTowers;
+  plan = plan.map((t, i) => (allowed.includes(t) ? t : allowed[i % allowed.length]!));
   const max = Math.min(plan.length, sim.slots.length);
   const order = slotOrder(sim);
   while (sim.state.result === 'playing' && sim.state.tick < 600 * SIM_TICKS_PER_SECOND) {

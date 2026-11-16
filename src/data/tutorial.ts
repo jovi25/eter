@@ -22,7 +22,11 @@ export type TipId =
   | 'gate'
   | 'shield'
   | 'rift'
-  | 'altar';
+  | 'altar'
+  | 'fireVine'
+  | 'iceStorm'
+  | 'evolveFuse'
+  | 'archer';
 
 export interface TipDef {
   title: string;
@@ -38,6 +42,11 @@ export const TIPS: Record<TipId, TipDef> = {
   reaction: { title: 'REAÇÃO!', text: 'Dois elementos no mesmo monstro causam uma reação com dano extra. Ex.: Queimando + Natureza = INCÊNDIO. Todas ficam no Códice.' },
   combo: { title: 'Combo', text: 'Reações seguidas formam um COMBO e cada uma bate mais forte. Não deixe o combo esfriar!' },
   upgrade: { title: 'Melhore suas torres', text: 'Toque numa torre construída para melhorá-la. No nível 3 ela ganha um poder especial.' },
+  // ── Tutorial: uma torre nova por fase ──
+  archer: { title: 'A Arqueira', text: 'Dispara rápido, acerta voadores e de vez em quando dá um golpe crítico. É a base de qualquer defesa.' },
+  fireVine: { title: 'Fogo e Planta', text: 'O Braseiro queima em área; a Vinha prende no chão. Fogo num monstro preso (ou Natureza num que queima) = INCÊNDIO, que espalha chamas!' },
+  iceStorm: { title: 'Gelo e Raio', text: 'O Cristal Gélido resfria e congela; o Trovão salta entre inimigos. Raio em quem está gelado = SUPERCONDUÇÃO; em quem está congelado = ESTILHAÇO.' },
+  evolveFuse: { title: 'Evoluir e Fundir', text: 'Leve uma torre ao nível 3 e toque nela: escolha GOLPE FINAL (forte e lento) ou CONSTANTE (sem parar), ou FUNDA duas torres vizinhas em uma só.' },
   // ── Fase 2: estratégia ──
   twoPaths: { title: 'Duas entradas', text: 'Os monstros vêm por dois lados. Use torres que alcancem os dois caminhos.' },
   resist: { title: 'Fraquezas', text: 'Alguns monstros resistem a um elemento. Nos números de dano, ▲ quer dizer fraco e ▼ quer dizer resiste.' },

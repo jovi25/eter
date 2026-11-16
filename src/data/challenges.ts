@@ -17,11 +17,12 @@ export type Challenge =
   | { kind: 'hero'; cls: HeroClass };
 
 export const CHALLENGES: Record<CampaignStageId, [Challenge, Challenge, Challenge]> = {
-  v1: [{ kind: 'reactions', min: 15 }, { kind: 'lives', min: 20 }, { kind: 'maxTowers', max: 5 }],
-  v2: [{ kind: 'noTower', tower: 'brazier' }, { kind: 'reactions', min: 25 }, { kind: 'hero', cls: 'knight' }],
-  v3: [{ kind: 'reaction', id: 'overload', min: 8 }, { kind: 'noTower', tower: 'vine' }, { kind: 'lives', min: 15 }],
-  v4: [{ kind: 'maxTowers', max: 4 }, { kind: 'hero', cls: 'druid' }, { kind: 'reactions', min: 30 }],
-  v5: [{ kind: 'lives', min: 15 }, { kind: 'hero', cls: 'priest' }, { kind: 'noTower', tower: 'archer' }],
+  // Tutorial: goals that use only what the stage teaches.
+  v1: [{ kind: 'lives', min: 20 }, { kind: 'maxTowers', max: 5 }, { kind: 'maxTowers', max: 4 }],
+  v2: [{ kind: 'reaction', id: 'wildfire', min: 10 }, { kind: 'noTower', tower: 'archer' }, { kind: 'lives', min: 18 }],
+  v3: [{ kind: 'reaction', id: 'superconduct', min: 6 }, { kind: 'reaction', id: 'shatter', min: 4 }, { kind: 'reactions', min: 30 }],
+  v4: [{ kind: 'maxTowers', max: 4 }, { kind: 'reactions', min: 30 }, { kind: 'lives', min: 15 }],
+  v5: [{ kind: 'lives', min: 15 }, { kind: 'noTower', tower: 'archer' }, { kind: 'reactions', min: 40 }],
   a1: [{ kind: 'reactions', min: 40 }, { kind: 'lives', min: 18 }, { kind: 'maxTowers', max: 7 }],
   a2: [{ kind: 'noTower', tower: 'storm' }, { kind: 'reaction', id: 'wildfire', min: 12 }, { kind: 'hero', cls: 'knight' }],
   a3: [{ kind: 'reaction', id: 'melt', min: 15 }, { kind: 'lives', min: 15 }, { kind: 'hero', cls: 'mage' }],

@@ -120,18 +120,25 @@ export class BattleScene extends Phaser.Scene {
     const sim = this.sim;
     const slot = (i: number) => () => sim.slots[i] ?? null;
     switch (this.daily ? 'daily' : this.stageId) {
+      // Tutorial: each stage introduces something new.
       case 'v1':
+        t.request('archer');
         t.request('build', slot(1));
         break;
       case 'v2':
+        t.request('fireVine');
         t.request('twoPaths', () => (this.map.portals[1] ? { x: this.map.portals[1].x, y: this.map.portals[1].y } : null));
         break;
       case 'v3':
-        t.request('runes', () => sim.state.runes[0] ?? null);
+        t.request('iceStorm');
         t.request('skill', () => ({ x: GAME_WIDTH - 82, y: GAME_HEIGHT - 76 + this.cameras.main.scrollY }));
         break;
       case 'v4':
+        t.request('evolveFuse');
         t.request('fewSlots');
+        break;
+      case 'v5':
+        t.request('runes', () => sim.state.runes[0] ?? null);
         break;
       case 'rift':
         t.request('rift');
@@ -237,14 +244,18 @@ export class BattleScene extends Phaser.Scene {
     const seed = this.daily?.seed ?? data.seed ?? Math.floor(Math.random() * 1e9);
     this.stageId = this.daily?.stage ?? data.stage ?? 'v1';
     this.heroClass = this.daily?.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
+    // During the tutorial only the Arcanista, and no relics or talents (nothing that the tutorial has not taught).
+    const learning = !this.daily && !getSave().tutorialDone();
+    if (learning) this.heroClass = 'mage';
     // Relíquias and revealed Bênçãos count everywhere except the daily challenge (same for everyone).
     const save = getSave();
     this.sim = new Simulation({
       stage: this.stageId,
       seed,
       // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
-      modifiers: { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily ? {} : save.heroMods(this.heroClass)) },
-      relics: this.daily ? [] : save.loadout(),
+      modifiers: { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily || learning ? {} : save.heroMods(this.heroClass)) },
+      relics: this.daily || learning ? [] : save.loadout(),
+      limits: true,
     });
     if (this.daily) {
       // The daily run starts with one boon already in hand.

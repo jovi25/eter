@@ -12,7 +12,7 @@ import { COINS } from '../../data/relics';
 import { playMusic, setMusicIntensity } from '../audio/music';
 import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
-import { REGIONS, RIFT, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
+import { REGIONS, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
 import { ENEMIES } from '../../data/enemies';
 import { REACTIONS } from '../../data/reactions';
 import { getSave } from '../../meta/save';
@@ -50,8 +50,14 @@ const TRAIL = [
 ];
 const TRAILS = [TRAIL, TRAIL.map((p) => ({ x: GAME_WIDTH - p.x, y: p.y }))];
 
-/** Region shown last (the map opens there again). */
+/** Region shown last (the map opens there again). -1 = the Mapa de Éter (hub). */
 let lastRegion = -1;
+
+/** Hub art per region: theme and the monster on its card. */
+const REGION_LOOK: { theme: 'meadow' | 'amber'; enemy: EnemyId; tag: string }[] = [
+  { theme: 'meadow', enemy: 'herald', tag: 'Tutorial: aprenda cada torre' },
+  { theme: 'amber', enemy: 'devourer', tag: 'Mapas grandes, Comporta e escudos' },
+];
 
 /** Region 1 map: 5 stages along a trail; stars; locked stages; save backup. */
 export class WorldMapScene extends Phaser.Scene {
@@ -65,12 +71,15 @@ export class WorldMapScene extends Phaser.Scene {
     fitCamera(this);
     frameCap(this, 'menu');
     const save = getSave();
-    const open2 = save.isUnlocked(REGIONS[1]!.stages[0]!);
-    // Open where the player is: the region asked for, the last one seen, or the newest unlocked.
-    let region = data?.region ?? (lastRegion >= 0 ? lastRegion : open2 ? 1 : 0);
-    if (region === 1 && !open2) region = 0;
+    // Open where the player was: the region asked for, the last one seen, or the Mapa de Éter.
+    let region = data?.region ?? lastRegion;
+    if (region >= 0 && !save.isRegionOpen(region)) region = -1;
     lastRegion = region;
-    const amber = region === 1;
+    if (region < 0) {
+      this.hub();
+      return;
+    }
+    const amber = REGION_LOOK[region]?.theme === 'amber';
     playMusic(amber ? 'map2' : 'map');
     setMusicIntensity(0);
     const trail = TRAILS[region]!;
@@ -84,12 +93,8 @@ export class WorldMapScene extends Phaser.Scene {
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
     bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'map_head');
     uiText(this, GAME_WIDTH / 2, 42, amber ? 'Ermos de Âmbar' : 'Campos de Vellmora', 38, '#f3e9ff', 8);
-    // Region arrows.
-    if (amber) this.regionArrow(44, '◀', true, false, () => this.scene.restart({ region: 0 }));
-    else {
-      const fresh = open2 && save.stars(REGIONS[1]!.stages[0]!) === 0;
-      this.regionArrow(GAME_WIDTH - 44, '▶', open2, fresh, () => this.scene.restart({ region: 1 }));
-    }
+    // Back to the Mapa de Éter.
+    this.regionArrow(44, '◀', true, false, () => this.scene.restart({ region: -1 }));
     // Progress chips: stars, challenges, coins
     const chip = (x: number, icon: string, text: string, color: string, scale = 0.8) => {
       const g = this.add.graphics();
@@ -104,7 +109,6 @@ export class WorldMapScene extends Phaser.Scene {
     chip(570, 'eter_coin', `${save.data.coins}`, '#d6c4ff', 0.75);
 
     REGIONS[region]!.stages.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
-    if (!amber) this.riftNode();
 
     // Bottom navigation: big painted icons, a dot when something is waiting.
     const foot = this.add.graphics().setDepth(44);
@@ -113,15 +117,150 @@ export class WorldMapScene extends Phaser.Scene {
     foot.lineStyle(4, 0x5a3fb0, 1);
     foot.strokeRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
     bakeInPlace(foot, { x0: -24, y0: GAME_HEIGHT - 132, w: GAME_WIDTH + 48, h: 168 }, 'map_foot');
-    const today = dailySetup(new Date());
-    const playedToday = save.dailyBest(today.key) > 0;
-    const chestReady = save.data.coins >= COINS.chestPrice || !!save.data.chest.pending;
-    this.navItem(90, 'nav_pink', 'icon_daily', 'Desafio do dia', !playedToday, () => this.showDailyCard());
-    this.navItem(270, 'nav_purple', 'chest', 'Relicário', chestReady, () => this.go('Relics'), 0.34);
-    this.navItem(450, 'nav_blue', 'icon_codex', 'Códice', false, () => this.go('Codex'));
-    this.navItem(630, 'nav_gray', 'icon_gear', 'Opções', false, () => this.showOptionsCard());
+    this.navBar(true);
     this.cameras.main.fadeIn(250, 11, 7, 22);
     if (data?.openStage && save.isUnlocked(data.openStage)) this.showStageCard(data.openStage);
+  }
+
+  /** Bottom navigation. In a region the first button goes back to the Mapa de Éter. */
+  private navBar(inRegion: boolean): void {
+    const save = getSave();
+    const foot = this.add.graphics().setDepth(44);
+    foot.fillStyle(PAL.panel, 0.94);
+    foot.fillRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
+    foot.lineStyle(4, 0x5a3fb0, 1);
+    foot.strokeRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
+    bakeInPlace(foot, { x0: -24, y0: GAME_HEIGHT - 132, w: GAME_WIDTH + 48, h: 168 }, 'map_foot');
+    const done = save.tutorialDone();
+    const chestReady = done && (save.data.coins >= COINS.chestPrice || !!save.data.chest.pending);
+    const relics = () => (done ? this.go('Relics') : this.lockedMsg('Termine o tutorial para abrir o Relicário'));
+    const xs = inRegion ? [90, 270, 450, 630] : [150, 360, 570];
+    let i = 0;
+    if (inRegion) this.navItem(xs[i++]!, 'nav_pink', 'portal', 'Mapa de Éter', false, () => this.go('WorldMap', { region: -1 }), 0.42);
+    this.navItem(xs[i++]!, 'nav_purple', 'chest', done ? 'Relicário' : '🔒 Relicário', chestReady, relics, 0.34);
+    this.navItem(xs[i++]!, 'nav_blue', 'icon_codex', 'Códice', false, () => this.go('Codex'));
+    this.navItem(xs[i++]!, 'nav_gray', 'icon_gear', 'Opções', false, () => this.showOptionsCard());
+  }
+
+  private lockedMsg(text: string): void {
+    playSfx('error');
+    const msg = uiText(this, GAME_WIDTH / 2, 170, text, 22, '#ffffff', 5).setDepth(60).setWordWrapWidth(620);
+    this.tweens.add({ targets: msg, alpha: 0, y: 140, delay: 1400, duration: 400, onComplete: () => msg.destroy() });
+  }
+
+  /**
+   * Mapa de Éter: every region (each opens when the previous one has 3 stars everywhere),
+   * plus the game modes (Fenda Infinita, Desafio do dia and what comes next).
+   */
+  private hub(): void {
+    const save = getSave();
+    playMusic('map');
+    setMusicIntensity(0);
+    paintMapBackground(this, [], 'world_bg', GAME_HEIGHT, 'meadow');
+    placeDecor(this, [], [{ x: 360, y: 640 }], 7, 18);
+    const head = this.add.graphics();
+    head.fillStyle(PAL.panel, 0.9);
+    head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
+    bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'map_head');
+    uiText(this, GAME_WIDTH / 2, 42, 'Mapa de Éter', 40, '#f3e9ff', 8);
+    const chip = (x: number, icon: string, text: string, color: string, scale = 0.8) => {
+      const g = this.add.graphics();
+      g.fillStyle(0x0b0716, 0.55);
+      g.fillRoundedRect(x - 92, 74, 184, 40, 20);
+      bakeInPlace(g, { x0: x - 94, y0: 72, w: 188, h: 44 }, `map_chip_${x}`);
+      this.add.image(x - 66, 94, icon).setScale(scale);
+      uiText(this, x - 44, 94, text, 24, color, 5).setOrigin(0, 0.5);
+    };
+    chip(150, 'star', `${save.totalStars()}/${STAGE_ORDER.length * 3}`, PAL.goldCss, 0.4);
+    chip(360, 'icon_check', `${save.challengesDone()}/${TOTAL_CHALLENGES}`, '#9be89b', 0.7);
+    chip(570, 'eter_coin', `${save.data.coins}`, '#d6c4ff', 0.75);
+
+    // Regions
+    REGIONS.forEach((reg, r) => {
+      const y = 236 + r * 178;
+      const open = save.isRegionOpen(r);
+      const look = REGION_LOOK[r] ?? REGION_LOOK[0]!;
+      const stars = save.regionStars(r);
+      const max = reg.stages.length * 3;
+      const c = this.add.container(GAME_WIDTH / 2, y).setDepth(40);
+      const g = this.add.graphics();
+      g.fillStyle(PAL.ink, 1);
+      g.fillRoundedRect(-320, -76, 640, 152, 26);
+      g.fillStyle(!open ? 0x3a3450 : look.theme === 'amber' ? 0x8a5a2a : 0x3f7a3a, 1);
+      g.fillRoundedRect(-315, -71, 630, 142, 22);
+      g.fillStyle(0xffffff, 0.12);
+      g.fillRoundedRect(-305, -64, 610, 46, 18);
+      c.add(g);
+      bakeInPlace(g, { x0: -324, y0: -80, w: 648, h: 160 }, `hub_region_${open ? look.theme : 'locked'}`);
+      const mon = this.add.image(-238, 6, `enemy_${look.enemy}`).setScale(0.82);
+      if (!open) mon.setTint(0x222222).setAlpha(0.7);
+      c.add(mon);
+      c.add(uiText(this, -150, -36, `${r + 1}. ${reg.name}`, 28, open ? '#ffffff' : PAL.uiDim, 6).setOrigin(0, 0.5));
+      c.add(uiText(this, -150, 2, look.tag, 18, open ? '#f3e9ff' : PAL.uiDim, 4).setOrigin(0, 0.5));
+      if (open) {
+        c.add(this.add.image(-136, 42, 'star').setScale(0.4));
+        c.add(uiText(this, -112, 42, `${stars}/${max}`, 22, PAL.goldCss, 5).setOrigin(0, 0.5));
+        if (stars < max && r < REGIONS.length - 1) c.add(uiText(this, 290, 42, '3★ em tudo abre a próxima', 15, '#ffe9a8', 4).setOrigin(1, 0.5));
+        if (r === 0 && !save.tutorialDone()) {
+          const tag = uiText(this, 290, -36, 'COMECE AQUI', 18, PAL.goldCss, 5).setOrigin(1, 0.5);
+          c.add(tag);
+          this.tweens.add({ targets: tag, alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
+        }
+      } else {
+        const prev = REGIONS[r - 1]!;
+        c.add(uiText(this, -150, 42, `🔒 3 estrelas em todas as fases de ${prev.name}`, 17, PAL.uiDim, 4).setOrigin(0, 0.5));
+      }
+      c.setSize(640, 152).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => {
+        if (!open) {
+          this.lockedMsg(`Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]!.name}`);
+          return;
+        }
+        playSfx('ui');
+        this.tweens.add({ targets: c, scale: 0.96, duration: 70, yoyo: true });
+        this.go('WorldMap', { region: r });
+      });
+    });
+
+    // Game modes
+    const done = save.tutorialDone();
+    const my = 236 + REGIONS.length * 178 + 10;
+    uiText(this, GAME_WIDTH / 2, my, 'Modos de jogo', 28, PAL.goldCss, 6).setDepth(40);
+    const tile = (x: number, icon: string, scale: number, title: string, sub: string, open: boolean, onTap: () => void, dot = false) => {
+      const c = this.add.container(x, my + 112).setDepth(40);
+      const g = this.add.graphics();
+      g.fillStyle(PAL.ink, 1);
+      g.fillRoundedRect(-104, -84, 208, 168, 22);
+      g.fillStyle(open ? 0x3d2a6a : 0x2a2438, 1);
+      g.fillRoundedRect(-99, -79, 198, 158, 18);
+      c.add(g);
+      bakeInPlace(g, { x0: -108, y0: -88, w: 216, h: 176 }, `hub_tile_${open}`);
+      const img = this.add.image(0, -28, icon).setScale(scale);
+      if (!open) img.setTint(0x333333).setAlpha(0.7);
+      c.add([img, uiText(this, 0, 34, title, 19, open ? '#ffffff' : PAL.uiDim, 4), uiText(this, 0, 60, sub, 14, open ? PAL.goldCss : PAL.uiDim, 3).setWordWrapWidth(190)]);
+      if (dot) {
+        const d = this.add.circle(76, -62, 13, 0xff4d5e).setStrokeStyle(3, PAL.ink);
+        c.add([d, uiText(this, 76, -63, '!', 20, '#ffffff', 3)]);
+      }
+      c.setSize(208, 168).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => {
+        if (!open) {
+          this.lockedMsg(done ? 'Em breve!' : 'Termine o tutorial (Campos de Vellmora) para abrir');
+          return;
+        }
+        playSfx('ui');
+        this.tweens.add({ targets: c, scale: 0.94, duration: 70, yoyo: true });
+        onTap();
+      });
+    };
+    const today = dailySetup(new Date());
+    const rift = save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : '40 ondas sem fim';
+    tile(130, 'portal', 0.7, 'Fenda Infinita', done ? rift : '🔒 Fim do tutorial', done, () => this.showStageCard('rift'));
+    tile(360, 'icon_daily', 0.8, 'Desafio do dia', done ? 'Igual para todos' : '🔒 Fim do tutorial', done, () => this.showDailyCard(), done && save.dailyBest(today.key) === 0);
+    tile(590, 'icon_codex', 0.7, 'Novo modo', 'Em breve', false, () => undefined);
+
+    this.navBar(false);
+    this.cameras.main.fadeIn(250, 11, 7, 22);
   }
 
   /** Header arrow to the other region; locked until the previous region's last stage is won. */
@@ -143,33 +282,6 @@ export class WorldMapScene extends Phaser.Scene {
       playSfx('ui');
       this.cameras.main.fadeOut(160, 11, 7, 22);
       this.cameras.main.once('camerafadeoutcomplete', go);
-    });
-  }
-
-  /** The Fenda Infinita: a swirling portal off the main trail, with the player's record. */
-  private riftNode(): void {
-    const save = getSave();
-    const unlocked = save.isUnlocked('rift');
-    const x = 588;
-    const y = 1016;
-    const portal = this.add.image(x, y, 'portal').setDepth(40).setScale(0.95);
-    this.tweens.add({ targets: portal, angle: 360, duration: 5000, repeat: -1 });
-    if (!unlocked) portal.setTint(0x555555).setAlpha(0.8);
-    else this.tweens.add({ targets: portal, scale: 1.05, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    const label = this.add.container(x - 40, y + 86).setDepth(41);
-    const lg = this.add.graphics();
-    lg.fillStyle(PAL.ink, 0.88);
-    lg.fillRoundedRect(-150, -32, 300, 64, 16);
-    label.add(lg);
-    bakeInPlace(lg, { x0: -152, y0: -34, w: 304, h: 68 }, 'rift_label');
-    label.add(uiText(this, 0, -12, 'Fenda Infinita', 22, unlocked ? '#e0c8ff' : PAL.uiDim, 4));
-    const n = STAGE_ORDER.indexOf(RIFT.unlockAfter) + 1;
-    label.add(uiText(this, 0, 14, unlocked ? (save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : 'Até onde você aguenta?') : `🔒 Vença a fase ${n}`, 17, unlocked ? PAL.goldCss : PAL.uiDim, 4));
-    if (!unlocked) return;
-    const zone = this.add.zone(x, y, 150, 150).setDepth(42).setInteractive({ useHandCursor: true });
-    zone.on('pointerdown', () => {
-      playSfx('ui');
-      this.showStageCard('rift');
     });
   }
 
@@ -256,7 +368,9 @@ export class WorldMapScene extends Phaser.Scene {
     // Hero sheet: level, talent, second skill, weapon (Fase 8).
     const hc = save.data.hero;
     const talent = save.data.heroes[hc].talent;
-    c.add(
+    // Talents and weapons open with the rest of the game (after the tutorial).
+    if (save.tutorialDone())
+      c.add(
       new Button(this, 0, 104, {
         width: 560,
         height: 56,
@@ -281,10 +395,7 @@ export class WorldMapScene extends Phaser.Scene {
       if (!unlocked) img.setTint(0x111111).setAlpha(0.6);
       if (!animate && selected) this.tweens.add({ targets: img, scale: { from: 0.74, to: 0.62 }, duration: 220, ease: 'Back.easeOut' });
       slot.add([bg, img, uiText(this, 0, 62, def.name, 16, unlocked ? PAL.uiText : PAL.uiDim, 4)]);
-      if (!unlocked && def.unlockAfter) {
-        const n = STAGE_ORDER.indexOf(def.unlockAfter) + 1;
-        slot.add(uiText(this, 0, -10, `🔒\nVença a\nfase ${n}`, 15, '#ffffff', 4));
-      }
+      if (!unlocked) slot.add(uiText(this, 0, -10, '🔒\nFim do\ntutorial', 15, '#ffffff', 4));
       slot.setSize(128, 160).setInteractive({ useHandCursor: true });
       slot.on('pointerdown', () => {
         if (!unlocked) {
@@ -384,9 +495,9 @@ export class WorldMapScene extends Phaser.Scene {
     this.card = c;
   }
 
-  private go(scene: string): void {
+  private go(scene: string, data?: object): void {
     this.cameras.main.fadeOut(180, 11, 7, 22);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene, data));
   }
 
   /** One button of the bottom bar: glossy badge + icon + label, with an optional "!" dot. */

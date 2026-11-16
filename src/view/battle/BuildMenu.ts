@@ -71,13 +71,14 @@ export class BuildMenu {
     const top = pos.y - this.scene.cameras.main.scrollY < 320; // near the top of the screen
     const root = this.makeRoot(pos.x, pos.y, 156, top ? 221 : 240, 995);
     // Options on a circle; near the top of the map the arc is flipped so nothing hides under the HUD.
-    const n = TOWER_IDS.length;
+    const ids = TOWER_IDS.filter((t) => this.sim.mods.unlockedTowers.includes(t)); // tutorial: only what was taught
+    const n = ids.length;
     const start = top ? Math.PI / 2 : -Math.PI / 2;
-    const offsets = TOWER_IDS.map((_, i) => {
+    const offsets = ids.map((_, i) => {
       const a = start + (i * Math.PI * 2) / n;
       return { x: Math.cos(a) * 106, y: Math.sin(a) * 100 };
     });
-    TOWER_IDS.forEach((type, i) => {
+    ids.forEach((type, i) => {
       const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
@@ -101,7 +102,8 @@ export class BuildMenu {
   openTower(tower: TowerState): void {
     this.close();
     this.openTowerId = tower.id;
-    const fork = tower.level >= MAX_LEVEL && !tower.evo && !tower.fusion;
+    const canFork = this.sim.rules.evolve !== false || this.sim.rules.fusion !== false;
+    const fork = canFork && tower.level >= MAX_LEVEL && !tower.evo && !tower.fusion;
     const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, 1000);
     const def = TOWERS[tower.type];
     const lvl = this.sim.levelOf(tower);
@@ -113,7 +115,7 @@ export class BuildMenu {
     this.range.strokeCircle(tower.x, tower.y, range);
 
     const maxed = tower.level >= MAX_LEVEL;
-    const evolving = maxed && !tower.evo && !tower.fusion; // the fork: choose 1 of 2 final forms (or fuse)
+    const evolving = fork; // the fork: choose 1 of 2 final forms (or fuse)
     // Below max level: upgrade. Level 3 is the end of the line: evolve, fuse or keep it (no endless Reforço).
     if (!maxed) {
       const up = this.option(0, -96, 0x3aa655, 'icon_play', this.sim.upgradeCost(tower), false, () => {
@@ -153,14 +155,15 @@ export class BuildMenu {
     const info = def.abilityInfo;
     let abilityText: string;
     if (evoDef) abilityText = `★ ${evoDef.desc}`;
-    else if (maxed) abilityText = 'EVOLUÇÃO: escolha um caminho (toque 2× para confirmar)';
+    else if (maxed && evolving) abilityText = 'EVOLUÇÃO: escolha um caminho (toque 2× para confirmar)';
+    else if (maxed) abilityText = `★ ${info.name} — ${info.desc}`;
     else abilityText = `No nível 3: ${info.name} — ${info.desc}`;
     const ab = uiText(this.scene, 0, evolving ? -212 : -146, abilityText, 17, maxed ? PAL.goldCss : PAL.uiDim, 4);
     ab.setWordWrapWidth(440).setAlign('center');
     root.add(ab);
     if (evolving) {
-      this.evolutionChoices(root, tower, ab);
-      this.fusionButton(root, tower, ab);
+      if (this.sim.rules.evolve !== false) this.evolutionChoices(root, tower, ab);
+      if (this.sim.rules.fusion !== false) this.fusionButton(root, tower, ab);
     }
     this.refresh();
   }

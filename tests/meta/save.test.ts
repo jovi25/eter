@@ -55,13 +55,15 @@ describe('save', () => {
     expect(Object.keys(m.stages)).toEqual(['v1']);
   });
 
-  it('heroes unlock by winning stages; locked heroes cannot be selected', () => {
+  it('heroes unlock when the tutorial is over; locked heroes cannot be selected', () => {
     const s = new SaveStore(memStorage());
     expect(s.data.hero).toBe('mage');
     expect(s.isHeroUnlocked('knight')).toBe(false);
     s.selectHero('knight');
     expect(s.data.hero).toBe('mage');
     s.recordResult('v1', true, 1);
+    expect(s.isHeroUnlocked('knight')).toBe(false);
+    s.recordResult('v5', true, 1);
     expect(s.isHeroUnlocked('knight')).toBe(true);
     s.selectHero('knight');
     expect(s.data.hero).toBe('knight');

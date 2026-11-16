@@ -28,6 +28,8 @@ export interface SimOptions {
   modifiers?: Partial<SimModifiers>;
   /** Equipped Relíquias (Fase 7): applied once at the start. */
   relics?: { id: RelicId; level: number }[];
+  /** Apply the stage's teaching limits (tutorial towers, no boons/evolutions yet). The game and the robots turn it on. */
+  limits?: boolean;
 }
 
 export interface SpawnOptions {
@@ -60,6 +62,8 @@ export class Simulation {
   readonly stageId: StageId;
   readonly slots: readonly Vec2[];
   readonly mods: SimModifiers;
+  /** Teaching limits in force (empty = everything allowed). */
+  readonly rules: Pick<StageDef, 'towers' | 'evolve' | 'fusion' | 'boons'>;
 
   private readonly rng: Rng;
   /** Separate streams so boons/bonus spawns never disturb combat rolls. */
@@ -84,6 +88,9 @@ export class Simulation {
     this.path = this.paths[0]!;
     this.slots = map.slots;
     this.mods = { ...defaultModifiers(), ...opts.modifiers };
+    this.rules = opts.limits ? this.stage : {};
+    const only = this.rules.towers;
+    if (only) this.mods.unlockedTowers = this.mods.unlockedTowers.filter((t) => only.includes(t));
     this.rng = new Rng(opts.seed);
     this.boonRng = new Rng((opts.seed ^ 0x9e3779b9) >>> 0);
     this.eventRng = new Rng((opts.seed ^ 0x51ed270b) >>> 0);
@@ -866,7 +873,7 @@ export class Simulation {
       if (s.wave < s.totalWaves) {
         s.wavePhase = 'countdown';
         s.nextWaveTimer = WAVE_TIMING.timeBetweenWaves;
-        if (s.wave % BOON_RULES.every === BOON_RULES.offset) this.offerBoons();
+        if (this.rules.boons !== false && s.wave % BOON_RULES.every === BOON_RULES.offset) this.offerBoons();
       } else {
         s.wavePhase = 'done';
       }
@@ -1213,7 +1220,7 @@ export class Simulation {
 
   /** Price of evolving this tower, or null if it can't (not level 3 yet, or already evolved). */
   evolveCost(t: TowerState, evo: EvolutionId): number | null {
-    if (t.level < MAX_LEVEL || t.evo || t.fusion || EVOLUTIONS[evo].tower !== t.type) return null;
+    if (this.rules.evolve === false || t.level < MAX_LEVEL || t.evo || t.fusion || EVOLUTIONS[evo].tower !== t.type) return null;
     return Math.round(EVOLUTIONS[evo].cost * this.mods.upgradeCostMult);
   }
 
@@ -1311,7 +1318,7 @@ export class Simulation {
 
   /** Towers this one can fuse with: level 3, not evolved or fused, reacting elements, close enough. */
   fusionCandidates(t: TowerState): { tower: TowerState; fusion: FusionId }[] {
-    if (t.level < MAX_LEVEL || t.evo || t.fusion) return [];
+    if (this.rules.fusion === false || t.level < MAX_LEVEL || t.evo || t.fusion) return [];
     const out: { tower: TowerState; fusion: FusionId }[] = [];
     for (const u of this.state.towers) {
       if (u === t || u.level < MAX_LEVEL || u.evo || u.fusion) continue;
