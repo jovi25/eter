@@ -55,6 +55,10 @@ export interface SimEvents {
   towerFused: { towerId: number; partnerId: number; partnerSlot: number; fusion: FusionId };
   /** Comporta switched: new enemies take this path. */
   gateToggled: { path: number };
+  bridgeRaised: { duration: number };
+  bridgeLowered: Record<string, never>;
+  /** A Monge do Gelo healed the enemies around it. */
+  enemyHealed: { enemyId: number; x: number; y: number; radius: number; count: number };
   goldChanged: { gold: number; delta: number };
   livesChanged: { lives: number; delta: number };
   gameOver: { won: boolean; stars: number };

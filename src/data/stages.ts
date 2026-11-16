@@ -29,13 +29,14 @@ export interface StageDef {
   waves: WaveDef[];
 }
 
-export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5';
+export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5';
 export type StageId = CampaignStageId | 'rift';
 /** Campaign order; each stage unlocks the next. Região 2 (a1..a5) opens after v5. */
-export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5', 'a1', 'a2', 'a3', 'a4', 'a5'];
+export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5'];
 export const REGIONS: { name: string; stages: CampaignStageId[] }[] = [
   { name: 'Vellmora', stages: ['v1', 'v2', 'v3', 'v4', 'v5'] },
   { name: 'Ermos de Âmbar', stages: ['a1', 'a2', 'a3', 'a4', 'a5'] },
+  { name: 'Cumes Nevados', stages: ['c1', 'c2', 'c3', 'c4', 'c5'] },
 ];
 /** The tutorial is over once its last stage is won: the rest of the game opens. */
 export const TUTORIAL_LAST: CampaignStageId = 'v5';
@@ -296,6 +297,117 @@ export const STAGES: Record<StageId, StageDef> = {
       { groups: [g('salamander', 12, 0.4), g('mudling', 10, 0.5, 2), g('skeleton', 10, 0.5, 4)] },
       { groups: [g('colossus', 3, 3), g('yeti', 12, 0.4, 2), g('bat', 12, 0.4, 4)] },
       { groups: [g('devourer', 1, 0), g('golem', 6, 1.2, 3), g('wolf', 14, 0.35, 6), g('shaman', 8, 0.6, 9)] },
+    ],
+  },
+  // ───────────── Região 3: Cumes Nevados (Ponte levadiça, Monge que cura, Gárgula voadora) ─────────────
+  c1: {
+    runes: true,
+    name: 'Cumes Nevados I',
+    subtitle: 'Encosta — toque na ponte para segurar os monstros por 4 s',
+    map: 'peak',
+    hpMult: 0.95,
+    startGold: 260,
+    waves: [
+      { groups: [g('slime', 12, 0.6)] },
+      { groups: [g('wolf', 10, 0.5), g('monk', 2, 2, 3)] },
+      { groups: [g('golem', 5, 1.5), g('monk', 2, 2, 2)] },
+      { groups: [g('gargoyle', 6, 1.0)] },
+      { groups: [g('skeleton', 10, 0.6), g('monk', 3, 1.5, 2)] },
+      { groups: [g('yeti', 8, 0.8), g('gargoyle', 4, 1.0, 3)] },
+      { groups: [g('salamander', 10, 0.5), g('monk', 3, 1.5, 3)] },
+      { groups: [g('golem', 6, 1.2), g('gargoyle', 6, 0.8, 2)] },
+      { groups: [g('wolf', 16, 0.3), g('monk', 4, 1.2, 4)] },
+      { groups: [g('mudling', 10, 0.6), g('shaman', 8, 0.7, 2), g('gargoyle', 6, 0.7, 4)] },
+      { groups: [g('colossus', 2, 5), g('monk', 4, 1.2, 1), g('skeleton', 10, 0.5, 4)] },
+      { groups: [g('yeti', 12, 0.5), g('gargoyle', 8, 0.6, 2), g('monk', 4, 1.0, 5)] },
+    ],
+  },
+  c2: {
+    runes: true,
+    name: 'Cumes Nevados II',
+    subtitle: 'Passagem — dois portais; a ponte fica no caminho da direita',
+    map: 'pass',
+    hpMult: 0.85,
+    startGold: 260,
+    waves: [
+      { groups: [g('slime', 8, 0.7, 0, 0), g('slime', 8, 0.7, 0.4, 1)] },
+      { groups: [g('wolf', 8, 0.5, 0, 0), g('gargoyle', 4, 1.0, 1, 1)] },
+      { groups: [g('monk', 3, 1.5, 0, 1), g('golem', 4, 1.5, 0, 0)] },
+      { groups: [g('skeleton', 10, 0.6), g('monk', 2, 2, 3)] },
+      { groups: [g('gargoyle', 10, 0.6)] },
+      { groups: [g('yeti', 8, 0.7, 0, 0), g('salamander', 8, 0.7, 0, 1)] },
+      { groups: [g('golem', 6, 1.1), g('monk', 4, 1.2, 2)] },
+      { groups: [g('wolf', 18, 0.3), g('gargoyle', 6, 0.6, 3)] },
+      { groups: [g('shaman', 10, 0.6, 0, 1), g('mudling', 10, 0.6, 0, 0)] },
+      { groups: [g('colossus', 1, 0, 0, 0), g('colossus', 1, 0, 2, 1), g('monk', 4, 1.0, 3)] },
+      { groups: [g('gargoyle', 12, 0.4), g('skeleton', 12, 0.4, 2)] },
+      { groups: [g('yeti', 12, 0.4), g('golem', 6, 1.0, 2), g('monk', 6, 0.8, 4)] },
+    ],
+  },
+  c3: {
+    runes: true,
+    name: 'Cumes Nevados III',
+    subtitle: 'Geleira — Comporta no alto e ponte embaixo',
+    map: 'glacier',
+    hpMult: 0.85,
+    startGold: 270,
+    waves: [
+      { groups: [g('slime', 14, 0.5)] },
+      { groups: [g('monk', 3, 1.5), g('wolf', 10, 0.4, 2)] },
+      { groups: [g('gargoyle', 8, 0.8)] },
+      { groups: [g('golem', 6, 1.2), g('monk', 3, 1.5, 2)] },
+      { groups: [g('salamander', 10, 0.5), g('yeti', 6, 0.8, 2)] },
+      { groups: [g('skeleton', 12, 0.5), g('gargoyle', 6, 0.7, 3)] },
+      { groups: [g('mudling', 10, 0.6), g('monk', 4, 1.2, 2)] },
+      { groups: [g('wolf', 20, 0.3)] },
+      { groups: [g('colossus', 2, 4), g('gargoyle', 8, 0.5, 2)] },
+      { groups: [g('shaman', 12, 0.5), g('monk', 5, 1.0, 3)] },
+      { groups: [g('golem', 8, 0.9), g('yeti', 10, 0.5, 2), g('gargoyle', 8, 0.5, 4)] },
+      { groups: [g('colossus', 3, 3), g('monk', 6, 0.8, 2), g('skeleton', 12, 0.4, 5)] },
+    ],
+  },
+  c4: {
+    runes: true,
+    name: 'Cumes Nevados IV',
+    subtitle: 'Terraços — a estrada vai e volta seis vezes',
+    map: 'terraces',
+    hpMult: 0.85,
+    startGold: 280,
+    waves: [
+      { groups: [g('wolf', 14, 0.4)] },
+      { groups: [g('golem', 5, 1.4), g('monk', 3, 1.5, 2)] },
+      { groups: [g('gargoyle', 10, 0.6)] },
+      { groups: [g('yeti', 10, 0.6), g('monk', 3, 1.5, 3)] },
+      { groups: [g('salamander', 12, 0.4), g('skeleton', 8, 0.6, 2)] },
+      { groups: [g('colossus', 2, 5), g('wolf', 12, 0.3, 2)] },
+      { groups: [g('shaman', 10, 0.5), g('gargoyle', 8, 0.5, 3)] },
+      { groups: [g('mudling', 12, 0.5), g('monk', 5, 1.0, 2)] },
+      { groups: [g('golem', 8, 0.9), g('gargoyle', 10, 0.4, 3)] },
+      { groups: [g('yeti', 14, 0.4), g('monk', 6, 0.8, 3)] },
+      { groups: [g('colossus', 3, 3), g('skeleton', 14, 0.4, 2), g('gargoyle', 8, 0.4, 5)] },
+      { groups: [g('golem', 8, 0.8), g('salamander', 12, 0.4, 2), g('monk', 8, 0.6, 4)] },
+    ],
+  },
+  c5: {
+    runes: true,
+    name: 'Trono de Obsidiana',
+    subtitle: 'Cume — o Titã de Obsidiana',
+    map: 'summit',
+    hpMult: 0.65,
+    startGold: 290,
+    waves: [
+      { groups: [g('slime', 16, 0.5)] },
+      { groups: [g('monk', 4, 1.2), g('gargoyle', 6, 0.8, 2)] },
+      { groups: [g('golem', 6, 1.2), g('wolf', 12, 0.4, 2)] },
+      { groups: [g('yeti', 10, 0.6), g('salamander', 10, 0.6, 1)] },
+      { groups: [g('gargoyle', 12, 0.5), g('monk', 4, 1.0, 3)] },
+      { groups: [g('colossus', 2, 4), g('skeleton', 12, 0.5, 2)] },
+      { groups: [g('shaman', 12, 0.5), g('mudling', 10, 0.5, 2)] },
+      { groups: [g('golem', 8, 0.9), g('monk', 6, 0.8, 2), g('gargoyle', 8, 0.5, 4)] },
+      { groups: [g('wolf', 22, 0.25), g('yeti', 8, 0.6, 4)] },
+      { groups: [g('colossus', 3, 3), g('monk', 6, 0.8, 2)] },
+      { groups: [g('gargoyle', 14, 0.4), g('skeleton', 14, 0.4, 2), g('salamander', 10, 0.4, 4)] },
+      { groups: [g('titan', 1, 0), g('golem', 6, 1.2, 3), g('monk', 6, 0.8, 5), g('gargoyle', 10, 0.5, 8)] },
     ],
   },
 };

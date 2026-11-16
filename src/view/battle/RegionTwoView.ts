@@ -104,6 +104,70 @@ export class GateView {
   }
 }
 
+/** Ponte levadiça: a plank sign on the road; tap to raise (fence + countdown), then a cooldown ring. */
+export class BridgeView {
+  private sign: Phaser.GameObjects.Image;
+  private fence: Phaser.GameObjects.Image;
+  private label: Phaser.GameObjects.Text;
+  private last = '';
+
+  constructor(
+    scene: Phaser.Scene,
+    private sim: Simulation,
+    private fx: FxLayer,
+    canTap: () => boolean,
+  ) {
+    const b = sim.bridgeDef!;
+    ensureBaked(scene, 'bridge_sign', { x0: -40, y0: -40, w: 80, h: 80 }, (g) => {
+      g.fillStyle(PAL.ink, 1);
+      g.fillRoundedRect(-36, -30, 72, 60, 12);
+      g.fillStyle(0x8a5a2a, 1);
+      g.fillRoundedRect(-32, -26, 64, 52, 10);
+      g.fillStyle(0xc98a4a, 1);
+      for (let i = 0; i < 4; i++) g.fillRect(-28, -22 + i * 12, 56, 9);
+      g.fillStyle(PAL.ink, 1);
+      g.fillRect(-30, -28, 6, 56);
+      g.fillRect(24, -28, 6, 56);
+    });
+    // The fence across the road (same art as the Comporta's), shown while the bridge is up.
+    this.fence = scene.add.image(b.x, b.y, 'gate_fence').setVisible(false).setDepth(unitDepth(b.y));
+    this.sign = scene.add.image(b.x, b.y, 'bridge_sign').setDepth(unitDepth(b.y) + 1).setAlpha(0.95);
+    this.label = scene.add
+      .text(b.x, b.y + 46, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '20px', color: '#ffffff', stroke: PAL.inkCss, strokeThickness: 5 })
+      .setOrigin(0.5)
+      .setDepth(unitDepth(b.y) + 2);
+    const zone = scene.add.zone(b.x, b.y, 96, 96).setInteractive({ useHandCursor: true });
+    let armed = false;
+    zone.on('pointerdown', () => (armed = true));
+    zone.on('pointerup', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+      ev.stopPropagation();
+      if (!armed || !canTap()) return;
+      armed = false;
+      if (!sim.raiseBridge()) playSfx('error');
+    });
+    sim.events.on('bridgeRaised', () => {
+      this.fence.setVisible(true).setScale(1.3);
+      scene.tweens.add({ targets: this.fence, scale: 1, duration: 200, ease: 'Back.easeOut' });
+      this.fx.popLabel(b.x, b.y - 70, 'PONTE ERGUIDA!', PAL.goldCss);
+      playSfx('build', 0.8);
+    });
+    sim.events.on('bridgeLowered', () => {
+      this.fence.setVisible(false);
+      playSfx('ui', 0.7);
+    });
+  }
+
+  /** Countdown while up, cooldown after (text only changes when the number changes). */
+  update(): void {
+    const s = this.sim.state.bridge;
+    const text = s.up > 0 ? `${Math.ceil(s.up)}s` : s.cooldown > 0 ? `⏳${Math.ceil(s.cooldown)}` : 'PONTE';
+    if (text === this.last) return;
+    this.last = text;
+    this.label.setText(text).setColor(s.up > 0 ? PAL.goldCss : s.cooldown > 0 ? '#b8b0cc' : '#ffffff');
+    this.sign.setAlpha(s.cooldown > 0 && s.up <= 0 ? 0.6 : 0.95);
+  }
+}
+
 interface ShieldView {
   ring: Phaser.GameObjects.Image;
   label: Phaser.GameObjects.Text;

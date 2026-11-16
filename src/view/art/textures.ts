@@ -211,6 +211,23 @@ const DRAW: Record<AssetKey, Drawer> = {
       }
     },
   },
+  // Região 3: snowy pine.
+  tree_snow: {
+    w: 100,
+    h: 120,
+    draw: (c, cx, cy) => {
+      softShadow(c, cx, cy + 48, 34, 11, 0.3);
+      shape(c, roundRect(cx - 6, cy + 24, 12, 26, 4), linear(c, cx - 6, 0, cx + 6, 0, [[0, '#7a5534'], [1, '#4f351e']]), INK, 3);
+      const tier = (y: number, w: number, h: number) => {
+        shape(c, poly([[cx - w, y + h], [cx + w, y + h], [cx, y]]), linear(c, 0, y, 0, y + h, [[0, '#4f9a6a'], [1, '#2b5e45']]), INK, 3);
+        shape(c, poly([[cx - w * 0.55, y + h * 0.42], [cx + w * 0.55, y + h * 0.42], [cx, y]]), '#f4f9ff', INK, 2);
+      };
+      tier(cy + 2, 38, 30);
+      tier(cy - 22, 30, 28);
+      tier(cy - 46, 21, 26);
+      gloss(c, cx - 8, cy - 36, 7, 4, 0.5);
+    },
+  },
   // Região 2: autumn tree (amber and red leaves, no fruit).
   tree_amber: {
     w: 100,
@@ -704,6 +721,81 @@ const DRAW: Record<AssetKey, Drawer> = {
         glow(c, cx + x, cy + y, r - 1, 0xff4fd8, 1);
       }
       gloss(c, cx - 22, cy - 18, 14, 7, 0.5);
+    },
+  },
+  // Região 3: a hooded ice monk with a glowing staff (heals the others).
+  enemy_monk: {
+    w: 90,
+    h: 96,
+    draw: (c, cx, cy) => {
+      glow(c, cx + 22, cy - 26, 12, 0x9ff3ff, 0.9);
+      shape(c, roundRect(cx + 19, cy - 26, 6, 64, 3), '#8a6a4a', INK, 2);
+      shape(c, circle(cx + 22, cy - 30, 7), '#d8f6ff', INK, 2);
+      shape(c, (k) => {
+        k.moveTo(cx - 26, cy + 40);
+        k.quadraticCurveTo(cx - 30, cy - 6, cx - 14, cy - 26);
+        k.quadraticCurveTo(cx, cy - 40, cx + 14, cy - 26);
+        k.quadraticCurveTo(cx + 30, cy - 6, cx + 26, cy + 40);
+        k.closePath();
+      }, linear(c, cx - 26, cy - 40, cx + 26, cy + 40, [[0, '#b9d7f2'], [0.6, '#5f86b8'], [1, '#2e4a78']]), INK, 3.5);
+      c.fillStyle = radial(c, cx, cy - 8, 16, [[0, 'rgba(10,20,40,0.95)'], [1, 'rgba(10,20,40,0)']]);
+      c.beginPath();
+      c.ellipse(cx, cy - 8, 15, 12, 0, 0, Math.PI * 2);
+      c.fill();
+      for (const s of [-1, 1]) glow(c, cx + s * 6, cy - 9, 4, 0x9ff3ff, 1);
+      shape(c, roundRect(cx - 18, cy + 8, 36, 7, 3), '#e8f4ff', INK, 2);
+      gloss(c, cx - 12, cy - 20, 8, 4, 0.5);
+    },
+  },
+  // Região 3: a stone gargoyle (flies).
+  enemy_gargoyle: {
+    w: 100,
+    h: 84,
+    draw: (c, cx, cy) => {
+      for (const s of [-1, 1]) {
+        shape(c, (k) => {
+          k.moveTo(cx + s * 12, cy - 4);
+          k.lineTo(cx + s * 46, cy - 26);
+          k.lineTo(cx + s * 40, cy - 4);
+          k.lineTo(cx + s * 48, cy + 6);
+          k.lineTo(cx + s * 34, cy + 8);
+          k.lineTo(cx + s * 14, cy + 10);
+          k.closePath();
+        }, linear(c, cx, cy - 26, cx + s * 48, cy + 10, [[0, '#9aa3ad'], [1, '#5b636e']]), INK, 2.5);
+      }
+      shape(c, ellipse(cx, cy + 6, 20, 22), stoneGrad(c, cx - 20, cy - 16, cx + 20, cy + 28), INK, 3.5);
+      for (const s of [-1, 1]) shape(c, poly([[cx + s * 8, cy - 12], [cx + s * 16, cy - 30], [cx + s * 16, cy - 10]]), '#7d8590', INK, 2);
+      for (const s of [-1, 1]) glow(c, cx + s * 7, cy + 1, 4, 0xffb347, 1);
+      c.strokeStyle = INK;
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx - 6, cy + 14); c.lineTo(cx - 2, cy + 11); c.lineTo(cx + 2, cy + 14); c.lineTo(cx + 6, cy + 11);
+      c.stroke();
+      gloss(c, cx - 8, cy - 4, 7, 4, 0.35);
+    },
+  },
+  // Região 3 final boss: an obsidian titan with lava cracks.
+  enemy_titan: {
+    w: 160,
+    h: 160,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy + 8, 74, 0xff7a2e, 0.35);
+      for (const s of [-1, 1]) shape(c, roundRect(cx + s * 56 - 15, cy - 10, 30, 64, 14), linear(c, 0, cy - 10, 0, cy + 54, [[0, '#4a4458'], [1, '#1e1a28']]), INK, 3.5);
+      shape(c, poly([[cx - 46, cy + 62], [cx + 46, cy + 62], [cx + 54, cy - 16], [cx + 30, cy - 58], [cx - 30, cy - 58], [cx - 54, cy - 16]]),
+        linear(c, cx - 54, cy - 58, cx + 54, cy + 62, [[0, '#5d566e'], [0.5, '#2c2738'], [1, '#14111c']]), INK, 4);
+      c.strokeStyle = '#ff8a3a';
+      c.lineWidth = 3;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(cx - 30, cy + 40); c.lineTo(cx - 14, cy + 18); c.lineTo(cx - 22, cy + 2);
+      c.moveTo(cx + 26, cy + 46); c.lineTo(cx + 12, cy + 24); c.lineTo(cx + 24, cy + 8);
+      c.stroke();
+      glow(c, cx, cy + 16, 18, 0xff5a1f, 0.9);
+      shape(c, poly([[cx, cy], [cx + 12, cy + 16], [cx, cy + 32], [cx - 12, cy + 16]]), linear(c, 0, cy, 0, cy + 32, [[0, '#ffe680'], [1, '#ff5a1f']]), INK, 2.5);
+      shape(c, roundRect(cx - 30, cy - 40, 60, 14, 7), '#0b0814', INK, 2.5);
+      for (const s of [-1, 1]) glow(c, cx + s * 12, cy - 33, 8, 0xff7a2e, 1);
+      for (const s of [-1, 1]) shape(c, poly([[cx + s * 20, cy - 56], [cx + s * 34, cy - 84], [cx + s * 36, cy - 50]]), '#3a3448', INK, 2.5);
+      gloss(c, cx - 24, cy - 46, 14, 6, 0.3);
     },
   },
   enemy_treasure: {

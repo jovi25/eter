@@ -103,8 +103,15 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] **Região 1 = tutorial**: 1 Arqueira → 2 + Fogo e Planta → 3 + Gelo e Raio → 4 Evoluir e Fundir → 5 tudo (runas, bênçãos, chefe)
 - [x] Até vencer a fase 5: só o Arcanista, sem relíquias, talentos, Relicário, Fenda e Desafio do dia
 
-### Fase 12 — Região 3
-- [ ] 5 fases novas, tema novo, chefe novo e um elemento de mapa novo
+### Fase 12 — Região 3: Cumes Nevados ✔
+- [x] 5 fases (12 ondas) em mapas altos novos, chão de neve e pinheiros, músicas próprias
+- [x] **Ponte levadiça**: tocar ergue a ponte e segura os monstros que andam por 4 s (recarga 15 s)
+- [x] Inimigos novos: **Monge do Gelo** (cura quem está perto; nunca o chefe) e **Gárgula de Pedra** (voa, resiste a físico/fogo, fraca a raio)
+- [x] Chefe final **Titã de Obsidiana**: escudos SUPERCONDUÇÃO → GEADA ESPINHOSA → SOBRECARGA → ESTILHAÇO
+
+### Próximas ideias
+- [ ] Novo modo de jogo (vaga no Mapa de Éter)
+- [ ] Região 4
 
 ## No radar (não agora)
 Co-op, nuvem, Passe de Missões e loja de gems (gems nunca compram nada aleatório), guildas, Capacitor para lojas,

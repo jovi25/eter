@@ -134,6 +134,7 @@ export interface SimState {
   runes: { x: number; y: number; kind: RuneKind | null }[]; // rune stones of this map (empty when the stage has none)
   rerolls: number; // offers re-rolled this match
   gate: number; // Comporta: which of map.gate.paths new enemies take (0 or 1)
+  bridge: { up: number; cooldown: number }; // Ponte levadiça: seconds left raised / until it can be raised again
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;

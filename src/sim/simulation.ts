@@ -7,7 +7,7 @@ import { HERO } from '../data/hero';
 import { BEAR, DRUID_FURY, HEROES, KNIGHT_SPIN, PRIEST, type BlockerStats, type HeroDef } from '../data/heroes';
 import type { Element } from '../data/elements';
 import type { Vec2 } from '../data/maps';
-import { MAPS } from '../data/maps';
+import { BRIDGE, MAPS } from '../data/maps';
 import { defaultModifiers, type SimModifiers } from '../data/modifiers';
 import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
@@ -76,6 +76,8 @@ export class Simulation {
   private readonly aliveByWave = new Map<number, number>();
   private readonly clearedWaves = new Set<number>();
   private readonly tmp: Vec2 = { x: 0, y: 0 };
+  /** Distance along each path where the Ponte levadiça stands (-1 = the path does not cross it). */
+  private readonly bridgeDist: number[];
   /** Melee stats after the talent (Knight hero / Druid's bear). */
   private readonly heroBlock?: BlockerStats;
   private readonly bearStats: BlockerStats;
@@ -87,6 +89,20 @@ export class Simulation {
     this.paths = map.paths.map((pts) => new Path(pts));
     this.path = this.paths[0]!;
     this.slots = map.slots;
+    this.bridgeDist = this.paths.map((p) => {
+      if (!map.bridge) return -1;
+      let best = -1;
+      let bestD = 14;
+      for (let d = 0; d < p.length; d += 4) {
+        const q = p.pointAt(d);
+        const dd = Math.hypot(q.x - map.bridge.x, q.y - map.bridge.y);
+        if (dd < bestD) {
+          bestD = dd;
+          best = d;
+        }
+      }
+      return best;
+    });
     this.mods = { ...defaultModifiers(), ...opts.modifiers };
     this.rules = opts.limits ? this.stage : {};
     const only = this.rules.towers;
@@ -147,6 +163,7 @@ export class Simulation {
       runes: this.stage.runes ? map.runes.map((p) => ({ x: p.x, y: p.y, kind: null })) : [],
       rerolls: 0,
       gate: 0,
+      bridge: { up: 0, cooldown: 0 },
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
@@ -819,6 +836,7 @@ export class Simulation {
     s.tick++;
     s.time += DT;
     this.updateWaves();
+    this.updateBridge();
     this.updateEnemies();
     this.updateHero();
     this.updateTowers();
@@ -932,7 +950,7 @@ export class Simulation {
       rootTime: 0,
       rootImmuneTime: 0,
       fragileTime: 0,
-      bossCycleTimer: def.boss?.cycle ?? 0,
+      bossCycleTimer: def.boss?.cycle ?? def.heal?.every ?? 0,
       chillImmuneTime: 0,
       shield: null,
       shieldHits: 0,
@@ -970,6 +988,29 @@ export class Simulation {
     if (next < sh.reactions.length && e.hp / e.maxHp <= sh.at[next]!) this.raiseShield(e, next);
   }
 
+  get bridgeDef(): Vec2 | undefined {
+    return MAPS[this.stage.map].bridge;
+  }
+
+  /** Ponte levadiça: raise it (ground enemies wait in front of it for a few seconds). */
+  raiseBridge(): boolean {
+    const b = this.state.bridge;
+    if (!this.bridgeDef || b.up > 0 || b.cooldown > 0 || this.state.result !== 'playing') return false;
+    b.up = BRIDGE.raise;
+    b.cooldown = BRIDGE.cooldown;
+    this.events.emit('bridgeRaised', { duration: BRIDGE.raise });
+    return true;
+  }
+
+  private updateBridge(): void {
+    const b = this.state.bridge;
+    if (b.cooldown > 0) b.cooldown = Math.max(0, b.cooldown - DT);
+    if (b.up > 0) {
+      b.up = Math.max(0, b.up - DT);
+      if (b.up === 0) this.events.emit('bridgeLowered', {});
+    }
+  }
+
   get gateDef(): { x: number; y: number; paths: [number, number] } | undefined {
     return MAPS[this.stage.map].gate;
   }
@@ -998,10 +1039,15 @@ export class Simulation {
       this.tickStatuses(e);
       if (!e.alive) continue;
       if (e.isBoss) this.tickBoss(e);
-      if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const def = ENEMIES[e.type];
+      if (def.heal) this.tickHealer(e, def.heal);
+      if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
+      const before = e.dist;
       e.dist += def.speed * (1 - slow) * DT;
+      // Ponte levadiça up: ground enemies stop in front of it.
+      const bd = this.bridgeDist[e.pathIndex] ?? -1;
+      if (s.bridge.up > 0 && bd >= 0 && !e.flying && before <= bd - BRIDGE.hold) e.dist = Math.min(e.dist, bd - BRIDGE.hold);
       const path = this.paths[e.pathIndex]!;
       path.pointAt(e.dist, this.tmp);
       e.x = this.tmp.x;
@@ -1043,6 +1089,22 @@ export class Simulation {
       e.rootImmuneTime = Math.max(0, e.rootImmuneTime - DT);
     }
     if (e.fragileTime > 0) e.fragileTime = Math.max(0, e.fragileTime - DT);
+  }
+
+  /** Monge do Gelo: every few seconds heals the others around it. */
+  private tickHealer(e: EnemyState, heal: { every: number; radius: number; pct: number }): void {
+    e.bossCycleTimer -= DT;
+    if (e.bossCycleTimer > 0) return;
+    e.bossCycleTimer = heal.every;
+    const r2 = heal.radius * heal.radius;
+    let count = 0;
+    for (const o of this.state.enemies) {
+      if (o === e || !o.alive || o.isBoss || o.hp >= o.maxHp) continue; // bosses are never healed
+      if ((o.x - e.x) ** 2 + (o.y - e.y) ** 2 > r2) continue;
+      o.hp = Math.min(o.maxHp, o.hp + o.maxHp * heal.pct);
+      count++;
+    }
+    if (count > 0) this.events.emit('enemyHealed', { enemyId: e.id, x: e.x, y: e.y, radius: heal.radius, count });
   }
 
   private tickBoss(e: EnemyState): void {

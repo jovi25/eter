@@ -15,7 +15,10 @@ export type EnemyId =
   | 'treasure'
   | 'herald'
   | 'sentinel'
-  | 'devourer';
+  | 'devourer'
+  | 'monk'
+  | 'gargoyle'
+  | 'titan';
 
 export interface BossDef {
   cycle: number; // every N seconds...
@@ -47,6 +50,8 @@ export interface EnemyDef {
   scalesWithWave: boolean; // hp × hpGrowthPerWave^wave
   radius: number; // body size in px (art + splash checks)
   boss?: BossDef;
+  /** Healer: every `every` seconds restores `pct` of max life to the others within `radius`. */
+  heal?: { every: number; radius: number; pct: number };
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -191,6 +196,30 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
       chillImmuneDuration: 0,
       summon: { enemy: 'bat', count: 3, goldMult: 0.3, hpMult: 1.5, spacing: 26 },
       shields: { reactions: ['superconduct', 'wildfire', 'shatter', 'melt'], at: [1, 0.75, 0.5, 0.25], hits: 3, taken: 0.3, grace: 3 },
+    },
+  },
+
+  // ── Região 3 ──
+  /** Heals everyone around: kill it first (a classic tower-defense priority target). */
+  monk: { name: 'Monge do Gelo', hp: 150, speed: 60, gold: 18, livesCost: 1, attack: 8, resist: { ice: 0.5 }, flying: false, scalesWithWave: true, radius: 24, heal: { every: 3, radius: 100, pct: 0.06 } },
+  /** Stone wings: flies (Vinha can't reach it), shrugs off arrows and fire, cracks with lightning. */
+  gargoyle: { name: 'Gárgula de Pedra', hp: 110, speed: 70, gold: 16, livesCost: 1, attack: 0, resist: { physical: 0.4, fire: 0.3, lightning: -0.5 }, flying: true, scalesWithWave: true, radius: 26 },
+  titan: {
+    name: 'Titã de Obsidiana',
+    hp: 3000,
+    speed: 34,
+    gold: 220,
+    livesCost: 20, attack: 70,
+    resist: { fire: 0.5 },
+    rootImmune: true,
+    flying: false,
+    scalesWithWave: false,
+    radius: 50,
+    boss: {
+      cycle: 7,
+      chillImmuneDuration: 0,
+      summon: { enemy: 'gargoyle', count: 2, goldMult: 0.3, hpMult: 1.5, spacing: 34 },
+      shields: { reactions: ['superconduct', 'thornfrost', 'overload', 'shatter'], at: [1, 0.75, 0.5, 0.25], hits: 3, taken: 0.35, grace: 3 },
     },
   },
 };

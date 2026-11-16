@@ -23,6 +23,7 @@ export const ASSETS = {
   crystal: P,
   tree: P,
   tree_amber: P,
+  tree_snow: P,
   rock: P,
   flower: P,
   // enemies
@@ -40,6 +41,9 @@ export const ASSETS = {
   enemy_treasure: P,
   enemy_sentinel: P,
   enemy_devourer: P,
+  enemy_monk: P,
+  enemy_gargoyle: P,
+  enemy_titan: P,
   // statuses
   status_roots: P,
   status_ice: P,

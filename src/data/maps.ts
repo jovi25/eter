@@ -6,7 +6,10 @@ export interface Vec2 {
   y: number;
 }
 
-export type MapTheme = 'meadow' | 'amber';
+export type MapTheme = 'meadow' | 'amber' | 'snow';
+
+/** Ponte levadiça (Região 3): tap to raise it; ground enemies wait in front of it. */
+export const BRIDGE = { raise: 4, cooldown: 15, hold: 34 };
 
 export interface MapDef {
   name: string;
@@ -16,12 +19,14 @@ export interface MapDef {
   heroStart: Vec2;
   /** Comporta: tap it to send new enemies down one branch or the other (indexes into paths). */
   gate?: { x: number; y: number; paths: [number, number] };
+  /** Ponte levadiça: a point on a road (every path through it is held while it is up). */
+  bridge?: Vec2;
   /** World height in px (default 1280 = one screen). Taller maps scroll by dragging. */
   height?: number;
   theme?: MapTheme;
 }
 
-export type MapId = 'meadow' | 'twin' | 'ring' | 'corridor' | 'fork' | 'canyon' | 'sluice' | 'stairs' | 'confluence' | 'abyss';
+export type MapId = 'meadow' | 'twin' | 'ring' | 'corridor' | 'fork' | 'canyon' | 'sluice' | 'stairs' | 'confluence' | 'abyss' | 'peak' | 'pass' | 'glacier' | 'terraces' | 'summit';
 
 const P = (pts: [number, number][]): Vec2[] => pts.map(([x, y]) => ({ x, y }));
 const S = P;
@@ -134,5 +139,67 @@ export const MAPS: Record<MapId, MapDef> = {
     runes: S([[360, 600], [348, 936], [276, 1272], [372, 1584]]),
     heroStart: { x: 432, y: 1424 },
     gate: { x: 360, y: 264, paths: [0, 1] },
+  },
+  // ───────────── Região 3: Cumes Nevados (tall maps + Ponte levadiça) ─────────────
+  peak: {
+    name: 'Encosta',
+    theme: 'snow',
+    height: 1920,
+    paths: [P([[360, 144], [360, 330], [600, 330], [600, 620], [120, 620], [120, 910], [600, 910], [600, 1200], [120, 1200], [120, 1490], [600, 1490], [600, 1776]])],
+    slots: S([[504, 1056], [216, 1344], [504, 480], [216, 768], [480, 1608], [504, 240], [216, 1056], [360, 1056], [360, 1344], [504, 1344], [360, 768]]),
+    runes: S([[288, 696], [432, 984], [288, 1272]]),
+    heroStart: { x: 456, y: 1690 },
+    bridge: { x: 360, y: 910 },
+  },
+  pass: {
+    name: 'Passagem',
+    theme: 'snow',
+    height: 1920,
+    paths: [
+      P([[120, 144], [120, 480], [300, 480], [300, 800], [120, 800], [120, 1100], [360, 1100], [360, 1776]]),
+      P([[600, 144], [600, 560], [420, 560], [420, 880], [600, 880], [600, 1300], [360, 1300], [360, 1776]]),
+    ],
+    slots: S([[480, 1176], [216, 960], [264, 1224], [456, 1392], [528, 720], [480, 1008], [456, 456], [216, 360], [192, 576], [144, 696], [264, 1368]]),
+    runes: S([[360, 312], [480, 624], [192, 864]]),
+    heroStart: { x: 456, y: 1660 },
+    bridge: { x: 600, y: 1090 },
+  },
+  glacier: {
+    name: 'Geleira',
+    theme: 'snow',
+    height: 1920,
+    paths: [
+      P([[360, 144], [360, 400], [144, 400], [144, 1100], [360, 1100], [360, 1776]]),
+      P([[360, 144], [360, 400], [576, 400], [576, 640], [432, 640], [432, 880], [576, 880], [576, 1100], [360, 1100], [360, 1776]]),
+    ],
+    slots: S([[456, 984], [456, 504], [528, 744], [288, 1008], [264, 504], [264, 1200], [456, 1200], [264, 288], [456, 288], [288, 744]]),
+    runes: S([[336, 576], [312, 888], [168, 240]]),
+    heroStart: { x: 456, y: 1660 },
+    gate: { x: 360, y: 320, paths: [0, 1] },
+    bridge: { x: 360, y: 1420 },
+  },
+  terraces: {
+    name: 'Terraços',
+    theme: 'snow',
+    height: 1920,
+    paths: [P([[600, 144], [600, 300], [120, 300], [120, 560], [600, 560], [600, 820], [120, 820], [120, 1080], [600, 1080], [600, 1340], [120, 1340], [120, 1600], [360, 1600], [360, 1776]])],
+    slots: S([[480, 696], [240, 1464], [240, 960], [480, 1200], [240, 432], [240, 696], [384, 936], [240, 1200], [240, 1704], [384, 432], [528, 936], [480, 192], [528, 432]]),
+    runes: S([[456, 360], [336, 648], [456, 1008], [120, 1152]]),
+    heroStart: { x: 480, y: 1700 },
+    bridge: { x: 360, y: 1080 },
+  },
+  summit: {
+    name: 'Cume',
+    theme: 'snow',
+    height: 1920,
+    paths: [
+      P([[360, 144], [360, 300], [120, 300], [120, 1000], [360, 1000], [360, 1200], [120, 1200], [120, 1500], [600, 1500], [600, 1776]]),
+      P([[360, 144], [360, 300], [600, 300], [600, 520], [300, 520], [300, 760], [600, 760], [600, 1000], [360, 1000], [360, 1200], [120, 1200], [120, 1500], [600, 1500], [600, 1776]]),
+    ],
+    slots: S([[240, 1104], [456, 408], [480, 888], [408, 648], [264, 408], [216, 1344], [240, 864], [456, 1104], [480, 1608], [240, 192], [456, 192], [552, 624], [96, 1104]]),
+    runes: S([[360, 360], [240, 696], [288, 1272], [552, 1080]]),
+    heroStart: { x: 456, y: 1690 },
+    gate: { x: 360, y: 228, paths: [0, 1] },
+    bridge: { x: 120, y: 1350 },
   },
 };

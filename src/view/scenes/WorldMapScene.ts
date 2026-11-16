@@ -35,6 +35,12 @@ const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> =
   a3: { x: 528, y: 672, enemy: 'sentinel' },
   a4: { x: 192, y: 480, enemy: 'bat' },
   a5: { x: 360, y: 288, enemy: 'devourer' },
+  // Região 3: same climb as Vellmora, other monsters.
+  c1: { x: 192, y: 1008, enemy: 'monk' },
+  c2: { x: 528, y: 864, enemy: 'gargoyle' },
+  c3: { x: 192, y: 672, enemy: 'yeti' },
+  c4: { x: 528, y: 480, enemy: 'golem' },
+  c5: { x: 360, y: 288, enemy: 'titan' },
 };
 
 const TRAIL = [
@@ -48,15 +54,16 @@ const TRAIL = [
   { x: 528, y: 288 },
   { x: 360, y: 288 },
 ];
-const TRAILS = [TRAIL, TRAIL.map((p) => ({ x: GAME_WIDTH - p.x, y: p.y }))];
+const TRAILS = [TRAIL, TRAIL.map((p) => ({ x: GAME_WIDTH - p.x, y: p.y })), TRAIL];
 
 /** Region shown last (the map opens there again). -1 = the Mapa de Éter (hub). */
 let lastRegion = -1;
 
 /** Hub art per region: theme and the monster on its card. */
-const REGION_LOOK: { theme: 'meadow' | 'amber'; enemy: EnemyId; tag: string }[] = [
+const REGION_LOOK: { theme: 'meadow' | 'amber' | 'snow'; enemy: EnemyId; tag: string }[] = [
   { theme: 'meadow', enemy: 'herald', tag: 'Tutorial: aprenda cada torre' },
   { theme: 'amber', enemy: 'devourer', tag: 'Mapas grandes, Comporta e escudos' },
+  { theme: 'snow', enemy: 'titan', tag: 'Ponte levadiça, monges que curam' },
 ];
 
 /** Region 1 map: 5 stages along a trail; stars; locked stages; save backup. */
@@ -79,20 +86,21 @@ export class WorldMapScene extends Phaser.Scene {
       this.hub();
       return;
     }
-    const amber = REGION_LOOK[region]?.theme === 'amber';
+    const theme = REGION_LOOK[region]?.theme ?? 'meadow';
+    const amber = theme !== 'meadow'; // later regions: their own ground and map music
     playMusic(amber ? 'map2' : 'map');
     setMusicIntensity(0);
     const trail = TRAILS[region]!;
     const nodes = REGIONS[region]!.stages.map((id) => NODES[id]);
-    paintMapBackground(this, [trail], 'world_bg', GAME_HEIGHT, amber ? 'amber' : 'meadow');
-    placeDecor(this, [trail], nodes.flatMap((n) => [n, { x: n.x + (n.x < GAME_WIDTH / 2 ? 110 : -110), y: n.y }]).concat(amber ? [] : [{ x: 588, y: 1016 }, { x: 548, y: 1100 }]), 99 + region, 26, GAME_HEIGHT, amber ? 'amber' : 'meadow');
+    paintMapBackground(this, [trail], 'world_bg', GAME_HEIGHT, theme);
+    placeDecor(this, [trail], nodes.flatMap((n) => [n, { x: n.x + (n.x < GAME_WIDTH / 2 ? 110 : -110), y: n.y }]).concat(amber ? [] : [{ x: 588, y: 1016 }, { x: 548, y: 1100 }]), 99 + region, 26, GAME_HEIGHT, theme);
 
     // Header
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
     bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'map_head');
-    uiText(this, GAME_WIDTH / 2, 42, amber ? 'Ermos de Âmbar' : 'Campos de Vellmora', 38, '#f3e9ff', 8);
+    uiText(this, GAME_WIDTH / 2, 42, region === 0 ? 'Campos de Vellmora' : REGIONS[region]!.name, 38, '#f3e9ff', 8);
     // Back to the Mapa de Éter.
     this.regionArrow(44, '◀', true, false, () => this.scene.restart({ region: -1 }));
     // Progress chips: stars, challenges, coins
@@ -186,7 +194,7 @@ export class WorldMapScene extends Phaser.Scene {
       const g = this.add.graphics();
       g.fillStyle(PAL.ink, 1);
       g.fillRoundedRect(-320, -76, 640, 152, 26);
-      g.fillStyle(!open ? 0x3a3450 : look.theme === 'amber' ? 0x8a5a2a : 0x3f7a3a, 1);
+      g.fillStyle(!open ? 0x3a3450 : look.theme === 'amber' ? 0x8a5a2a : look.theme === 'snow' ? 0x4a6a96 : 0x3f7a3a, 1);
       g.fillRoundedRect(-315, -71, 630, 142, 22);
       g.fillStyle(0xffffff, 0.12);
       g.fillRoundedRect(-305, -64, 610, 46, 18);

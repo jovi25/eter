@@ -26,7 +26,9 @@ export type TipId =
   | 'fireVine'
   | 'iceStorm'
   | 'evolveFuse'
-  | 'archer';
+  | 'archer'
+  | 'bridge'
+  | 'healer';
 
 export interface TipDef {
   title: string;
@@ -63,6 +65,9 @@ export const TIPS: Record<TipId, TipDef> = {
   // ── Depois do tutorial ──
   rift: { title: 'Fenda Infinita', text: '40 ondas cada vez mais duras. Quanto mais longe, mais moedas para o Relicário.' },
   altar: { title: 'Altar de Éter', text: 'Ouro sobrando? Toque no ALTAR e troque ouro por uma Bênção extra.' },
+  // ── Região 3 ──
+  bridge: { title: 'Ponte levadiça', text: 'Toque na ponte para erguê-la: os monstros que andam ficam parados na frente dela por 4 s (voadores passam). Depois ela precisa de um tempo para subir de novo.' },
+  healer: { title: 'Monge do Gelo', text: 'Ele cura os monstros em volta a cada 3 s. Derrube-o primeiro!' },
   // ── Região 2 ──
   scroll: { title: 'Mapa maior', text: 'Os mapas dos Ermos são mais altos que a tela: arraste para cima e para baixo. As setas ▲ ▼ contam os inimigos fora da tela.' },
   gate: { title: 'Comporta', text: 'Toque na placa da Comporta para mandar os próximos inimigos pelo outro caminho. Os que já passaram não mudam.' },

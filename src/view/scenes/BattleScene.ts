@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { FUSIONS } from '../../data/fusions';
-import { GateView, ShieldLayer } from '../battle/RegionTwoView';
+import { BridgeView, GateView, ShieldLayer } from '../battle/RegionTwoView';
 import { MAPS } from '../../data/maps';
 import { ScrollHint } from '../battle/ScrollHint';
 import { asUi } from '../ui/uiLayer';
@@ -146,6 +146,9 @@ export class BattleScene extends Phaser.Scene {
       case 'a1':
         t.request('scroll');
         break;
+      case 'c1':
+        t.request('bridge', () => (sim.bridgeDef ? { x: sim.bridgeDef.x, y: sim.bridgeDef.y } : null));
+        break;
       case 'a2':
         t.request('gate', () => (sim.gateDef ? { x: sim.gateDef.x, y: sim.gateDef.y } : null));
         break;
@@ -166,10 +169,16 @@ export class BattleScene extends Phaser.Scene {
         return e ? { x: e.x, y: e.y } : null;
       };
       if (s.isBoss) t.request('boss', where);
+      else if (def.heal) t.request('healer', where);
       else if (def.flying) t.request('flying', where);
       else if (Object.keys(def.resist).length > 0) t.request('resist', where);
     });
     ev.on('boonChosen', () => t.request('boon'));
+    ev.on('enemyHealed', (h) => {
+      this.fx.shockwave(h.x, h.y - 20, 0x9ff3ff, h.radius / 54, 450);
+      this.fx.burst(h.x, h.y - 40, 0x9ff3ff, 8);
+    });
+
     ev.on('shieldUp', (sh) => {
       const where = () => {
         const e = sim.state.enemies.find((x) => x.id === sh.enemyId);
@@ -286,6 +295,7 @@ export class BattleScene extends Phaser.Scene {
     this.fx = new FxLayer(this);
     // Região 2: Comporta and boss shields.
     this.shields = new ShieldLayer(this, this.enemies);
+    this.bridge = this.sim.bridgeDef ? new BridgeView(this, this.sim, this.fx, () => !this.paused && !this.ended && !this.picker && !this.dragging) : null;
     if (this.sim.gateDef) new GateView(this, this.sim, this.fx, () => !this.paused && !this.ended && !this.picker && !this.dragging);
     this.enemies.onBurning = (x, y) => this.fx.flame(x, y);
     this.hud = asUi(this, () => new Hud(this, {
@@ -402,6 +412,7 @@ export class BattleScene extends Phaser.Scene {
   // ───────────────────────────── tall maps: drag to scroll ─────────────────────────────
 
   private shields!: ShieldLayer;
+  private bridge: BridgeView | null = null;
   private downOn: Phaser.GameObjects.GameObject | 'blocked' | null = null;
   private heroDrag = false;
   private dragging = false;
@@ -1000,6 +1011,7 @@ export class BattleScene extends Phaser.Scene {
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
     this.shields.update(this.sim);
+    this.bridge?.update();
     this.scrollHint?.update(this.sim, this.cameras.main.scrollY);
     this.menu.refresh();
     logicMs.value = logicMs.value * 0.9 + (performance.now() - t0) * 0.1;

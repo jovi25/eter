@@ -100,6 +100,17 @@ const GROUND: Record<MapTheme, { top: string; bottom: string; light: string; dar
     road: ['#6a3420', '#b5603a', 'rgba(220,140,90,0.5)', 'rgba(250,190,140,0.3)'],
     vignette: 'rgba(40,15,5,0.45)',
   },
+  // Região 3: Cumes Nevados — snow fields, slate roads.
+  snow: {
+    top: '#e3edf6',
+    bottom: '#c6d5e6',
+    light: 'rgba(255,255,255,0.45)',
+    dark: 'rgba(120,150,195,0.25)',
+    bladeDark: 'rgba(150,175,205,0.55)',
+    bladeLight: 'rgba(255,255,255,0.75)',
+    road: ['#3e4a66', '#76869f', 'rgba(170,190,220,0.5)', 'rgba(235,242,255,0.35)'],
+    vignette: 'rgba(20,30,60,0.35)',
+  },
 };
 
 /** Paint grass + every road into one canvas texture; returns the background image (world size). */
@@ -238,7 +249,7 @@ export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: read
     const r = kind < 0.42 ? 34 : kind < 0.65 ? 20 : 8;
     if (!clearOf(x, y, r)) continue;
     const k = kind < 0.42 ? 'tree' : kind < 0.65 ? 'rock' : 'flower';
-    const img = scene.add.image(x, y, k === 'tree' && theme === 'amber' ? 'tree_amber' : k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
+    const img = scene.add.image(x, y, k === 'tree' && theme === 'amber' ? 'tree_amber' : k === 'tree' && theme === 'snow' ? 'tree_snow' : k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
     if (k === 'tree') {
       img.setScale(0.78 + rng.next() * 0.35);
       if (!economyOn()) scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.03, duration: 1800 + rng.int(0, 900), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

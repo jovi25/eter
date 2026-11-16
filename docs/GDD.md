@@ -461,3 +461,10 @@ Números em `src/data/fusions.ts`. Combina com os escudos dos chefes da Região 
 | 5 | todas | runas, bênçãos e o chefe Arauto |
 
 - Antes de vencer a fase 5: só o Arcanista; sem relíquias, talentos, Relicário, Fenda e Desafio do dia. Depois, todos os heróis abrem juntos.
+
+## Fase 12 — Região 3: Cumes Nevados
+Abre com 3 estrelas em todas as fases dos Ermos de Âmbar. Mapas: Encosta, Passagem (2 portais), Geleira (Comporta), Terraços, Cume (Comporta + chefe).
+- **Ponte levadiça** (todas as fases): tocar ergue por 4 s; inimigos que andam param na frente; voadores passam; recarga 15 s.
+- **Monge do Gelo**: a cada 3 s cura 6% da vida de quem estiver a até 100 px (nunca chefes). Prioridade de alvo.
+- **Gárgula de Pedra**: voa; resiste a físico (40%) e fogo (30%); fraca a raio.
+- **Titã de Obsidiana** (3000 de vida, resiste a fogo): escudos SUPERCONDUÇÃO → GEADA ESPINHOSA → SOBRECARGA → ESTILHAÇO; chama gárgulas.

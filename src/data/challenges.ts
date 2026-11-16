@@ -27,6 +27,11 @@ export const CHALLENGES: Record<CampaignStageId, [Challenge, Challenge, Challeng
   a2: [{ kind: 'noTower', tower: 'storm' }, { kind: 'reaction', id: 'wildfire', min: 12 }, { kind: 'hero', cls: 'knight' }],
   a3: [{ kind: 'reaction', id: 'melt', min: 15 }, { kind: 'lives', min: 15 }, { kind: 'hero', cls: 'mage' }],
   a4: [{ kind: 'maxTowers', max: 6 }, { kind: 'hero', cls: 'druid' }, { kind: 'reactions', min: 50 }],
+  c1: [{ kind: 'reactions', min: 45 }, { kind: 'lives', min: 18 }, { kind: 'hero', cls: 'knight' }],
+  c2: [{ kind: 'reaction', id: 'superconduct', min: 12 }, { kind: 'noTower', tower: 'archer' }, { kind: 'lives', min: 15 }],
+  c3: [{ kind: 'maxTowers', max: 7 }, { kind: 'hero', cls: 'druid' }, { kind: 'reaction', id: 'overload', min: 12 }],
+  c4: [{ kind: 'reactions', min: 60 }, { kind: 'noTower', tower: 'brazier' }, { kind: 'hero', cls: 'priest' }],
+  c5: [{ kind: 'lives', min: 15 }, { kind: 'reaction', id: 'thornfrost', min: 12 }, { kind: 'hero', cls: 'mage' }],
   a5: [{ kind: 'lives', min: 15 }, { kind: 'reaction', id: 'shatter', min: 10 }, { kind: 'hero', cls: 'priest' }],
 };
 

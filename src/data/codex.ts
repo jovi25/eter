@@ -3,7 +3,7 @@ import { ELEMENTS, type Element } from './elements';
 import { ENEMIES, type EnemyId } from './enemies';
 import { REACTION_TABLE, REACTIONS, type ReactionId } from './reactions';
 
-export const CODEX_ENEMIES: EnemyId[] = ['slime', 'wolf', 'bat', 'golem', 'salamander', 'yeti', 'skeleton', 'shaman', 'mudling', 'colossus', 'treasure', 'herald', 'sentinel', 'devourer'];
+export const CODEX_ENEMIES: EnemyId[] = ['slime', 'wolf', 'bat', 'golem', 'salamander', 'yeti', 'skeleton', 'shaman', 'mudling', 'colossus', 'treasure', 'herald', 'sentinel', 'devourer', 'monk', 'gargoyle', 'titan'];
 
 export const REACTION_EFFECT: Record<ReactionId, string> = {
   wildfire: '×2 de dano e o fogo pula para quem está perto',

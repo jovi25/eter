@@ -125,10 +125,10 @@ describe('multi-path stages', () => {
     expect(sim.state.lives).toBe(19);
   });
 
-  it('Região 1 has 10 waves, Região 2 has 12, and starts the hero on its map', () => {
+  it('Região 1 has 10 waves, later regions 12, and starts the hero on its map', () => {
     for (const id of STAGE_ORDER) {
       const st = STAGES[id];
-      expect(st.waves, id).toHaveLength(id.startsWith('a') ? 12 : 10);
+      expect(st.waves, id).toHaveLength(id.startsWith('v') ? 10 : 12);
       const sim = new Simulation({ stage: id, seed: 1 });
       expect(sim.state.hero.x).toBe(MAPS[st.map].heroStart.x);
     }
