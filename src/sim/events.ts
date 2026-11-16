@@ -19,7 +19,6 @@ export interface SimEvents {
   comboEnded: { count: number };
   towerBuilt: { towerId: number; slot: number; type: TowerId };
   towerUpgraded: { towerId: number; level: number };
-  towerBoosted: { towerId: number; boost: number };
   runeBuilt: { index: number; kind: RuneKind };
   runeSold: { index: number; refund: number };
   towerEvolved: { towerId: number; evo: EvolutionId };

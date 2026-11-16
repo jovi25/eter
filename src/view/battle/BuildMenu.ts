@@ -2,12 +2,12 @@ import * as Phaser from 'phaser';
 import { bakeInPlace } from '../ui/bake';
 import { GAME_WIDTH } from '../../data/config';
 import { ELEMENTS } from '../../data/elements';
-import { BOOST, MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
+import { MAX_LEVEL, TOWER_IDS, TOWERS, type TowerId } from '../../data/towers';
 import type { Simulation } from '../../sim/simulation';
 import type { TowerState } from '../../sim/types';
 import { RUNE_KINDS, RUNE_RULES, RUNES, type RuneKind } from '../../data/runes';
 import { EVOLUTIONS, TOWER_EVOLUTIONS, type EvolutionId } from '../../data/evolutions';
-import { FUSION, FUSIONS, type FusionId } from '../../data/fusions';
+import { FUSIONS, type FusionId } from '../../data/fusions';
 import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
@@ -39,7 +39,6 @@ export class BuildMenu {
     private actions: {
       build: (slot: number, type: TowerId) => void;
       upgrade: (id: number) => void;
-      boost: (id: number) => void;
       sell: (id: number) => void;
       evolve: (id: number, evo: EvolutionId) => void;
       fuse: (id: number, partner: number) => void;
@@ -103,7 +102,7 @@ export class BuildMenu {
     this.close();
     this.openTowerId = tower.id;
     const fork = tower.level >= MAX_LEVEL && !tower.evo && !tower.fusion;
-    const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, fork ? 920 : 1026);
+    const root = this.makeRoot(tower.x, tower.y, fork ? 230 : 215, fork ? 350 : 286, 1000);
     const def = TOWERS[tower.type];
     const lvl = this.sim.levelOf(tower);
     this.range.clear().setVisible(true);
@@ -115,36 +114,41 @@ export class BuildMenu {
 
     const maxed = tower.level >= MAX_LEVEL;
     const evolving = maxed && !tower.evo && !tower.fusion; // the fork: choose 1 of 2 final forms (or fuse)
-    // Below max level: upgrade. At max level: Reforço (repeatable, pricier each time).
-    const costNow = () => (maxed ? this.sim.boostCost(tower) : this.sim.upgradeCost(tower));
-    const upPos = evolving ? { x: -110, y: 96 } : { x: 0, y: -96 };
-    const up = this.option(upPos.x, upPos.y, maxed ? 0xe0862f : 0x3aa655, 'icon_play', costNow(), false, () => {
-      const cost = costNow();
-      if (cost === null || this.sim.state.gold < cost) {
-        playSfx('error');
-        this.shake(up.root);
-        return;
-      }
-      if (maxed) this.actions.boost(tower.id);
-      else this.actions.upgrade(tower.id);
-      this.close();
-    });
-    (up.root.list[2] as Phaser.GameObjects.Image).setAngle(-90).setScale(1);
-    if (maxed) {
-      const lx = evolving ? upPos.x - 52 : 78;
-      root.add(uiText(this.scene, lx, upPos.y + (evolving ? 64 : 0), `Reforço +${Math.round(BOOST.damagePerLevel * 100)}%`, 16, '#ffd9a8', 4).setOrigin(evolving ? 0 : 0, 0.5).setAlign('left'));
+    // Below max level: upgrade. Level 3 is the end of the line: evolve, fuse or keep it (no endless Reforço).
+    if (!maxed) {
+      const up = this.option(0, -96, 0x3aa655, 'icon_play', this.sim.upgradeCost(tower), false, () => {
+        const cost = this.sim.upgradeCost(tower);
+        if (cost === null || this.sim.state.gold < cost) {
+          playSfx('error');
+          this.shake(up.root);
+          return;
+        }
+        this.actions.upgrade(tower.id);
+        this.close();
+      });
+      (up.root.list[2] as Phaser.GameObjects.Image).setAngle(-90).setScale(1);
+      root.add(up.root);
+      this.options.push(up);
     }
     const sellPos = evolving ? { x: 110, y: 96 } : { x: 0, y: 96 };
+    // Selling by accident hurts: the first tap asks, the second sells.
+    let sellArmed = false;
     const sell = this.option(sellPos.x, sellPos.y, 0xc0504a, 'coin', null, false, () => {
+      if (!sellArmed) {
+        sellArmed = true;
+        playSfx('ui', 0.7);
+        sell.cost.setText('Vender?').setColor('#ffffff');
+        this.scene.tweens.add({ targets: sell.root, scale: 1.12, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        return;
+      }
       this.actions.sell(tower.id);
       this.close();
     });
     sell.cost.setText(`+${this.sim.sellValue(tower)}`).setColor(PAL.goldCss);
-    root.add([up.root, sell.root]);
-    this.options.push(up);
+    root.add(sell.root);
     const fuDef = tower.fusion ? FUSIONS[tower.fusion] : null;
     const evoDef = tower.evo ? EVOLUTIONS[tower.evo] : fuDef;
-    const title = evoDef ? `${evoDef.name}${tower.boost > 0 ? `  +${tower.boost}` : ''}` : `${def.name}  nv ${tower.level}${tower.boost > 0 ? `  +${tower.boost}` : ''}`;
+    const title = evoDef ? evoDef.name : `${def.name}  nv ${tower.level}`;
     root.add(uiText(this.scene, 0, evolving ? -238 : -172, title, 22, evoDef ? `#${evoDef.color.toString(16).padStart(6, '0')}` : PAL.uiText, 5));
     const info = def.abilityInfo;
     let abilityText: string;
@@ -164,7 +168,7 @@ export class BuildMenu {
   /** FUNDIR: a third way at level 3. Tap it, then tap a highlighted tower nearby. */
   private fusionButton(root: Phaser.GameObjects.Container, tower: TowerState, info: Phaser.GameObjects.Text): void {
     const cost = this.sim.fusionCost();
-    const opt = this.option(0, 168, 0x8a3fd0, 'icon_catalyze', cost, false, () => {
+    const opt = this.option(-110, 96, 0x8a3fd0, 'icon_catalyze', cost, false, () => {
       const list = this.sim.fusionCandidates(tower);
       if (!list.length) {
         playSfx('error');
@@ -197,7 +201,7 @@ export class BuildMenu {
     });
     root.add(opt.root);
     this.options.push(opt);
-    root.add(uiText(this.scene, 0, 226, `FUNDIR (perto: ${FUSION.maxDist})`, 14, '#d9b8ff', 4));
+    root.add(uiText(this.scene, -110, 154, 'FUNDIR', 16, '#d9b8ff', 4));
   }
 
   /** While choosing a fusion: a tap on a highlighted tower fuses it. Returns true when the tap was used. */

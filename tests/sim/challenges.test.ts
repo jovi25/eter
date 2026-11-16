@@ -1,40 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { CHALLENGES, challengeMet, challengeText, dailyScore, dailySetup, evaluateChallenges } from '../../src/data/challenges';
 import { STAGE_ORDER } from '../../src/data/stages';
-import { BOOST, TOWERS } from '../../src/data/towers';
 import { SaveStore } from '../../src/meta/save';
-import { dummy, newSim, record } from '../helpers';
+import { newSim } from '../helpers';
 
 function memStorage() {
   const m = new Map<string, string>();
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
 }
 
-describe('Reforço (gold sink after max level)', () => {
-  it('is only available at level 3, costs more each time and raises damage', () => {
+describe('no endless upgrades', () => {
+  it('level 3 is the last level: no Reforço', () => {
     const sim = newSim();
     sim.state.gold = 100_000;
-    sim.state.hero.x = sim.state.hero.targetX = 680;
-    sim.state.hero.y = sim.state.hero.targetY = 1140;
     const t = sim.build(1, 'archer')!;
-    expect(sim.boostCost(t)).toBeNull();
-    expect(sim.boost(t.id)).toBe(false);
     sim.upgrade(t.id);
     sim.upgrade(t.id);
-    const c1 = sim.boostCost(t)!;
-    expect(c1).toBe(BOOST.baseCost);
-    expect(sim.boost(t.id)).toBe(true);
-    expect(sim.boostCost(t)!).toBeGreaterThan(c1);
-    for (let i = 0; i < 9; i++) sim.boost(t.id);
-    expect(t.boost).toBe(10);
-    const e = dummy(sim, 470);
-    e.rootTime = 1e6;
-    const hits = record(sim, 'enemyHit');
-    for (let i = 0; i < 60 && hits.length === 0; i++) sim.step();
-    const base = TOWERS.archer.levels[2].damage;
-    const dmg = hits[0]!.payload.damage;
-    const boosted = base * (1 + BOOST.damagePerLevel * 10);
-    expect([Math.round(boosted), Math.round(boosted * (TOWERS.archer.levels[2].critMult ?? 2))]).toContain(dmg);
+    expect(sim.upgradeCost(t)).toBeNull();
+    expect('boost' in sim).toBe(false);
   });
 });
 

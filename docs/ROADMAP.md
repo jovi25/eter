@@ -84,6 +84,12 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Menu: botão FUNDIR no nível 3; as parceiras possíveis brilham com o nome da fusão; tocar nela confirma
 - *Aceite:* a região 2 exige montar a build pensando no chefe.
 
+### Fase 9c — Pedidos do jogador (nov/2026) ✔
+- [x] Venda pede confirmação (2 toques); herói pode ser arrastado; herói não trava mais embaixo nos mapas altos
+- [x] "Próxima fase" abre o cartão da fase no mapa (missões, herói, estratégia)
+- [x] **Sem Reforço infinito**: nível 3 é o teto; depois só Evoluir, Fundir ou Vender
+- [x] Equilíbrio inspirado em TDs clássicos: congelar deixa imune a novo congelamento por 3 s; Nevasca só desacelera (não congela); formas finais mais caras (280–320) e versões "sem parar" de fogo/raio mais fracas; fusão 200
+
 ### Fase 10 — Polimento e balanceamento
 - [ ] Música gerada por código, mais vozes de inimigos
 - [ ] Tutorial jogável de 60 s (INCÊNDIO guiado)

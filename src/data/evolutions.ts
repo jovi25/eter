@@ -30,7 +30,7 @@ export interface EvolutionDef {
   /** Branch A: an ultimate every N seconds (only fires when an enemy is in range). */
   ult?: { kind: UltKind; every: number; damageMult: number; radius?: number; targets?: number; freeze?: number };
   /** Ice branch B: no projectiles; a constant storm hits everyone in range every `tick` seconds. */
-  aura?: { tick: number; damageMult: number; chillStacks: number };
+  aura?: { tick: number; damageMult: number; chillStacks: number; noFreeze?: boolean };
   /** Archer branch B: every shot hits this many enemies. */
   multishot?: number;
   /** Archer branch A: aims at the enemy with the most life instead of the one in front. */
@@ -40,62 +40,62 @@ export interface EvolutionDef {
 export const EVOLUTIONS: Record<EvolutionId, EvolutionDef> = {
   // ── Cristal Gélido ──
   winterCrown: {
-    tower: 'frost', name: 'Coroa do Inverno', color: 0x9fe8ff, cost: 240,
-    desc: 'A cada 9 s: Tumba Glacial congela todos no alcance e causa dano enorme',
+    tower: 'frost', name: 'Coroa do Inverno', color: 0x9fe8ff, cost: 320,
+    desc: 'A cada 10 s: Tumba Glacial congela todos no alcance e causa dano enorme',
     stats: { rateMult: 0.8 }, keepAbility: true,
-    ult: { kind: 'tomb', every: 9, damageMult: 6, freeze: 6 },
+    ult: { kind: 'tomb', every: 10, damageMult: 7, freeze: 6 },
   },
   blizzard: {
-    tower: 'frost', name: 'Nevasca Eterna', color: 0xd8f6ff, cost: 220,
-    desc: 'Nevasca sem parar: todos no alcance são resfriados e machucados',
-    stats: { rangeMult: 1.1 }, keepAbility: false,
-    aura: { tick: 0.6, damageMult: 0.4, chillStacks: 1 },
+    tower: 'frost', name: 'Nevasca Eterna', color: 0xd8f6ff, cost: 300,
+    desc: 'Nevasca sem parar: resfria todos no alcance (sem congelar) e machuca pouco',
+    stats: {}, keepAbility: false,
+    aura: { tick: 1.0, damageMult: 0.3, chillStacks: 1, noFreeze: true },
   },
   // ── Braseiro ──
   volcano: {
-    tower: 'brazier', name: 'Vulcão', color: 0xff4d1f, cost: 240,
+    tower: 'brazier', name: 'Vulcão', color: 0xff4d1f, cost: 320,
     desc: 'A cada 7 s: meteoro no maior grupo, explosão e chão em chamas',
     stats: {}, keepAbility: true,
     ult: { kind: 'meteor', every: 7, damageMult: 4, radius: 115 },
   },
   furnace: {
-    tower: 'brazier', name: 'Fornalha', color: 0xffa02e, cost: 220,
-    desc: 'Lança-chamas: ataca 2,5× mais rápido, menos dano, queima mais',
-    stats: { rateMult: 2.5, damageMult: 0.45, burnMult: 1.6 }, keepAbility: false,
+    tower: 'brazier', name: 'Fornalha', color: 0xffa02e, cost: 300,
+    desc: 'Lança-chamas: ataca 2× mais rápido, menos dano, queima mais',
+    stats: { rateMult: 2, damageMult: 0.5, burnMult: 1.3 }, keepAbility: false,
   },
   // ── Vinha Ancestral ──
   elderTree: {
-    tower: 'vine', name: 'Árvore Anciã', color: 0x3fae3a, cost: 230,
+    tower: 'vine', name: 'Árvore Anciã', color: 0x3fae3a, cost: 300,
     desc: 'A cada 8 s: prende TODOS os inimigos no alcance de uma vez',
     stats: {}, keepAbility: true,
     ult: { kind: 'massRoot', every: 8, damageMult: 1.5 },
   },
   hungryRoots: {
-    tower: 'vine', name: 'Raiz Faminta', color: 0x8ad44a, cost: 220,
+    tower: 'vine', name: 'Raiz Faminta', color: 0x8ad44a, cost: 280,
     desc: 'Todo golpe enraíza; ataca mais rápido com menos dano',
     stats: { rootChance: 1, rateMult: 1.3, damageMult: 0.7 }, keepAbility: true,
   },
   // ── Torre do Trovão ──
   thunderLord: {
-    tower: 'storm', name: 'Senhor do Trovão', color: 0xfff27a, cost: 240,
+    tower: 'storm', name: 'Senhor do Trovão', color: 0xfff27a, cost: 320,
     desc: 'A cada 7 s: raios caem do céu em até 6 inimigos no alcance',
     stats: {}, keepAbility: true,
     ult: { kind: 'skyStrike', every: 7, damageMult: 3, targets: 6 },
   },
   tesla: {
-    tower: 'storm', name: 'Bobina Tesla', color: 0x9fd8ff, cost: 220,
-    desc: 'Arcos contínuos: 2,5× mais rápido, +2 saltos, menos dano',
-    stats: { rateMult: 2.5, damageMult: 0.42, chainBonus: 2 }, keepAbility: false,
+    tower: 'storm', name: 'Bobina Tesla', color: 0x9fd8ff, cost: 300,
+    desc: 'Arcos contínuos: 2× mais rápido, +1 salto, menos dano',
+    stats: { rateMult: 2, damageMult: 0.45, chainBonus: 1 }, keepAbility: false,
   },
   // ── Arqueiro ──
   sniper: {
-    tower: 'archer', name: 'Atirador de Elite', color: 0xe8d6b0, cost: 230,
+    tower: 'archer', name: 'Atirador de Elite', color: 0xe8d6b0, cost: 300,
     desc: 'Tiro lento e devastador no inimigo com mais vida; alcance enorme',
     stats: { rateMult: 0.45, damageMult: 3.4, rangeMult: 1.45, critChance: 0.35, critMult: 2.5 }, keepAbility: false,
     targetStrongest: true,
   },
   arrowRain: {
-    tower: 'archer', name: 'Chuva de Flechas', color: 0xc9a46a, cost: 220,
+    tower: 'archer', name: 'Chuva de Flechas', color: 0xc9a46a, cost: 280,
     desc: 'Todo disparo acerta 3 inimigos, com um pouco menos de dano',
     stats: { damageMult: 0.75 }, keepAbility: false,
     multishot: 3,

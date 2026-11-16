@@ -440,3 +440,10 @@ Cada disparo dá dois golpes no mesmo alvo: o 1º deixa a marca, o 2º detona a 
 | Agulha Polar | Gélido + Trovão | SUPERCONDUÇÃO |
 
 Números em `src/data/fusions.ts`. Combina com os escudos dos chefes da Região 2: uma fusão garante a reação do escudo.
+
+## Fase 9c — Equilíbrio (pedido do jogador)
+- **Fim do Reforço**: a torre para no nível 3. A força vem de onde e com o que você constrói (Evoluir, Fundir, runas), não de despejar ouro.
+- **Congelamento com retorno decrescente** (como em TDs clássicos): depois de congelado, o inimigo fica 3 s imune a congelar de novo (o Resfriado ainda desacelera).
+- **Nevasca Eterna** vira suporte: pulso a cada 1 s, 30% do dano, resfria sem congelar.
+- **Formas finais**: golpe final 320, constante 280–300. Fornalha e Bobina Tesla atacam 2× (não 2,5×); Tesla +1 salto. Fusão custa 200.
+- Venda com dois toques; herói arrastável; "Próxima fase" volta ao cartão da fase.

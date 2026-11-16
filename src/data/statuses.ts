@@ -12,6 +12,7 @@ export const STATUS = {
   },
   frozen: {
     duration: 1,
+    immunityAfter: 3, // classic diminishing returns: can't be frozen again for this long (still chilled)
   },
   rooted: {
     duration: 1,

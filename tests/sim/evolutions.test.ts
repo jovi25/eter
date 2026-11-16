@@ -66,7 +66,6 @@ describe('Evoluções', () => {
     expect(sim.state.gold).toBe(gold - EVOLUTIONS.blizzard.cost);
     expect(sim.evolve(t.id, 'winterCrown')).toBe(false); // already evolved
     expect(t.evo).toBe('blizzard');
-    expect(sim.boost(t.id)).toBe(true); // Reforço still works after evolving
   });
 
   it('Coroa do Inverno freezes everyone in range with a big hit', () => {
@@ -117,8 +116,8 @@ describe('Evoluções', () => {
   });
 
   it('constant branches attack much faster; the sniper hits harder and aims at the strongest', () => {
-    expect(evolvedLevel('brazier', 'furnace').rate).toBeGreaterThan(TOWERS.brazier.levels[2].rate * 2);
-    expect(evolvedLevel('storm', 'tesla').chainCount).toBe((TOWERS.storm.levels[2].chainCount ?? 0) + 2);
+    expect(evolvedLevel('brazier', 'furnace').rate).toBeGreaterThanOrEqual(TOWERS.brazier.levels[2].rate * 2);
+    expect(evolvedLevel('storm', 'tesla').chainCount).toBe((TOWERS.storm.levels[2].chainCount ?? 0) + 1);
     const { sim, t } = setup('archer');
     sim.evolve(t.id, 'sniper');
     const weak = foe(sim, t.x + 40, t.y, 100);
@@ -135,5 +134,27 @@ describe('Evoluções', () => {
     t.cooldown = 0;
     sim.step();
     expect(sim.state.projectiles.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('crowd control has diminishing returns', () => {
+  it('after a freeze the enemy cannot be frozen again for a while (still chilled)', () => {
+    const sim = new Simulation({ stage: 'v1', seed: 1 });
+    const e = sim.spawnEnemy('golem', { dist: 2000, hp: 1e6 });
+    for (let i = 0; i < 3; i++) sim.applyHit(e, { element: 'ice', damage: 1 });
+    expect(e.frozenTime).toBeGreaterThan(0);
+    while (e.frozenTime > 0) sim.step();
+    expect(e.freezeImmuneTime).toBeGreaterThan(0);
+    for (let i = 0; i < 5; i++) sim.applyHit(e, { element: 'ice', damage: 1 });
+    expect(e.frozenTime).toBe(0);
+    expect(e.chillTime).toBeGreaterThan(0);
+  });
+
+  it('Nevasca Eterna chills but never freezes', () => {
+    const sim = new Simulation({ stage: 'v1', seed: 1 });
+    const e = sim.spawnEnemy('golem', { dist: 2000, hp: 1e6 });
+    for (let i = 0; i < 10; i++) sim.applyHit(e, { element: 'ice', damage: 1, noFreeze: true });
+    expect(e.frozenTime).toBe(0);
+    expect(e.chillTime).toBeGreaterThan(0);
   });
 });

@@ -16,7 +16,7 @@ import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
 import { EVOLUTIONS, evolvedLevel, type EvolutionId } from '../data/evolutions';
-import { BOOST, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
+import { MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
 import { Rng } from './rng';
@@ -201,8 +201,9 @@ export class Simulation {
   moveHero(x: number, y: number): void {
     const b = HERO.bounds;
     const h = this.state.hero;
+    const maxY = (MAPS[this.stage.map].height ?? 1280) - (1280 - b.maxY);
     h.targetX = Math.max(b.minX, Math.min(b.maxX, x));
-    h.targetY = Math.max(b.minY, Math.min(b.maxY, y));
+    h.targetY = Math.max(b.minY, Math.min(maxY, y));
     const bear = this.state.summons.find((s) => s.kind === 'bear');
     if (bear) {
       // The bear guards a spot just in front of the druid.
@@ -289,7 +290,8 @@ export class Simulation {
       if (!busy) return;
       if (this.talent('focus')) {
         // Foco: all the blessing on the strongest tower around her.
-        const best = towers.reduce((a, t) => (t.level * 100 + t.boost * 10 + (t.evo ? 1000 : 0) > a.level * 100 + a.boost * 10 + (a.evo ? 1000 : 0) ? t : a));
+        const score = (t: TowerState) => t.level * 100 + (t.evo || t.fusion ? 1000 : 0);
+        const best = towers.reduce((a, t) => (score(t) > score(a) ? t : a));
         best.blessTime = TALENT_NUM.focus.duration;
         this.skillDone(h, sk.radius, 1, 0);
         return;
@@ -342,7 +344,7 @@ export class Simulation {
 
   private blessMult(t: TowerState): number {
     const bless = t.blessTime > 0 ? (this.talent('focus') ? TALENT_NUM.focus.damageMult : PRIEST.blessDamageMult) : 1;
-    let m = bless * (1 + BOOST.damagePerLevel * t.boost) * this.runeMult(t, 'damageMult');
+    let m = bless * this.runeMult(t, 'damageMult');
     if (this.talent('banner') && this.state.hero.alive) {
       const h = this.state.hero;
       if ((t.x - h.x) ** 2 + (t.y - h.y) ** 2 <= TALENT_NUM.banner.radius ** 2) m *= TALENT_NUM.banner.damageMult;
@@ -663,7 +665,7 @@ export class Simulation {
     if (!this.mods.unlockedTowers.includes(type)) return null;
     const cost = TOWERS[type].levels[0].cost;
     if (s.gold < cost) return null;
-    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, boost: 0, evo: null, ultTimer: 0, fusion: null };
+    const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, evo: null, ultTimer: 0, fusion: null };
     s.towers.push(tower);
     s.stats.built[type]++;
     s.stats.peakTowers = Math.max(s.stats.peakTowers, s.towers.length);
@@ -682,26 +684,6 @@ export class Simulation {
     t.invested += cost;
     this.addGold(-cost);
     this.events.emit('towerUpgraded', { towerId: t.id, level: t.level });
-    return true;
-  }
-
-  /** Cost of the next Reforço, or null while the tower is not at max level. */
-  boostCost(tower: TowerState): number | null {
-    if (tower.level < MAX_LEVEL) return null;
-    return Math.round(BOOST.baseCost * Math.pow(BOOST.growth, tower.boost) * this.mods.upgradeCostMult);
-  }
-
-  /** Reforço: +damage, repeatable, each one pricier than the last. */
-  boost(towerId: number): boolean {
-    const s = this.state;
-    const t = this.getTower(towerId);
-    if (s.result !== 'playing' || !t) return false;
-    const cost = this.boostCost(t);
-    if (cost === null || s.gold < cost) return false;
-    t.boost++;
-    t.invested += cost;
-    this.addGold(-cost);
-    this.events.emit('towerBoosted', { towerId: t.id, boost: t.boost });
     return true;
   }
 
@@ -939,6 +921,7 @@ export class Simulation {
       chillStacks: 0,
       chillTime: 0,
       frozenTime: 0,
+      freezeImmuneTime: 0,
       rootTime: 0,
       rootImmuneTime: 0,
       fragileTime: 0,
@@ -1038,7 +1021,11 @@ export class Simulation {
         e.chillStacks = 0;
       }
     }
-    if (e.frozenTime > 0) e.frozenTime = Math.max(0, e.frozenTime - DT);
+    if (e.freezeImmuneTime > 0) e.freezeImmuneTime = Math.max(0, e.freezeImmuneTime - DT);
+    if (e.frozenTime > 0) {
+      e.frozenTime = Math.max(0, e.frozenTime - DT);
+      if (e.frozenTime === 0) e.freezeImmuneTime = STATUS.frozen.immunityAfter;
+    }
     if (e.rootTime > 0) {
       e.rootTime -= DT;
       if (e.rootTime <= 0) {
@@ -1250,7 +1237,7 @@ export class Simulation {
     return this.state.enemies.filter((e) => this.canTarget(t, e) && (e.x - t.x) ** 2 + (e.y - t.y) ** 2 <= r2);
   }
 
-  /** Damage base for ultimates/storms: the level-3 hit, with every bonus (relics, boons, runes, Reforço). */
+  /** Damage base for ultimates/storms: the level-3 hit, with every bonus (relics, boons, runes). */
   private ultBase(t: TowerState): number {
     const def = TOWERS[t.type];
     return def.levels[MAX_LEVEL - 1]!.damage * this.mods.towerDamageMult[t.type] * this.mods.elementDamageMult[def.element] * this.blessMult(t);
@@ -1312,7 +1299,7 @@ export class Simulation {
     const aura = EVOLUTIONS[evo].aura!;
     const dmg = this.ultBase(t) * aura.damageMult;
     for (const e of this.inRange(t)) {
-      this.applyHit(e, { element: TOWERS[t.type].element, damage: dmg, chillStacks: aura.chillStacks, towerId: t.id, towerType: t.type });
+      this.applyHit(e, { element: TOWERS[t.type].element, damage: dmg, chillStacks: aura.chillStacks, noFreeze: aura.noFreeze, towerId: t.id, towerType: t.type });
     }
   }
 
@@ -1345,7 +1332,6 @@ export class Simulation {
     const p = c.tower;
     t.fusion = c.fusion;
     t.invested += p.invested + cost;
-    t.boost += p.boost; // Reforços carry over
     t.cooldown = 0;
     s.towers.splice(s.towers.indexOf(p), 1);
     this.addGold(-cost);
@@ -1658,7 +1644,7 @@ export class Simulation {
         if (hit.burnDps && hit.burnDps > 0) this.applyBurn(e, hit.burnDps);
         break;
       case 'ice':
-        for (let i = 0; i < (hit.chillStacks ?? 1) && e.frozenTime <= 0; i++) this.applyChill(e);
+        for (let i = 0; i < (hit.chillStacks ?? 1) && e.frozenTime <= 0; i++) this.applyChill(e, !!hit.noFreeze);
         break;
       case 'nature':
         if (hit.rootChance && this.canBeRooted(e) && this.rng.chance(hit.rootChance)) {
@@ -1706,10 +1692,14 @@ export class Simulation {
     this.events.emit('statusApplied', { enemyId: e.id, status: 'burning' });
   }
 
-  private applyChill(e: EnemyState): void {
+  private applyChill(e: EnemyState, noFreeze = false): void {
     if (e.chillImmuneTime > 0 || e.frozenTime > 0) return;
     e.chillStacks++;
-    if (e.chillStacks >= this.mods.chillMaxStacks) {
+    if (e.chillStacks >= this.mods.chillMaxStacks && (noFreeze || e.freezeImmuneTime > 0)) {
+      // No freeze right now: stay chilled at the last stack.
+      e.chillStacks = this.mods.chillMaxStacks - 1;
+      e.chillTime = STATUS.chilled.duration;
+    } else if (e.chillStacks >= this.mods.chillMaxStacks) {
       e.chillStacks = 0;
       e.chillTime = 0;
       e.frozenTime = STATUS.frozen.duration;

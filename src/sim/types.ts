@@ -30,6 +30,7 @@ export interface EnemyState {
   chillStacks: number;
   chillTime: number;
   frozenTime: number;
+  freezeImmuneTime: number; // after a freeze: chill still slows, but no new freeze
   rootTime: number;
   rootImmuneTime: number;
   fragileTime: number;
@@ -54,7 +55,6 @@ export interface TowerState {
   invested: number;
   shots: number; // attacks fired (drives every-Nth-shot abilities)
   blessTime: number; // Sacerdotisa blessing: +damage while > 0
-  boost: number; // Reforços bought after max level
   evo: EvolutionId | null; // chosen final form (after level 3)
   ultTimer: number; // seconds until the next ultimate / storm tick
   fusion: FusionId | null; // Torre de fusão (Fase 9b)
@@ -181,5 +181,6 @@ export interface HitSpec {
   towerType?: TowerId;
   hero?: boolean; // dealt by the hero (stats)
   chillStacks?: number; // ice: stacks added per hit (default 1)
+  noFreeze?: boolean; // ice: chills but never freezes (Nevasca)
   entangle?: { extra: number; radius: number }; // nature: a root spreads to neighbours
 }

@@ -26,7 +26,7 @@ export interface FusionDef {
 }
 
 export const FUSION = {
-  cost: 150,
+  cost: 200,
   maxDist: 280, // between the two towers
   projectileSpeed: 650,
 };

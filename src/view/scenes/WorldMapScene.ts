@@ -61,7 +61,7 @@ export class WorldMapScene extends Phaser.Scene {
 
 
 
-  create(data?: { region?: number }): void {
+  create(data?: { region?: number; openStage?: CampaignStageId }): void {
     fitCamera(this);
     frameCap(this, 'menu');
     const save = getSave();
@@ -121,6 +121,7 @@ export class WorldMapScene extends Phaser.Scene {
     this.navItem(450, 'nav_blue', 'icon_codex', 'Códice', false, () => this.go('Codex'));
     this.navItem(630, 'nav_gray', 'icon_gear', 'Opções', false, () => this.showOptionsCard());
     this.cameras.main.fadeIn(250, 11, 7, 22);
+    if (data?.openStage && save.isUnlocked(data.openStage)) this.showStageCard(data.openStage);
   }
 
   /** Header arrow to the other region; locked until the previous region's last stage is won. */

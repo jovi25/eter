@@ -185,9 +185,10 @@ export class BattleScene extends Phaser.Scene {
     return { damage, reactions };
   }
 
-  private toMap(): void {
+  private toMap(openStage?: CampaignStageId): void {
     this.cameras.main.fadeOut(220, 11, 7, 22);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', { region: Math.max(0, regionOf(this.stageId)) }));
+    const region = Math.max(0, regionOf(openStage ?? this.stageId));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', { region, openStage }));
   }
 
   /** First time a specialist enemy shows up in a match: a short card with its weaknesses. */
@@ -284,7 +285,6 @@ export class BattleScene extends Phaser.Scene {
     this.menu = new BuildMenu(this, this.sim, {
       build: (slot, type) => this.sim.build(slot, type),
       upgrade: (id) => this.sim.upgrade(id),
-      boost: (id) => this.sim.boost(id),
       evolve: (id, evo) => this.sim.evolve(id, evo),
       fuse: (id, partner) => this.sim.fuse(id, partner),
       sell: (id) => this.sim.sell(id),
@@ -316,11 +316,21 @@ export class BattleScene extends Phaser.Scene {
 
   private setupInput(): void {
     // A tap counts only where it started (a release after a drag, or after closing a card, does nothing).
-    this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       this.downOn = this.paused || this.ended || !!this.picker || !!this.tutorial?.blocking ? 'blocked' : (over[0] ?? null);
+      // Press on the hero: drag and drop it where it should go.
+      this.heroDrag = false;
+      if (this.downOn === null && this.sim.state.hero.alive) {
+        const h = this.hero;
+        if (Math.hypot(p.worldX - h.x, p.worldY - (h.y - 40)) < 64) this.heroDrag = true;
+      }
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.heroDrag || !p.isDown) return;
+      this.hero.showMarker(p.worldX, p.worldY);
     });
     this.sim.slots.forEach((s, i) => {
-      const zone = this.add.zone(s.x, s.y, 110, 110).setInteractive({ useHandCursor: true });
+      const zone = this.add.zone(s.x, s.y, 96, 96).setInteractive({ useHandCursor: true });
       zone.on('pointerup', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         if (this.paused || this.ended || this.picker || this.dragging || this.downOn !== zone) return;
@@ -342,6 +352,15 @@ export class BattleScene extends Phaser.Scene {
     });
     // Tap on free ground: closes an open menu, otherwise walks the hero there.
     this.input.on('pointerup', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (this.heroDrag) {
+        this.heroDrag = false;
+        if (this.paused || this.ended || this.picker) return;
+        this.menu.close();
+        this.sim.moveHero(p.worldX, p.worldY);
+        const h = this.sim.state.hero;
+        this.hero.showMarker(h.targetX, h.targetY);
+        return;
+      }
       if (over.length > 0 || this.paused || this.ended || this.picker || this.dragging || this.downOn !== null) return;
       if (this.menu.isOpen) {
         this.menu.close();
@@ -359,6 +378,7 @@ export class BattleScene extends Phaser.Scene {
 
   private shields!: ShieldLayer;
   private downOn: Phaser.GameObjects.GameObject | 'blocked' | null = null;
+  private heroDrag = false;
   private dragging = false;
   private dragFrom: { y: number; scroll: number } | null = null;
   private scrollMax = 0;
@@ -382,7 +402,7 @@ export class BattleScene extends Phaser.Scene {
       this.dragFrom = { y: p.y, scroll: cam.scrollY };
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!p.isDown || !this.dragFrom || this.picker || this.ended) return;
+      if (!p.isDown || !this.dragFrom || this.picker || this.ended || this.heroDrag) return;
       const dy = (p.y - this.dragFrom.y) / cam.zoom;
       if (!this.dragging && Math.abs(dy) > 14) this.dragging = true;
       if (this.dragging) this.scrollTo(this.dragFrom.scroll - dy);
@@ -734,16 +754,6 @@ export class BattleScene extends Phaser.Scene {
       }
     });
 
-    ev.on('towerBoosted', (u) => {
-      const t = this.sim.getTower(u.towerId);
-      if (!t) return;
-      this.towers.fired(t.id);
-      this.fx.burst(t.x, t.y - 20, 0xffb36b, 18);
-      this.fx.shockwave(t.x, t.y, 0xffb36b, 1.2);
-      this.fx.popLabel(t.x, t.y - 110, `REFORÇO +${u.boost}`, '#ffd9a8');
-      playSfx('upgrade', 1.15);
-    });
-
     ev.on('towerUpgraded', (u) => {
       const t = this.sim.getTower(u.towerId)!;
       this.towers.upgrade(t);
@@ -846,7 +856,8 @@ export class BattleScene extends Phaser.Scene {
       });
       save.addCoins(coins);
       const next = this.stageId === 'rift' || this.daily ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
-      const onNext = g.won && next ? () => this.scene.restart(this.again(next)) : undefined;
+      // Next stage: back to the map with its card open (missions, hero and strategy can change first).
+      const onNext = g.won && next ? () => this.toMap(next) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
         asUi(this, () => new EndPanel(
