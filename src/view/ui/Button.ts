@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { ensureBaked } from './bake';
 import { playSfx } from '../audio/sfx';
 import { FONT, PAL } from '../art/palette';
+import { getSettings } from '../settings';
 
 export interface ButtonOptions {
   width: number;
@@ -109,7 +110,8 @@ export function uiText(
   color: string = PAL.uiText,
   stroke = 6,
 ): Phaser.GameObjects.Text {
+  const px = Math.round(size * (getSettings().bigText ? 1.15 : 1));
   return scene.add
-    .text(x, y, text, { fontFamily: FONT, fontSize: `${size}px`, fontStyle: 'bold', color, stroke: PAL.inkCss, strokeThickness: stroke, align: 'center' })
+    .text(x, y, text, { fontFamily: FONT, fontSize: `${px}px`, fontStyle: 'bold', color, stroke: PAL.inkCss, strokeThickness: stroke, align: 'center' })
     .setOrigin(0.5);
 }

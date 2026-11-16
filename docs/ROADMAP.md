@@ -90,11 +90,12 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] **Sem Reforço infinito**: nível 3 é o teto; depois só Evoluir, Fundir ou Vender
 - [x] Equilíbrio inspirado em TDs clássicos: congelar deixa imune a novo congelamento por 3 s; Nevasca só desacelera (não congela); formas finais mais caras (280–320) e versões "sem parar" de fogo/raio mais fracas; fusão 200
 
-### Fase 10 — Polimento e balanceamento
-- [ ] Música gerada por código, mais vozes de inimigos
-- [ ] Tutorial jogável de 60 s (INCÊNDIO guiado)
-- [ ] `npm run balance` cobrindo heróis × bênçãos; `docs/PLAYTEST.md`
-- [ ] Acessibilidade: modo daltônico para elementos, tamanho de texto
+### Fase 10 — Polimento e balanceamento ✔
+- [x] Música por código (desde a Fase 6) e **vozes de inimigos**: som de queda próprio por tipo (gosma, golem, morcego, esqueleto, lobo), mais grave nos maiores
+- [~] Tutorial jogável de 60 s: **cortado** — as 18 dicas da Região 1 já ensinam jogando
+- [x] `npm run balance` também roda 4 heróis × 2 escolhas de bênção em todas as fases; `docs/PLAYTEST.md` com o roteiro de teste
+- [x] Acessibilidade: todo estado tem ícone próprio (chama nova para Queimando), opção **Textos maiores**
+- [x] Ajustes: Arcanista (ataque 13, Catalisar 36), Sacerdotisa (aura +25%, Bênção +45%), Devorador de Éter 3000 de vida
 
 ## No radar (não agora)
 Co-op, nuvem, Passe de Missões e loja de gems (gems nunca compram nada aleatório), guildas, Capacitor para lojas,

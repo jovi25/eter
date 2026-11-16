@@ -15,6 +15,7 @@ class EnemyView {
   readonly body: Phaser.GameObjects.Image;
   readonly ice: Phaser.GameObjects.Image;
   readonly fragile: Phaser.GameObjects.Image;
+  readonly burn: Phaser.GameObjects.Image;
   readonly hpBg: Phaser.GameObjects.Image;
   readonly hpFill: Phaser.GameObjects.Image;
   id = 0;
@@ -35,9 +36,10 @@ class EnemyView {
     this.body = scene.add.image(0, 0, 'enemy_slime');
     this.ice = scene.add.image(0, 0, 'status_ice').setVisible(false);
     this.fragile = scene.add.image(0, 0, 'status_fragile').setVisible(false);
+    this.burn = scene.add.image(0, 0, 'status_burn').setVisible(false);
     this.hpBg = scene.add.image(0, 0, 'px').setDisplaySize(HP_W + 4, 9).setTint(PAL.ink).setVisible(false);
     this.hpFill = scene.add.image(0, 0, 'px').setOrigin(0, 0.5).setDisplaySize(HP_W, 5).setTint(0x6ee66e).setVisible(false);
-    this.root = scene.add.container(0, 0, [this.shadow, this.roots, this.body, this.ice, this.fragile, this.hpBg, this.hpFill]);
+    this.root = scene.add.container(0, 0, [this.shadow, this.roots, this.body, this.ice, this.fragile, this.burn, this.hpBg, this.hpFill]);
   }
 }
 
@@ -122,6 +124,7 @@ export class EnemyLayer {
     v.hpBg.setPosition(0, top).setVisible(false);
     v.hpFill.setPosition(-HP_W / 2, top).setVisible(false);
     v.fragile.setPosition(HP_W / 2 + 10, top).setVisible(false);
+    v.burn.setPosition(-HP_W / 2 - 10, top).setVisible(false);
     // Breathing (squash & stretch) — bats flap faster and bob.
     v.phase = (e.id * 0.37) % 1;
     v.breathMs = def.flying ? 180 : 420 + (e.id % 5) * 40;
@@ -147,6 +150,7 @@ export class EnemyLayer {
     v.ice.setVisible(e.frozenTime > 0);
     v.roots.setVisible(e.rootTime > 0);
     v.fragile.setVisible(e.fragileTime > 0);
+    v.burn.setVisible(e.burnTime > 0);
     const damaged = e.hp < e.maxHp;
     v.hpBg.setVisible(damaged);
     v.hpFill.setVisible(damaged);

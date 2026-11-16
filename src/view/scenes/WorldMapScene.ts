@@ -427,33 +427,39 @@ export class WorldMapScene extends Phaser.Scene {
     g.fillStyle(0x2a1a4d, 1);
     g.fillRoundedRect(-285, -395, 570, 790, 26);
     c.add([shade, g, this.add.image(-170, -346, 'icon_gear').setScale(0.6), uiText(this, 20, -346, 'Opções', 38, '#f3e9ff', 7)]);
-    const toggles: [('sound' | 'music' | 'vibration' | 'shake'), string][] = [
+    const toggles: [('sound' | 'music' | 'vibration' | 'shake' | 'bigText'), string][] = [
       ['sound', 'Efeitos sonoros'],
       ['music', 'Música'],
       ['vibration', 'Vibração'],
       ['shake', 'Tremor de tela'],
+      ['bigText', 'Textos maiores'],
     ];
     toggles.forEach(([key, name], i) => {
       const label = () => `${name}: ${getSettings()[key] ? 'LIGADO' : 'DESLIGADO'}`;
-      const btn = new Button(this, 0, -262 + i * 74, {
+      const btn = new Button(this, 0, -276 + i * 64, {
         width: 440,
-        height: 60,
+        height: 54,
         label: label(),
         fontSize: 22,
         color: getSettings()[key] ? 0x3aa655 : 0x6b6480,
         onClick: () => {
           setSetting(key, !getSettings()[key]);
           if (key === 'music') refreshMusic();
+          if (key === 'bigText') {
+            // Redraw the map with the new text size.
+            this.scene.restart();
+            return;
+          }
           btn.setLabel(label()).setColor(getSettings()[key] ? 0x3aa655 : 0x6b6480);
         },
       });
       c.add(btn);
     });
-    c.add(economyButton(this, 0, 34, 440));
-    c.add(uiText(this, 0, 82, 'Automático baixa a resolução sozinho se o jogo ficar lento.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
-    c.add(uiText(this, 0, 150, 'Backup do progresso', 24, PAL.goldCss, 5));
-    c.add(new Button(this, -112, 214, { width: 214, height: 62, label: 'Copiar', fontSize: 22, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
-    c.add(new Button(this, 112, 214, { width: 214, height: 62, label: 'Restaurar', fontSize: 22, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));
+    c.add(economyButton(this, 0, 52, 440));
+    c.add(uiText(this, 0, 96, 'Automático baixa a resolução sozinho se o jogo ficar lento.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
+    c.add(uiText(this, 0, 162, 'Backup do progresso', 24, PAL.goldCss, 5));
+    c.add(new Button(this, -112, 222, { width: 214, height: 62, label: 'Copiar', fontSize: 22, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
+    c.add(new Button(this, 112, 222, { width: 214, height: 62, label: 'Restaurar', fontSize: 22, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));
     const tipsBtn = new Button(this, 0, 290, {
       width: 300,
       height: 54,

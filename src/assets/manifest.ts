@@ -44,6 +44,7 @@ export const ASSETS = {
   status_roots: P,
   status_ice: P,
   status_fragile: P,
+  status_burn: P,
   // towers
   tower_base: P,
   tower_archer: P,

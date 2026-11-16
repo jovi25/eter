@@ -14,7 +14,7 @@ export const HERO = {
   catalyze: {
     cooldown: 12, // seconds
     radius: 140, // px around the hero
-    damage: 30, // of the affinity element
+    damage: 36, // of the affinity element
     burnDps: 8, // if the affinity is Fire and the enemy has no reacting aura
     rootChance: 0.6, // if the affinity is Nature
     cooldownPerReaction: 0.5, // every reaction anywhere on the map shortens the cooldown

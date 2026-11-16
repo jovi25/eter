@@ -773,6 +773,20 @@ const DRAW: Record<AssetKey, Drawer> = {
       glow(c, cx + 20, cy - 22, 6, 0xffffff, 0.9);
     },
   },
+  status_burn: {
+    w: 28,
+    h: 28,
+    draw: (c, cx, cy) => {
+      shape(c, circle(cx, cy, 11), radial(c, cx, cy, 12, [[0, '#ffd27a'], [1, '#e0442a']], cx - 3, cy - 4), INK, 2.5);
+      c.fillStyle = '#fff6d6';
+      c.beginPath();
+      c.moveTo(cx, cy - 7);
+      c.quadraticCurveTo(cx + 6, cy, cx + 3, cy + 6);
+      c.quadraticCurveTo(cx, cy + 8, cx - 3, cy + 6);
+      c.quadraticCurveTo(cx - 6, cy, cx, cy - 7);
+      c.fill();
+    },
+  },
   status_fragile: {
     w: 28,
     h: 28,

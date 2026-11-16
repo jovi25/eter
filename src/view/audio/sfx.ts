@@ -213,6 +213,42 @@ const SOUNDS = {
     jitter: 0.12,
     gap: 0.04,
   },
+  // Enemy voices: how each kind of monster goes down.
+  kill_splat: {
+    voices: [
+      { wave: 'sine', freq: 320, freqEnd: 120, dur: 0.12, vol: 0.26 },
+      { wave: 'noise', dur: 0.1, vol: 0.16, filter: { type: 'lowpass', freq: 1200, freqEnd: 300 } },
+    ],
+    jitter: 0.15,
+    gap: 0.04,
+  },
+  kill_thud: {
+    voices: [
+      { wave: 'triangle', freq: 110, freqEnd: 45, dur: 0.22, vol: 0.34 },
+      { wave: 'noise', dur: 0.18, vol: 0.2, filter: { type: 'lowpass', freq: 700, freqEnd: 150 } },
+    ],
+    jitter: 0.1,
+    gap: 0.06,
+  },
+  kill_squeak: {
+    voices: [{ wave: 'square', freq: 1400, freqEnd: 2400, dur: 0.08, vol: 0.07, filter: { type: 'lowpass', freq: 3000 } }, { wave: 'sine', freq: 2200, freqEnd: 900, dur: 0.1, vol: 0.14 }],
+    jitter: 0.12,
+    gap: 0.05,
+  },
+  kill_rattle: {
+    voices: [
+      { wave: 'noise', dur: 0.05, vol: 0.16, filter: { type: 'bandpass', freq: 3200, q: 4 } },
+      { wave: 'noise', dur: 0.05, vol: 0.14, filter: { type: 'bandpass', freq: 2400, q: 4 }, delay: 0.06 },
+      { wave: 'noise', dur: 0.06, vol: 0.12, filter: { type: 'bandpass', freq: 1800, q: 4 }, delay: 0.12 },
+    ],
+    jitter: 0.1,
+    gap: 0.06,
+  },
+  kill_howl: {
+    voices: [{ wave: 'sawtooth', freq: 520, freqEnd: 260, dur: 0.22, vol: 0.08, filter: { type: 'lowpass', freq: 1600 } }, { wave: 'sine', freq: 700, freqEnd: 350, dur: 0.2, vol: 0.12 }],
+    jitter: 0.1,
+    gap: 0.06,
+  },
   coin: { voices: [...bell(1976, 0.25, 0.1), ...bell(2637, 0.35, 0.1, 0.06)], reverb: 0.3, jitter: 0.03, gap: 0.05 },
 
   // Reactions — each with its own character

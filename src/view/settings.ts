@@ -6,10 +6,11 @@ export interface Settings {
   vibration: boolean;
   shake: boolean;
   economy: 'auto' | 'on' | 'off'; // Modo econômico (src/view/perf.ts)
+  bigText: boolean; // Acessibilidade: textos 15% maiores
 }
 
 const KEY = 'eter.settings.v1';
-const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true, economy: 'auto' };
+const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true, economy: 'auto', bigText: false };
 
 let current: Settings = load();
 

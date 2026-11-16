@@ -152,7 +152,7 @@ Fase 1: tudo vence. Fases 2–5: só Arqueiros perde; estratégias de combo/foco
 | Arcanista | Magias do elemento da arma (aplicam aura) | Catalisar (2+ inimigos perto) | Desde o início |
 | Cavaleiro | Corpo a corpo físico; segura até 2 inimigos | Golpe Giratório (2+ perto) | Vencer fase 1 |
 | Druida | Espinhos com chance de enraizar + urso que segura 2 inimigos | Fúria da Natureza: enraíza em volta e cura o urso (3+ perto) | Vencer fase 2 |
-| Sacerdotisa | Ataque fraco; torres perto dela atacam 20% mais rápido | Bênção: torres perto +35% de dano por 5 s | Vencer fase 3 |
+| Sacerdotisa | Ataque fraco; torres perto dela atacam 25% mais rápido | Bênção: torres perto +45% de dano por 5 s | Vencer fase 3 |
 
 **Bloqueio:** Cavaleiro e urso seguram inimigos terrestres perto do seu posto; os inimigos param e revidam (força em `src/data/enemies.ts`). Voadores passam por cima. Quem cai solta os inimigos e volta depois (Cavaleiro 8 s, urso 10 s).
 Heróis pintados em chibi anime **original**, inspirados no estilo de RPGs online clássicos, sem copiar personagens. Números em `src/data/heroes.ts`.

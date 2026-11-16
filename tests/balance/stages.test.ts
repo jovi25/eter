@@ -5,6 +5,7 @@ import { SIM_TICKS_PER_SECOND } from '../../src/data/config';
 import { STAGE_ORDER, type StageId } from '../../src/data/stages';
 import type { TowerId } from '../../src/data/towers';
 import { HERO } from '../../src/data/hero';
+import { HERO_ORDER, type HeroClass } from '../../src/data/heroes';
 
 function slotOrder(sim: Simulation): number[] {
   const cov = sim.slots.map((s, i) => {
@@ -15,19 +16,20 @@ function slotOrder(sim: Simulation): number[] {
   return cov.sort((a, b) => b.n - a.n).map((c) => c.i);
 }
 
-export function play(stage: StageId, plan: TowerId[], seed: number) {
-  const sim = new Simulation({ stage, seed });
+export function play(stage: StageId, plan: TowerId[], seed: number, heroClass: HeroClass = 'mage', boonPick = 0) {
+  const sim = new Simulation({ stage, seed, modifiers: { heroClass } });
+  const max = Math.min(plan.length, sim.slots.length);
   const order = slotOrder(sim);
   while (sim.state.result === 'playing' && sim.state.tick < 600 * SIM_TICKS_PER_SECOND) {
     const n = sim.state.towers.length;
-    if (n < plan.length) sim.build(order[n]!, plan[n]!);
+    if (n < max) sim.build(order[n]!, plan[n]!);
     else for (const t of sim.state.towers) if (sim.upgrade(t.id)) break;
     if (sim.catalyzeReady()) {
       const h = sim.state.hero;
       const near = sim.state.enemies.filter((e) => (e.x - h.x) ** 2 + (e.y - h.y) ** 2 < HERO.catalyze.radius ** 2).length;
       if (near >= 3) sim.castCatalyze();
     }
-    if (sim.state.boonOffers.length) sim.chooseBoon(0);
+    if (sim.state.boonOffers.length) sim.chooseBoon(Math.min(boonPick, sim.state.boonOffers[0]!.length - 1));
     sim.step();
   }
   return sim;
@@ -63,6 +65,20 @@ it('all stages × strategies × seeds', () => {
     console.log(st, out.join('  '));
   }
 });
+});
+
+// Heroes × Bênçãos: every hero with the smart build, picking the 1st or the 3rd boon card (npm run balance).
+describe.runIf(process.env.npm_lifecycle_event === 'balance')('heroes × boons report', () => {
+  it('all stages × heroes × boon picks', () => {
+    const plan: TowerId[] = ['vine', 'brazier', 'frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'archer', 'brazier', 'frost', 'vine'];
+    for (const st of STAGE_ORDER) {
+      const out = HERO_ORDER.map((cls) => {
+        const res = [0, 2].map((pick) => { const sim = play(st, plan, 1, cls, pick); return sim.state.result === 'won' ? `W${sim.state.lives}` : `L${sim.state.wave}`; });
+        return `${cls}:${res.join('/')}`;
+      });
+      console.log(st, out.join('  '));
+    }
+  });
 });
 
 // Fast design checks that always run.

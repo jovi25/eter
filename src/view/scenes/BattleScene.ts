@@ -18,7 +18,7 @@ import { getSave } from '../../meta/save';
 import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
 import { Simulation } from '../../sim/simulation';
-import { playSfx } from '../audio/sfx';
+import { playSfx, type SfxName } from '../audio/sfx';
 import { playMusic, setMusicIntensity, type ThemeId } from '../audio/music';
 import { PAL } from '../art/palette';
 import { BoonPicker } from '../battle/BoonPicker';
@@ -59,6 +59,20 @@ export interface BattleData {
 }
 
 /** One match: owns the simulation, steps it at a fixed rate and turns its events into visuals and sound. */
+/** Each kind of monster sounds different when it goes down (bigger ones lower). */
+const KILL_VOICE: Partial<Record<EnemyId, SfxName>> = {
+  slime: 'kill_splat',
+  treasure: 'kill_splat',
+  mudling: 'kill_splat',
+  golem: 'kill_thud',
+  colossus: 'kill_thud',
+  yeti: 'kill_thud',
+  sentinel: 'kill_thud',
+  bat: 'kill_squeak',
+  skeleton: 'kill_rattle',
+  wolf: 'kill_howl',
+};
+
 export class BattleScene extends Phaser.Scene {
   private sim!: Simulation;
   private clock!: FixedClock;
@@ -591,7 +605,7 @@ export class BattleScene extends Phaser.Scene {
       const p = head(k.enemyId, k.x, k.y);
       this.fx.dust(k.x, k.y - 10, 0xffffff, 8);
       this.fx.burst(p.x, p.y + 20, 0xffffff, 8);
-      playSfx('kill');
+      playSfx(KILL_VOICE[k.type] ?? 'kill', 30 / Math.max(18, ENEMIES[k.type].radius));
       const coins = Math.min(4, Math.max(1, Math.round(k.gold / 6)));
       this.fx.coinsTo(k.x, k.y - 20, this.hud.goldIconPos.x, this.hud.goldIconPos.y + this.cameras.main.scrollY, coins, () => {
         this.hud.pulseGold();

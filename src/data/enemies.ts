@@ -177,7 +177,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   devourer: {
     name: 'Devorador de Éter',
-    hp: 3400,
+    hp: 3000,
     speed: 36,
     gold: 200,
     livesCost: 20, attack: 60,
