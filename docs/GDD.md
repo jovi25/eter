@@ -450,7 +450,7 @@ Números em `src/data/fusions.ts`. Combina com os escudos dos chefes da Região 
 
 ## Fase 11 — Mapa de Éter e tutorial
 - **Mapa de Éter**: primeira tela. Regiões em cartões (estrelas por região) e Modos de jogo. Região N+1 abre com 3★ em todas as fases da região N (progresso antigo é mantido).
-- **Tutorial (Região 1)** — regras da fase em  (, , , ), aplicadas com :
+- **Tutorial (Região 1)** — regras da fase em `src/data/stages.ts` (`towers`, `evolve`, `fusion`, `boons`), aplicadas com `limits: true`:
 
 | Fase | Torres | Novidade |
 |---|---|---|
