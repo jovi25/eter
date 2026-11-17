@@ -13,9 +13,11 @@ export type EvolutionId =
   | 'thunderLord'
   | 'tesla'
   | 'sniper'
-  | 'arrowRain';
+  | 'arrowRain'
+  | 'hurricane'
+  | 'zephyr';
 
-export type UltKind = 'tomb' | 'meteor' | 'massRoot' | 'skyStrike';
+export type UltKind = 'tomb' | 'meteor' | 'massRoot' | 'skyStrike' | 'hurricane';
 
 export interface EvolutionDef {
   tower: TowerId;
@@ -28,7 +30,7 @@ export interface EvolutionDef {
   /** Keeps the level-3 special ability (Rajada, Chão em Chamas...). */
   keepAbility: boolean;
   /** Branch A: an ultimate every N seconds (only fires when an enemy is in range). */
-  ult?: { kind: UltKind; every: number; damageMult: number; radius?: number; targets?: number; freeze?: number };
+  ult?: { kind: UltKind; every: number; damageMult: number; radius?: number; targets?: number; freeze?: number; push?: number };
   /** Ice branch B: no projectiles; a constant storm hits everyone in range every `tick` seconds. */
   aura?: { tick: number; damageMult: number; chillStacks: number; noFreeze?: boolean };
   /** Archer branch B: every shot hits this many enemies. */
@@ -100,6 +102,19 @@ export const EVOLUTIONS: Record<EvolutionId, EvolutionDef> = {
     stats: { damageMult: 0.75 }, keepAbility: false,
     multishot: 3,
   },
+  // ── Torre do Vento ──
+  hurricane: {
+    tower: 'wind', name: 'Olho do Furacão', color: 0x7fffd0, cost: 310,
+    desc: 'A cada 8 s: um furacão empurra TODOS no alcance para trás e deixa Soprados',
+    stats: {}, keepAbility: true,
+    ult: { kind: 'hurricane', every: 8, damageMult: 1.5, push: 90 },
+  },
+  zephyr: {
+    tower: 'wind', name: 'Brisa Cortante', color: 0xd8fff0, cost: 290,
+    desc: 'Sopro sem parar: todos no alcance ficam Soprados (sem empurrar) e levam pouco dano',
+    stats: {}, keepAbility: false,
+    aura: { tick: 0.8, damageMult: 0.35, chillStacks: 0 },
+  },
 };
 
 /** The two branches of each tower: [ultimate, constant]. */
@@ -109,6 +124,7 @@ export const TOWER_EVOLUTIONS: Record<TowerId, [EvolutionId, EvolutionId]> = {
   vine: ['elderTree', 'hungryRoots'],
   storm: ['thunderLord', 'tesla'],
   archer: ['sniper', 'arrowRain'],
+  wind: ['hurricane', 'zephyr'],
 };
 
 

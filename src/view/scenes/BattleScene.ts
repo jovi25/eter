@@ -20,7 +20,7 @@ import { COINS, matchCoins } from '../../data/relics';
 import { advanceRun, EXPEDITION, legSetup, PACTS, type BattleNode, type ExpeditionRun } from '../../data/expedition';
 import { defaultModifiers } from '../../data/modifiers';
 import { getSave } from '../../meta/save';
-import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
+import { CLASSIC_TOWERS, MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
 import { Simulation } from '../../sim/simulation';
 import { playSfx, type SfxName } from '../audio/sfx';
@@ -148,6 +148,9 @@ export class BattleScene extends Phaser.Scene {
         break;
       case 'v5':
         t.request('runes', () => sim.state.runes[0] ?? null);
+        break;
+      case 'gale':
+        t.request('wind');
         break;
       case 'rift':
         t.request('rift');
@@ -277,12 +280,14 @@ export class BattleScene extends Phaser.Scene {
     const save = getSave();
     // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
     const mods = { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily || learning ? {} : save.heroMods(this.heroClass)) };
+    // The Torre do Vento is won in the Vale dos Ventos (the bonus stage itself always has it).
+    const towers = save.data.galeWon || this.stageId === 'gale' ? TOWER_IDS : CLASSIC_TOWERS;
     // Expedição: the trail's pact, tougher monsters, and the lives and Bênçãos carried from the last battle.
     const leg = this.trip ? legSetup(this.trip.run, this.trip.route, { ...defaultModifiers(), ...mods }) : null;
     this.sim = new Simulation({
       stage: this.stageId,
       seed,
-      modifiers: { ...mods, ...leg?.modifiers },
+      modifiers: { unlockedTowers: [...towers], ...mods, ...leg?.modifiers },
       relics: this.daily || learning ? [] : save.loadout(),
       limits: !this.trip,
       run: leg ?? undefined,
@@ -929,7 +934,8 @@ export class BattleScene extends Phaser.Scene {
       this.menu.close();
       const save = getSave();
       const isRift = this.stageId === 'rift';
-      const firstWin = !isRift && !this.daily && g.won && save.stars(this.stageId as CampaignStageId) === 0;
+      const campaign = STAGE_ORDER.includes(this.stageId as CampaignStageId);
+      const firstWin = !isRift && !this.daily && g.won && (campaign ? save.stars(this.stageId as CampaignStageId) === 0 : !save.data.galeWon);
       let newChallenges = 0;
       let firstDailyToday = false;
       let challenges: { text: string; done: boolean; fresh: boolean }[] | undefined;
@@ -953,8 +959,9 @@ export class BattleScene extends Phaser.Scene {
         daily = { score, record, best: save.dailyBest(this.daily.key) };
       } else {
         save.recordResult(this.stageId, g.won, g.stars);
-        if (this.stageId !== 'rift') {
-          const id = this.stageId;
+        if (this.stageId === 'gale' && firstWin) this.fx.bigBanner('NOVA TORRE!\nTorre do Vento liberada', '#9ff0d0', 50, 1800, true);
+        if (campaign) {
+          const id = this.stageId as CampaignStageId;
           const fresh = save.recordChallenges(id, evaluateChallenges(id, this.sim.state));
           newChallenges = fresh.filter(Boolean).length;
           const done = save.data.challenges[id] ?? [];
@@ -978,7 +985,7 @@ export class BattleScene extends Phaser.Scene {
         firstDailyToday,
       });
       save.addCoins(coins);
-      const next = this.stageId === 'rift' || this.daily || this.trip ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
+      const next = !campaign || this.daily || this.trip ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId as CampaignStageId) + 1];
       // Next stage: back to the map with its card open (missions, hero and strategy can change first).
       const onNext = trip ? (g.won && !trip.finished ? () => this.toMap() : undefined) : g.won && next ? () => this.toMap(next) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {

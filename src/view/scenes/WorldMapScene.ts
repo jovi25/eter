@@ -130,6 +130,7 @@ export class WorldMapScene extends Phaser.Scene {
     chip(570, 'eter_coin', `${save.data.coins}`, '#d6c4ff', 0.75);
 
     REGIONS[region]!.stages.forEach((id, i) => this.node(id, i, save.isUnlocked(id), save.stars(id)));
+    if (region === 0) this.bonusNode();
 
     // Bottom navigation: big painted icons, a dot when something is waiting.
     const foot = this.add.graphics().setDepth(44);
@@ -272,7 +273,8 @@ export class WorldMapScene extends Phaser.Scene {
       const look = REGION_LOOK[r] ?? REGION_LOOK[0]!;
       const max = reg.stages.length * 3;
       const sub = open ? `★ ${save.regionStars(r)}/${max}${r === 0 && !done ? '  •  COMECE AQUI' : ''}` : `3★ em tudo em ${REGIONS[r - 1]!.name}`;
-      stop(at.x, at.y, 64, COLORS[look.theme], `enemy_${look.enemy}`, 0.6, `${r + 1}. ${reg.name}`, sub, open, () => this.go('WorldMap', { region: r }), `Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]?.name ?? ''}`, r === frontier);
+      const bonus = r === 0 && done && !save.data.galeWon; // the Vale dos Ventos is waiting
+      stop(at.x, at.y, 64, COLORS[look.theme], `enemy_${look.enemy}`, 0.6, `${r + 1}. ${reg.name}`, bonus ? 'NOVO: fase bônus!' : sub, open, () => this.go('WorldMap', { region: r }), `Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]?.name ?? ''}`, r === frontier, bonus);
     });
     // What comes after the last region.
     const far = WORLD_TRAIL[REGION_AT[REGIONS.length]!];
@@ -550,6 +552,46 @@ export class WorldMapScene extends Phaser.Scene {
     }
   }
 
+  /** Vellmora's bonus stop: the Vale dos Ventos (opens after the tutorial, gives the Torre do Vento). */
+  private bonusNode(): void {
+    const save = getSave();
+    const open = save.isUnlocked('gale');
+    const x = 560;
+    const y = 1024;
+    const c = this.add.container(x, y).setDepth(40);
+    const g = this.add.graphics();
+    const color = !open ? 0x5c5772 : save.data.galeWon ? 0x3aa655 : 0x2f9a8a;
+    g.fillStyle(PAL.ink, 1);
+    g.fillCircle(0, 4, 50);
+    g.fillStyle(Phaser.Display.Color.ValueToColor(color).darken(30).color, 1);
+    g.fillCircle(0, 4, 45);
+    g.fillStyle(color, 1);
+    g.fillCircle(0, 0, 43);
+    g.fillStyle(0xffffff, 0.22);
+    g.fillEllipse(-6, -17, 52, 20);
+    c.add(g);
+    const icon = this.add.image(0, -4, 'tower_wind').setScale(0.62);
+    if (!open) icon.setTint(0x222222).setAlpha(0.7);
+    c.add(icon);
+    if (!open) c.add(uiText(this, 0, 0, '🔒', 30, '#ffffff', 5));
+    const label = this.add.container(x, y + 74).setDepth(41);
+    const lg = this.add.graphics();
+    lg.fillStyle(PAL.ink, 0.85);
+    lg.fillRoundedRect(-110, -26, 220, 52, 16);
+    label.add([lg, uiText(this, 0, -9, 'BÔNUS', 15, '#9ff0d0', 4), uiText(this, 0, 11, 'Vale dos Ventos', 19, open ? PAL.uiText : PAL.uiDim, 4)]);
+    c.setSize(100, 100).setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => {
+      if (!open) {
+        this.lockedMsg('Termine o tutorial (vença o Trono da Geada) para abrir');
+        return;
+      }
+      playSfx('ui');
+      this.tweens.add({ targets: c, scale: 0.9, duration: 70, yoyo: true });
+      this.showStageCard('gale');
+    });
+    if (open && !save.data.galeWon) this.tweens.add({ targets: c, scale: 1.08, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
+
   private card: Phaser.GameObjects.Container | null = null;
 
   /** Panel with the stage description, the hero picker and a big JOGAR button. */
@@ -573,6 +615,8 @@ export class WorldMapScene extends Phaser.Scene {
     c.add(uiText(this, 0, -236, st.subtitle, 21, PAL.uiDim, 5).setWordWrapWidth(560));
     if (id === 'rift') {
       c.add(uiText(this, 0, -178, save.data.riftBest > 0 ? `Seu recorde: onda ${save.data.riftBest}` : 'Sem recorde ainda', 26, PAL.goldCss, 5));
+    } else if (id === 'gale') {
+      c.add(uiText(this, 0, -178, save.data.galeWon ? '✔ Torre do Vento liberada' : 'Vença para liberar a Torre do Vento', 24, '#9ff0d0', 5));
     } else {
       for (let s = 0; s < 3; s++) c.add(this.add.image((s - 1) * 64, -178, s < save.stars(id) ? 'star' : 'starEmpty').setScale(0.6));
     }
@@ -624,7 +668,7 @@ export class WorldMapScene extends Phaser.Scene {
     });
 
     // Stage challenges (extra goals on top of the stars).
-    if (id !== 'rift') {
+    if (id !== 'rift' && id !== 'gale') {
       const done = save.data.challenges[id] ?? [];
       CHALLENGES[id].forEach((ch, i) => {
         c.add(uiText(this, 0, 150 + i * 30, `${done[i] ? '✔' : '○'} ${challengeText(ch)}`, 20, done[i] ? '#9be89b' : PAL.uiText, 4));

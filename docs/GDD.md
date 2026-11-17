@@ -520,3 +520,15 @@ Números em src/data/weather.ts, enemies.ts e stages.ts.
   A previsão da onda seguinte aparece num selo no alto à esquerda. Chuva apaga Queimando e impede novas queimaduras.
 - Diabrete Ladrão: ao passar de 40% do caminho rouba 20 de ouro (ou o que houver) e corre 60% mais rápido. Abatido: devolve o dobro, além da recompensa normal. Se fugir, o ouro se perde.
 - Prisma do Vazio: 4 formas (Fogo/Gelo, Gelo/Fogo, Raio/Natureza, Natureza/Raio = resiste/fraco), trocadas a 100/75/50/25% da vida, em ordem sorteada por partida. Físico é sempre neutro. Chama 2 Diabretes a cada 9 s.
+
+## Fase 17 — Torre do Vento
+
+Números em src/data/towers.ts (WIND, wind), reactions.ts, evolutions.ts e stages.ts (gale).
+- Elemento novo: Vento. Aura nova: Soprado (2,5 s). O Vento aplica Soprado sempre, mesmo quando causa reação.
+- Empurrão: 18/22/26 px por sopro; um monstro só pode ser empurrado de novo após 1,5 s; chefes recebem 25%;
+  monstros segurados pelo herói não são empurrados.
+- Reações: Vento + Queimando = LABAREDA (×1,5, queima vizinhos a 90 px); Vento + Resfriado/Congelado = VENDAVAL GELADO
+  (×1,5, 2 acúmulos de Resfriado nos vizinhos); Raio + Soprado = TORMENTA (×1,75, empurra 45 px).
+- Evoluções: Olho do Furacão (ult a cada 8 s: dano ×1,5 e empurra 90 px todos no alcance); Brisa Cortante (aura a cada 0,8 s, dano ×0,35).
+- Vale dos Ventos: fase bônus de 10 ondas, fora da contagem de estrelas; abre ao vencer o Trono da Geada. Vencer = save.galeWon,
+  e a torre aparece no menu de todas as fases (exceto as Expedições com pacto de torres, que usam as 5 clássicas).

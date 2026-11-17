@@ -1,6 +1,6 @@
 import type { Element } from './elements';
 
-export type TowerId = 'archer' | 'brazier' | 'frost' | 'vine' | 'storm';
+export type TowerId = 'archer' | 'brazier' | 'frost' | 'vine' | 'storm' | 'wind';
 
 export interface TowerLevel {
   cost: number; // build cost (level 1) or upgrade cost (levels 2-3)
@@ -16,6 +16,7 @@ export interface TowerLevel {
   chainCount?: number; // lightning: total enemies hit (target + jumps)
   chainRange?: number; // lightning: max jump distance between enemies
   chainFalloff?: number; // lightning: damage × this per jump
+  push?: number; // wind: px the target is blown back along the road
 }
 
 /** Special power a tower gains at max level (level 3) — rewards upgrading over spamming towers. */
@@ -24,7 +25,8 @@ export type TowerAbility =
   | { id: 'firefield'; radius: number; duration: number; burnDps: number } // Braseiro: impact leaves burning ground
   | { id: 'deepfreeze'; stacks: number } // Cristal Gélido: each hit adds N Chilled stacks
   | { id: 'entangle'; extra: number; radius: number } // Vinha: a root also roots N neighbours
-  | { id: 'supercharge'; every: number; chainMult: number }; // Trovão: every Nth bolt has ×N jumps and no falloff
+  | { id: 'supercharge'; every: number; chainMult: number } // Trovão: every Nth bolt has ×N jumps and no falloff
+  | { id: 'gust'; every: number; radius: number }; // Vento: every Nth gust also hits everyone around the target
 
 export interface AbilityInfo {
   name: string; // UI
@@ -50,6 +52,12 @@ export const MAX_LEVEL = 3;
  * (part of the neighbour's damage, plus its burn / chill / root). With two or more neighbours it takes turns.
  */
 export const LINK = { maxDist: 250, every: 5, damageMult: 0.35, burnMult: 0.4 };
+
+/**
+ * Torre do Vento (Fase 17): pushes monsters back. A monster can't be pushed again for `lock` seconds
+ * (no endless stalling) and bosses only move a fraction of the push. Monsters held by the hero are never pushed.
+ */
+export const WIND = { lock: 1.5, bossMult: 0.25 };
 
 
 export const TOWERS: Record<TowerId, TowerDef> = {
@@ -123,6 +131,23 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     ability: { id: 'supercharge', every: 3, chainMult: 1.5 },
     abilityInfo: { name: 'Supertensão', desc: 'A cada 3º raio: 50% mais saltos, sem perda' },
   },
+  wind: {
+    name: 'Torre do Vento',
+    short: 'Vento',
+    element: 'wind',
+    projectileSpeed: 850,
+    hitsFlying: true,
+    levels: [
+      { cost: 70, damage: 9, rate: 1.0, range: 165, push: 18 },
+      { cost: 75, damage: 13, rate: 1.1, range: 175, push: 22 },
+      { cost: 105, damage: 19, rate: 1.2, range: 185, push: 26 },
+    ],
+    ability: { id: 'gust', every: 4, radius: 75 },
+    abilityInfo: { name: 'Tufão', desc: 'A cada 4º sopro, atinge todos em volta do alvo' },
+  },
 };
+
+/** The five towers of the first regions (the Torre do Vento is unlocked later, in the Vale dos Ventos). */
+export const CLASSIC_TOWERS: TowerId[] = ['archer', 'brazier', 'frost', 'vine', 'storm'];
 
 export const TOWER_IDS = Object.keys(TOWERS) as TowerId[];

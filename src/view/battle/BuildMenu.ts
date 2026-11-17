@@ -73,9 +73,10 @@ export class BuildMenu {
     this.close();
     const pos = this.sim.slots[slot]!;
     const top = pos.y - this.scene.cameras.main.scrollY < 320; // near the top of the screen
-    const root = this.makeRoot(pos.x, pos.y, 156, top ? 221 : 240, 995);
     // Options on a circle; near the top of the map the arc is flipped so nothing hides under the HUD.
     const ids = TOWER_IDS.filter((t) => this.sim.mods.unlockedTowers.includes(t)); // tutorial: only what was taught
+    const wide = ids.length >= 6;
+    const root = this.makeRoot(pos.x, pos.y, wide ? 180 : 156, top ? (wide ? 245 : 221) : wide ? 262 : 240, wide ? 975 : 995);
     // Vínculos de Éter: which neighbours a tower here would link with.
     const near = this.sim.linkPreview(slot);
     if (near.length > 0) {
@@ -85,9 +86,10 @@ export class BuildMenu {
     }
     const n = ids.length;
     const start = top ? Math.PI / 2 : -Math.PI / 2;
+    const spread = n >= 6 ? 1.2 : 1; // six towers: a wider circle so the names don't touch
     const offsets = ids.map((_, i) => {
       const a = start + (i * Math.PI * 2) / n;
-      return { x: Math.cos(a) * 106, y: Math.sin(a) * 100 };
+      return { x: Math.cos(a) * 106 * spread, y: Math.sin(a) * 100 * spread };
     });
     ids.forEach((type, i) => {
       const off = offsets[i]!;

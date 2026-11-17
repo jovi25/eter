@@ -18,6 +18,10 @@ export const STATUS = {
     duration: 1,
     immunityAfter: 2, // can't be rooted again for this long after a root ends
   },
+  /** Soprado (Torre do Vento): a short aura that Raio turns into TORMENTA. */
+  gusted: {
+    duration: 2.5,
+  },
   fragile: {
     duration: 3,
     damageTakenBonus: 0.25,

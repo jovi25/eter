@@ -34,7 +34,7 @@ export interface StageDef {
 }
 
 export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'i1' | 'i2' | 'i3' | 'i4' | 'i5';
-export type StageId = CampaignStageId | 'rift';
+export type StageId = CampaignStageId | 'rift' | 'gale';
 /** Campaign order; each stage unlocks the next. Região 2 (a1..a5) opens after v5. */
 export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5', 'i1', 'i2', 'i3', 'i4', 'i5'];
 export const REGIONS: { name: string; stages: CampaignStageId[] }[] = [
@@ -49,6 +49,9 @@ export const TUTORIAL_LAST: CampaignStageId = 'v5';
 export function regionOf(id: StageId): number {
   return REGIONS.findIndex((r) => r.stages.includes(id as CampaignStageId));
 }
+
+/** Fase bônus (Fase 17): opens after the tutorial; winning it unlocks the Torre do Vento everywhere. */
+export const GALE = { reward: 'wind' as TowerId };
 
 /** Endless-style mode: how far can you get? Unlocked by winning this stage. */
 export const RIFT = { unlockAfter: 'v2' as CampaignStageId, waves: 40 };
@@ -84,6 +87,29 @@ export const STAGES: Record<StageId, StageDef> = {
     hpMult: 0.9,
     startGold: 220,
     waves: Array.from({ length: RIFT.waves }, (_, i) => riftWave(i + 1)),
+  },
+
+  gale: {
+    runes: true,
+    name: 'Vale dos Ventos',
+    subtitle: 'Fase bônus — a Torre do Vento: empurra os monstros e espalha fogo e gelo',
+    towers: ['archer', 'brazier', 'frost', 'storm', 'wind'],
+    map: 'valley',
+    hpMult: 0.9,
+    startGold: 240,
+    weather: { 6: 'wind' },
+    waves: [
+      { groups: [g('slime', 10, 0.7)] },
+      { groups: [g('wolf', 10, 0.5)] },
+      { groups: [g('salamander', 6, 0.9), g('slime', 6, 0.7, 2)] },
+      { groups: [g('golem', 4, 1.6), g('wolf', 6, 0.5, 2)] },
+      { groups: [g('yeti', 6, 1.0), g('skeleton', 6, 0.8, 2)] },
+      { groups: [g('bat', 10, 0.5), g('gargoyle', 3, 1.0, 3)] },
+      { groups: [g('mudling', 8, 0.8), g('shaman', 5, 1.0, 2)] },
+      { groups: [g('wolf', 16, 0.3), g('golem', 3, 1.6, 3)] },
+      { groups: [g('salamander', 8, 0.6), g('yeti', 8, 0.6, 1), g('monk', 2, 2, 3)] },
+      { groups: [g('colossus', 2, 5), g('skeleton', 10, 0.6, 1), g('bat', 8, 0.6, 4)] },
+    ],
   },
 
   v1: {

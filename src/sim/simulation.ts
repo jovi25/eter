@@ -17,7 +17,7 @@ import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
 import { EVOLUTIONS, evolvedLevel, type EvolutionId } from '../data/evolutions';
-import { LINK, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
+import { LINK, MAX_LEVEL, TOWERS, WIND, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
 import { Rng } from './rng';
@@ -169,15 +169,15 @@ export class Simulation {
       bridge: { up: 0, cooldown: 0 },
       weather: { kind: null, left: 0, next: this.stage.weather?.[1] ?? null },
       stats: {
-        reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
-        damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
+        reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0, firestorm: 0, galefrost: 0, tempest: 0 },
+        damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0, wind: 0 },
         kills: 0,
         livesLost: 0,
         heroDamage: 0,
         catalyzeCasts: 0,
         bestCatalyzeReactions: 0,
         skillCasts: 0,
-        built: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
+        built: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0, wind: 0 },
         peakTowers: 0,
         heroFalls: 0,
         bestCombo: 0,
@@ -592,6 +592,7 @@ export class Simulation {
         burnDps: a.burnDps ?? 0,
         rootChance,
         chillStacks: 1,
+        push: 0,
         alive: true,
       });
     }
@@ -973,6 +974,8 @@ export class Simulation {
       rootTime: 0,
       rootImmuneTime: 0,
       fragileTime: 0,
+      gustTime: 0,
+      pushLock: 0,
       bossCycleTimer: def.boss?.cycle ?? def.heal?.every ?? 0,
       chillImmuneTime: 0,
       shield: null,
@@ -1187,6 +1190,8 @@ export class Simulation {
       e.rootImmuneTime = Math.max(0, e.rootImmuneTime - DT);
     }
     if (e.fragileTime > 0) e.fragileTime = Math.max(0, e.fragileTime - DT);
+    if (e.gustTime > 0) e.gustTime = Math.max(0, e.gustTime - DT);
+    if (e.pushLock > 0) e.pushLock = Math.max(0, e.pushLock - DT);
   }
 
   /** Monge do Gelo: every few seconds heals the others around it. */
@@ -1486,6 +1491,12 @@ export class Simulation {
     } else if (ult.kind === 'skyStrike') {
       const n = ult.targets ?? 6;
       for (const e of [...foes].sort((a, b) => b.hp - a.hp).slice(0, n)) hit(e, {});
+    } else if (ult.kind === 'hurricane') {
+      // Olho do Furacão: everyone in range is blown back and left Soprado.
+      for (const e of foes) {
+        hit(e, {});
+        if (e.alive) this.push(e, ult.push ?? 90, true);
+      }
     } else if (ult.kind === 'meteor') {
       // Aim where the most enemies are bunched up.
       const r = ult.radius ?? 110;
@@ -1582,6 +1593,7 @@ export class Simulation {
       rootChance: 0,
       chillStacks: f.chillStacks ?? 1,
       second: { element: f.second, damage: f.secondDamage * towerMult * this.mods.elementDamageMult[f.second] },
+      push: 0,
       alive: true,
     });
     t.cooldown = 1 / f.rate;
@@ -1599,6 +1611,11 @@ export class Simulation {
     }
     const ab = this.abilityOf(t);
     this.launch(t, target);
+    if (ab?.id === 'gust' && t.shots % ab.every === 0) {
+      // Tufão: this gust also hits everyone around the target.
+      this.state.projectiles.at(-1)!.gust = ab.radius;
+      this.events.emit('towerAbility', { towerId: t.id, ability: 'gust', x: target.x, y: target.y });
+    }
     const multishot = t.evo ? EVOLUTIONS[t.evo].multishot ?? 0 : 0;
     if (multishot > 1) {
       const r2 = (lvl.range * this.mods.rangeMult) ** 2;
@@ -1649,6 +1666,7 @@ export class Simulation {
       rootChance: lvl.rootChance ?? 0,
       chillStacks: ab?.id === 'deepfreeze' ? ab.stacks : 1,
       ability: ab ?? undefined,
+      push: lvl.push ?? 0,
       alive: true,
     };
     this.state.projectiles.push(p);
@@ -1715,8 +1733,16 @@ export class Simulation {
       hero: p.towerId === 0,
       chillStacks: p.chillStacks,
       entangle: p.ability?.id === 'entangle' ? { extra: p.ability.extra, radius: p.ability.radius } : undefined,
+      push: p.push || undefined,
     };
     if (target) this.applyHit(target, base);
+    if (p.gust) {
+      const r2 = p.gust * p.gust;
+      for (const e of this.state.enemies.slice()) {
+        if (!e.alive || e === target || (e.x - p.tx) ** 2 + (e.y - p.ty) ** 2 > r2) continue;
+        this.applyHit(e, { ...base, crit: false });
+      }
+    }
     // Fusion: the second element lands right after, on the aura the first one just left.
     if (target && p.second && target.alive) this.applyHit(target, { ...base, element: p.second.element, damage: p.second.damage, burnDps: 0, rootChance: 0, entangle: undefined });
     if (p.ability?.id === 'firefield') this.createZone(p.tx, p.ty, p.ability.radius, p.ability.duration, p.ability.burnDps);
@@ -1744,6 +1770,8 @@ export class Simulation {
         return e.frozenTime > 0;
       case 'rooted':
         return e.rootTime > 0;
+      case 'gusted':
+        return e.gustTime > 0;
     }
   }
 
@@ -1805,6 +1833,9 @@ export class Simulation {
     });
     if (found) this.applyReactionEffects(e, found.reaction, hit, mult);
     else if (e.alive) this.applyAura(e, hit);
+    // The wind always leaves its mark, even after a reaction (Gelo → Vento → Raio chains into TORMENTA).
+    if (found && hit.element === 'wind' && e.alive) this.applyAura(e, hit);
+    if (hit.push && e.alive) this.push(e, hit.push);
   }
 
   private consumeAura(e: EnemyState, aura: AuraKey): void {
@@ -1821,6 +1852,9 @@ export class Simulation {
       case 'rooted':
         e.rootTime = 0;
         e.rootImmuneTime = STATUS.rooted.immunityAfter;
+        break;
+      case 'gusted':
+        e.gustTime = 0;
         break;
     }
   }
@@ -1843,15 +1877,19 @@ export class Simulation {
         if ((o.x - e.x) ** 2 + (o.y - e.y) ** 2 <= r2) o.fragileTime = STATUS.fragile.duration;
       }
     }
-    if (reaction === 'wildfire' && def.spreadRadius) {
+    if (def.spreadRadius) {
+      // INCÊNDIO / LABAREDA spread the fire, VENDAVAL GELADO spreads the cold.
       const r2 = def.spreadRadius * def.spreadRadius;
       for (const o of this.state.enemies) {
         if (o === e || !o.alive) continue;
         const dx = o.x - e.x;
         const dy = o.y - e.y;
-        if (dx * dx + dy * dy <= r2) this.applyBurn(o, def.spreadBurnDps ?? 0);
+        if (dx * dx + dy * dy > r2) continue;
+        if (def.spreadBurnDps) this.applyBurn(o, def.spreadBurnDps);
+        for (let i = 0; i < (def.spreadChill ?? 0) && o.frozenTime <= 0; i++) this.applyChill(o, true);
       }
     }
+    if (def.pushBack && e.alive) this.push(e, def.pushBack);
     if (!e.alive) return;
     if (reaction === 'thornfrost' && def.rootDurationMult) {
       // Ignores root immunity. Flyers can never be rooted.
@@ -1889,11 +1927,26 @@ export class Simulation {
           }
         }
         break;
+      case 'wind':
+        e.gustTime = STATUS.gusted.duration;
+        this.events.emit('statusApplied', { enemyId: e.id, status: 'gusted' });
+        break;
       case 'physical':
       case 'lightning':
       case 'arcane':
         break;
     }
+  }
+
+  /** Torre do Vento: blow an enemy back along its road (bosses barely move; held enemies stay put). */
+  private push(e: EnemyState, px: number, force = false): void {
+    if (e.blockedBy !== 0 || (!force && e.pushLock > 0)) return;
+    const amount = px * (e.isBoss ? WIND.bossMult : 1);
+    e.dist = Math.max(0, e.dist - amount);
+    this.paths[e.pathIndex]!.pointAt(e.dist, this.tmp);
+    e.x = this.tmp.x;
+    e.y = this.tmp.y;
+    e.pushLock = WIND.lock;
   }
 
   canBeRooted(e: EnemyState): boolean {

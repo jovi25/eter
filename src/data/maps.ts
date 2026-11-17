@@ -26,7 +26,7 @@ export interface MapDef {
   theme?: MapTheme;
 }
 
-export type MapId = 'meadow' | 'twin' | 'ring' | 'corridor' | 'fork' | 'canyon' | 'sluice' | 'stairs' | 'confluence' | 'abyss' | 'peak' | 'pass' | 'glacier' | 'terraces' | 'summit' | 'isles' | 'drift' | 'shards' | 'vortex' | 'nexus';
+export type MapId = 'meadow' | 'twin' | 'ring' | 'corridor' | 'fork' | 'canyon' | 'sluice' | 'stairs' | 'confluence' | 'abyss' | 'peak' | 'pass' | 'glacier' | 'terraces' | 'summit' | 'isles' | 'drift' | 'shards' | 'vortex' | 'nexus' | 'valley';
 
 const P = (pts: [number, number][]): Vec2[] => pts.map(([x, y]) => ({ x, y }));
 const S = P;
@@ -201,6 +201,14 @@ export const MAPS: Record<MapId, MapDef> = {
     heroStart: { x: 456, y: 1690 },
     gate: { x: 360, y: 228, paths: [0, 1] },
     bridge: { x: 120, y: 1350 },
+  },
+  // Fase bônus: Vale dos Ventos (one screen, a long zig-zag where pushing monsters back pays off).
+  valley: {
+    name: 'Vale dos Ventos',
+    paths: [P([[624, 144], [624, 330], [120, 330], [120, 560], [600, 560], [600, 800], [120, 800], [120, 1010], [360, 1010], [360, 1140]])],
+    slots: S([[240, 456], [240, 888], [480, 672], [480, 456], [480, 240], [240, 672], [384, 888], [216, 1104], [624, 432]]),
+    runes: S([[360, 720], [336, 408]]),
+    heroStart: { x: 480, y: 1060 },
   },
   // ───────────── Região 4: Ilhas do Vazio (tall maps + weather) ─────────────
   isles: {

@@ -63,7 +63,7 @@ class TowerView {
         frequency: quality.low ? 140 : 45,
         scale: { start: 0.7, end: 0.2 },
         alpha: { start: 0.95, end: 0 },
-        tint: [0xffffff, 0xd8f6ff],
+        tint: [0xffffff, def.color],
         blendMode: addBlend(),
       }).setDepth(DEPTH.fx - 1);
       const key = `stormfield_${Math.round(r)}`;

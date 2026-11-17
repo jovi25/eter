@@ -12,6 +12,9 @@ export const REACTION_EFFECT: Record<ReactionId, string> = {
   shatter: '×1,5 de dano e quebra o gelo',
   overload: '×1,5 de dano e explode em área',
   superconduct: '×1,25 de dano e deixa Frágeis os vizinhos',
+  firestorm: '×1,5 de dano e o vento leva as chamas para os vizinhos',
+  galefrost: '×1,5 de dano e o frio se espalha para os vizinhos',
+  tempest: '×1,75 de dano e arremessa o monstro para trás',
 };
 
 const AURA_NAME: Record<string, string> = { burning: 'Queimando', chilled: 'Resfriado', frozen: 'Congelado', rooted: 'Enraizado' };

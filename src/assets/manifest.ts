@@ -59,6 +59,7 @@ export const ASSETS = {
   tower_frost: P,
   tower_vine: P,
   tower_storm: P,
+  tower_wind: P,
   pip: P,
   fire_zone: P,
   // hero
@@ -76,6 +77,7 @@ export const ASSETS = {
   proj_fire: P,
   proj_ice: P,
   proj_nature: P,
+  proj_wind: P,
   // ui
   icon_pause: P,
   icon_speed: P,

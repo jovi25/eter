@@ -9,7 +9,7 @@ import { ECONOMY } from './economy';
 import type { HeroClass } from './heroes';
 import type { SimModifiers } from './modifiers';
 import type { CampaignStageId } from './stages';
-import { TOWER_IDS, type TowerId } from './towers';
+import { CLASSIC_TOWERS, type TowerId } from './towers';
 
 export type StepKind = 'battle' | 'rest' | 'boss';
 
@@ -102,11 +102,11 @@ function pick<T>(rng: Rng, list: readonly T[], not?: T): T {
 /** Three kinds of tower that can still make reactions (Vinha + Trovão alone cannot). */
 function vowTowers(rng: Rng): TowerId[] {
   for (;;) {
-    const left = [...TOWER_IDS];
+    const left = [...CLASSIC_TOWERS];
     const out: TowerId[] = [];
     while (out.length < 3) out.push(left.splice(rng.int(0, left.length - 1), 1)[0]!);
     const dead = out.includes('archer') && out.includes('vine') && out.includes('storm');
-    if (!dead) return TOWER_IDS.filter((t) => out.includes(t));
+    if (!dead) return CLASSIC_TOWERS.filter((t) => out.includes(t));
   }
 }
 

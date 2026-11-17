@@ -11,7 +11,7 @@ export interface WeatherDef {
   color: number; // tint of the banner / overlay
   duration: number;
   /** Damage multiplier per element while it lasts (missing = ×1). */
-  damage?: Partial<Record<'physical' | 'fire' | 'ice' | 'nature' | 'lightning', number>>;
+  damage?: Partial<Record<'physical' | 'fire' | 'ice' | 'nature' | 'lightning' | 'wind', number>>;
   noBurn?: boolean; // puts out Queimando and blocks new burns
   flyerSpeed?: number; // speed multiplier of flying monsters
   reactionMult?: number; // reaction damage multiplier
@@ -30,10 +30,10 @@ export const WEATHER: Record<WeatherId, WeatherDef> = {
   wind: {
     name: 'Ventania',
     icon: '🌪',
-    text: 'Voadores +50% de velocidade, flechas +30%',
+    text: 'Voadores +50% de velocidade, flechas e Vento +30%',
     color: 0xc8f0d8,
     duration: 30,
-    damage: { physical: 1.3 },
+    damage: { physical: 1.3, wind: 1.3 },
     flyerSpeed: 1.5,
   },
   eclipse: {

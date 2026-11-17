@@ -30,6 +30,7 @@ export interface SaveData {
   expeditionWins: number;
   expeditionStreak: number; // expeditions finished in a row
   expeditionBest: number; // best streak
+  galeWon: boolean; // Vale dos Ventos won: the Torre do Vento is unlocked
   challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
   daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
   codex: { enemies: string[]; reactions: string[] }; // Códice discoveries (v5+)
@@ -56,7 +57,7 @@ function freshHeroes(xp = 0): Record<HeroClass, HeroProgress> {
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0 };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -67,7 +68,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0 };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -137,6 +138,7 @@ export function migrate(raw: unknown): SaveData {
   out.riftBest = clampInt(out.riftBest, 0, 999);
   out.expeditionWins = clampInt(out.expeditionWins, 0, 1e9);
   out.expeditionStreak = clampInt(out.expeditionStreak, 0, 1e9);
+  out.galeWon = out.galeWon === true;
   out.expeditionBest = Math.max(out.expeditionStreak, clampInt(out.expeditionBest, 0, 1e9));
   const ex = out.expedition;
   const okBoons = (l: unknown): boolean => Array.isArray(l) && l.every((b) => typeof b === 'string' && b in BOONS);
@@ -210,7 +212,7 @@ export class SaveStore {
   }
 
   isUnlocked(id: StageId): boolean {
-    if (id === 'rift') return this.tutorialDone();
+    if (id === 'rift' || id === 'gale') return this.tutorialDone();
     const r = REGIONS.findIndex((g) => g.stages.includes(id));
     const stages = REGIONS[r]?.stages ?? [];
     const i = stages.indexOf(id);
@@ -421,6 +423,12 @@ export class SaveStore {
   /** Record a finished match. Returns true if this was the first win of the stage. */
   recordResult(id: StageId, won: boolean, stars: number): boolean {
     if (!won || id === 'rift') return false;
+    if (id === 'gale') {
+      const first = !this.data.galeWon;
+      this.data.galeWon = true;
+      this.persist();
+      return first;
+    }
     const prev = this.data.stages[id];
     const first = !prev || prev.wins === 0;
     this.data.stages[id] = { stars: Math.max(prev?.stars ?? 0, stars), wins: (prev?.wins ?? 0) + 1 };

@@ -304,6 +304,34 @@ const SOUNDS = {
     ],
     reverb: 0.6,
   },
+  reaction_firestorm: {
+    voices: [
+      { wave: 'noise', dur: 0.8, vol: 0.5, attack: 0.05, filter: { type: 'bandpass', freq: 500, freqEnd: 3000, q: 1.2 } },
+      { wave: 'sine', freq: 110, freqEnd: 45, dur: 0.5, vol: 0.4 },
+    ],
+    reverb: 0.5,
+  },
+  reaction_galefrost: {
+    voices: [
+      { wave: 'noise', dur: 0.7, vol: 0.4, attack: 0.08, filter: { type: 'bandpass', freq: 1800, freqEnd: 600, q: 3 } },
+      ...bell(2637, 0.35, 0.08),
+      ...bell(3520, 0.3, 0.06, 0.06),
+    ],
+    reverb: 0.6,
+  },
+  reaction_tempest: {
+    voices: [
+      { wave: 'noise', dur: 0.6, vol: 0.5, attack: 0.01, filter: { type: 'bandpass', freq: 4000, freqEnd: 500, q: 1.5 } },
+      { wave: 'sawtooth', freq: 120, freqEnd: 45, dur: 0.4, vol: 0.2, fm: { ratio: 0.5, depth: 5 }, filter: { type: 'lowpass', freq: 2200 } },
+      { wave: 'sine', freq: 70, freqEnd: 30, dur: 0.5, vol: 0.45 },
+    ],
+    reverb: 0.5,
+  },
+  shoot_wind: {
+    voices: [{ wave: 'noise', dur: 0.22, vol: 0.3, attack: 0.04, filter: { type: 'bandpass', freq: 900, freqEnd: 2600, q: 2.5 } }],
+    jitter: 0.1,
+    gap: 0.07,
+  },
   boon: {
     voices: [
       ...bell(784, 0.5, 0.1),

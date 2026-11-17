@@ -37,6 +37,8 @@ export interface EnemyState {
   rootTime: number;
   rootImmuneTime: number;
   fragileTime: number;
+  gustTime: number; // Soprado (Torre do Vento)
+  pushLock: number; // seconds before it can be pushed again
   // boss only
   bossCycleTimer: number;
   chillImmuneTime: number;
@@ -89,6 +91,8 @@ export interface ProjectileState {
   chillStacks: number;
   ability?: TowerAbility; // max-level ability riding on this projectile
   second?: { element: Element; damage: number }; // fusion: a second hit right after the first (sets off the reaction)
+  push: number; // wind: px the target is blown back
+  gust?: number; // wind (Tufão): this shot also hits everyone within this radius of the target
   alive: boolean;
 }
 
@@ -195,4 +199,5 @@ export interface HitSpec {
   chillStacks?: number; // ice: stacks added per hit (default 1)
   noFreeze?: boolean; // ice: chills but never freezes (Nevasca)
   entangle?: { extra: number; radius: number }; // nature: a root spreads to neighbours
+  push?: number; // wind: px the enemy is blown back along the road
 }

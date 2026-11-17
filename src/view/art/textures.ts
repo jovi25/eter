@@ -1151,6 +1151,43 @@ const DRAW: Record<AssetKey, Drawer> = {
       gloss(c, cx - 5, cy - 41, 5, 3, 0.9);
     },
   },
+  // Torre do Vento: a slim stone mill with four sail blades and curls of air.
+  tower_wind: {
+    w: 100,
+    h: 124,
+    draw: (c, cx, cy) => {
+      shape(c, poly([[cx - 17, cy + 38], [cx + 17, cy + 38], [cx + 9, cy - 18], [cx - 9, cy - 18]]), linear(c, cx - 17, 0, cx + 17, 0, [[0, '#cfd8d2'], [0.5, '#f4fbf6'], [1, '#93a39a']]), INK, 3);
+      shape(c, roundRect(cx - 5, cy + 18, 10, 20, 4), '#5a7a6a', INK, 2);
+      shape(c, poly([[cx - 12, cy - 16], [cx + 12, cy - 16], [cx, cy - 30]]), linear(c, 0, cy - 30, 0, cy - 16, [[0, '#7fe0b8'], [1, '#2f8a6a']]), INK, 2.5);
+      // sail blades
+      const hub = { x: cx, y: cy - 8 };
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + (i * Math.PI) / 2;
+        const ux = Math.cos(a);
+        const uy = Math.sin(a);
+        const px = -uy;
+        const py = ux;
+        shape(c, poly([
+          [hub.x + ux * 6 + px * 3, hub.y + uy * 6 + py * 3],
+          [hub.x + ux * 36 + px * 7, hub.y + uy * 36 + py * 7],
+          [hub.x + ux * 38 - px * 6, hub.y + uy * 38 - py * 6],
+          [hub.x + ux * 6 - px * 3, hub.y + uy * 6 - py * 3],
+        ]), linear(c, hub.x, hub.y, hub.x + ux * 38, hub.y + uy * 38, [[0, '#ffffff'], [1, '#bff5e0']]), INK, 2);
+      }
+      shape(c, circle(hub.x, hub.y, 6), '#ffd34d', INK, 2);
+      // curls of air
+      c.strokeStyle = 'rgba(160,250,215,0.9)';
+      c.lineWidth = 3;
+      c.lineCap = 'round';
+      for (const [x, y, r, s] of [[cx - 34, cy - 42, 9, 1], [cx + 32, cy - 46, 7, -1], [cx + 30, cy + 10, 8, -1]] as const) {
+        c.beginPath();
+        c.arc(x, y, r, s > 0 ? 0 : Math.PI, s > 0 ? Math.PI * 1.5 : Math.PI * 2.5);
+        c.stroke();
+      }
+      glow(c, cx, cy - 8, 30, 0x9ff0d0, 0.35);
+      gloss(c, cx - 6, cy + 4, 4, 8, 0.6);
+    },
+  },
   fire_zone: {
     w: 128,
     h: 72,
@@ -1260,6 +1297,24 @@ const DRAW: Record<AssetKey, Drawer> = {
     draw: (c, cx, cy) => {
       glow(c, cx, cy, 14, 0x6fe6ff, 0.6);
       shape(c, poly([[cx - 15, cy], [cx + 2, cy - 6], [cx + 15, cy], [cx + 2, cy + 6]]), linear(c, cx - 15, 0, cx + 15, 0, [[0, '#ffffff'], [1, '#4fc6e8']]), INK, 1.5);
+    },
+  },
+  proj_wind: {
+    w: 40,
+    h: 24,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 14, 0x9ff0d0, 0.6);
+      c.strokeStyle = '#effff8';
+      c.lineWidth = 3;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.arc(cx + 4, cy, 7, Math.PI * 0.2, Math.PI * 1.7);
+      c.stroke();
+      c.strokeStyle = 'rgba(160,250,215,0.9)';
+      c.beginPath();
+      c.moveTo(cx - 18, cy - 4); c.lineTo(cx - 2, cy - 4);
+      c.moveTo(cx - 16, cy + 5); c.lineTo(cx, cy + 5);
+      c.stroke();
     },
   },
   proj_nature: {

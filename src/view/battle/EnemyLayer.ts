@@ -159,6 +159,7 @@ export class EnemyLayer {
       else if (e.chillTime > 0 && e.chillStacks > 0) v.body.setTint(e.chillStacks > 1 ? 0x8fdcff : 0xb5ecff);
       else if (e.burnTime > 0) v.body.setTint(0xffb48a);
       else if (e.form >= 0) v.body.setTint(formTint(e));
+      else if (e.gustTime > 0) v.body.setTint(0xd4fff0);
       else v.body.clearTint();
     }
     v.ice.setVisible(e.frozenTime > 0);

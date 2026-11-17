@@ -15,7 +15,7 @@ export interface SimEvents {
   enemyHit: { enemyId: number; x: number; y: number; damage: number; element: Element; crit: boolean; reaction?: ReactionId; dot: boolean; towerId?: number; eff: number }; // eff: element multiplier after resistances (0 = immune, >1 = weakness)
   enemyKilled: { enemyId: number; type: EnemyId; x: number; y: number; gold: number; isBoss: boolean };
   enemyLeaked: { enemyId: number; livesLost: number };
-  statusApplied: { enemyId: number; status: 'burning' | 'chilled' | 'frozen' | 'rooted' | 'fragile' };
+  statusApplied: { enemyId: number; status: 'burning' | 'chilled' | 'frozen' | 'rooted' | 'fragile' | 'gusted' };
   reactionTriggered: { enemyId: number; reaction: ReactionId; x: number; y: number; comboCount: number; comboMult: number };
   comboEnded: { count: number };
   towerBuilt: { towerId: number; slot: number; type: TowerId };
@@ -29,7 +29,7 @@ export interface SimEvents {
   /** Lightning bolt path: tower first, then every enemy hit in order. */
   chainLightning: { towerId: number; points: { x: number; y: number }[] };
   /** A max-level tower ability went off. */
-  towerAbility: { towerId: number; ability: 'volley' | 'firefield' | 'deepfreeze' | 'entangle' | 'supercharge'; x: number; y: number };
+  towerAbility: { towerId: number; ability: 'volley' | 'firefield' | 'deepfreeze' | 'entangle' | 'supercharge' | 'gust'; x: number; y: number };
   zoneCreated: { zoneId: number; x: number; y: number; radius: number; duration: number };
   boonOffered: { options: BoonId[]; altar?: boolean };
   altarUsed: { cost: number; buys: number };

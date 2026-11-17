@@ -169,10 +169,15 @@ O jogador venceu a Expedição com 3 torres (Nevasca + Senhor do Trovão + 1), 2
 - [x] Mapa de Éter: ilhas flutuantes no topo e um novo "???" depois da Região 4; Expedição pode sortear o Prisma como chefe final
 - *Calibragem:* robôs de 3 torres perdem todas as 5 fases (como nos Cumes); robôs simples chegam às ondas 7–12
 
-### Fase 17 — Sexta torre: Vento
-- [ ] Torre de Vento: empurra monstros para trás e **espalha o estado** de um monstro para os vizinhos
-- [ ] 3 reações novas (Vento com Fogo, Gelo e Raio) e 2 evoluções; entra no tutorial como fase bônus
-- *Risco:* mexe no equilíbrio inteiro; só depois de a Fase 14 assentar.
+### Fase 17 — Sexta torre: Vento ✔
+- [x] **Torre do Vento** (moinho): cada sopro empurra o monstro para trás e o deixa **Soprado**; nível 3 = **Tufão**
+      (a cada 4º sopro, atinge todos em volta). Empurrão com pausa de 1,5 s por monstro; chefes quase não se movem
+- [x] 3 reações novas: **LABAREDA** (Vento + Queimando: o fogo pula), **VENDAVAL GELADO** (Vento + Resfriado: o frio se
+      espalha), **TORMENTA** (Raio + Soprado: ×1,75 e arremesso). O vento sempre deixa Soprado, mesmo quando reage
+- [x] 2 evoluções: **Olho do Furacão** (a cada 8 s empurra todos no alcance) e **Brisa Cortante** (sopro constante)
+- [x] Fase bônus **Vale dos Ventos** em Vellmora (abre ao fim do tutorial); vencer libera a torre em todo o jogo
+- [~] Fusões com o Vento: **adiadas** (as 5 fusões atuais continuam)
+- *Calibragem:* builds com vento rendem parecido com as clássicas; 3 torres com vento perdem nas Regiões 2–4
 
 ### Fase 18 — Caçada de Chefes e Semana Mutante
 - [ ] **Caçada**: todos os chefes em fila, com uma loja curta entre eles; recorde de tempo

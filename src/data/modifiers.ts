@@ -38,14 +38,14 @@ export interface SimModifiers {
 
 export function defaultModifiers(): SimModifiers {
   return {
-    towerDamageMult: { archer: 1, brazier: 1, frost: 1, vine: 1, storm: 1 },
-    elementDamageMult: { physical: 1, fire: 1, ice: 1, nature: 1, lightning: 1, arcane: 1 },
+    towerDamageMult: { archer: 1, brazier: 1, frost: 1, vine: 1, storm: 1, wind: 1 },
+    elementDamageMult: { physical: 1, fire: 1, ice: 1, nature: 1, lightning: 1, wind: 1, arcane: 1 },
     rootDurationBonus: 0,
     chillMaxStacks: 3,
     physicalIgnoresResist: false,
     vineHitsFlying: false,
     meltAppliesFragile: false,
-    unlockedTowers: ['archer', 'brazier', 'frost', 'vine', 'storm'],
+    unlockedTowers: ['archer', 'brazier', 'frost', 'vine', 'storm', 'wind'],
     heroAffinity: 'fire',
     heroDamageMult: 1,
     heroAttackSpeedMult: 1,
