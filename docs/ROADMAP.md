@@ -138,6 +138,18 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [~] Desafio por fase ligado a vínculos: **cortado** (mexeria nos desafios já concluídos no save)
 - *Mudou em relação à proposta:* em vez de um efeito por par, uma regra só que vale para todos os pares (mais fácil de aprender).
 
+### Fase 14b — "Está muito fácil" (pedido do jogador, nov/2026) ✔
+O jogador venceu a Expedição com 3 torres (Nevasca + Senhor do Trovão + 1), 20 vidas e 4.374 de ouro sobrando;
+88% do dano veio do Trovão e 372 das 376 reações foram SUPERCONDUÇÃO. Reproduzido com robô (npm run probe).
+- [x] **Trava de repetição**: a mesma reação não se repete no mesmo monstro por 2,5 s (outra reação pode). Misturar combos vale mais que repetir um
+- [x] Trovão: nível 2 com 3 saltos, nível 3 com 4 saltos e 25 de dano; Supertensão +50% de saltos (era o dobro); Senhor do Trovão atinge 4 alvos (eram 6) com ×2,2
+- [x] Golpes finais mais fracos: Tumba Glacial ×5 (era ×7), Meteoro ×3 (era ×4); SOBRECARGA espalha 40% (era 60%)
+- [x] Sacerdotisa: aura +15% (era +25%), Bênção +30% (era +45%)
+- [x] Monstros com mais vida nas Regiões 2 e 3 (de +10% a +45% conforme a fase); Expedição ×1,1 / ×1,45 / ×1,9
+- [x] Robôs novos: "poucas torres evoluídas", "a defesa do jogador" e "3 torres e depois expande", com o ouro que sobra
+- *Medida de sucesso:* 3 torres evoluídas perdem na maioria das fases; quem continua construindo vence com pouco ouro sobrando.
+- *Risco assumido:* os robôs antigos (que não evoluem torres) agora perdem quase toda a Região 2 e 3. Falta o teste do jogador.
+
 ### Fase 15 — Expedição 2.0 (a aventura de verdade)
 - [ ] Mapa da expedição com **bifurcações desenhadas** (escolher o caminho num mini-mapa de trilha tracejada)
 - [ ] Paradas que não são batalha: **Acampamento** (cura), **Mercador** (troca moedas da expedição por Bênção),

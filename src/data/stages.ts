@@ -198,7 +198,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar I',
     subtitle: 'Cânion — o mapa agora rola: arraste para cima e para baixo',
     map: 'canyon',
-    hpMult: 1.15,
+    hpMult: 1.6,
     startGold: 230,
     waves: [
       { groups: [g('slime', 10, 0.7)] },
@@ -220,7 +220,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar II',
     subtitle: 'Comporta — toque nela para mandar os inimigos para o outro lado',
     map: 'sluice',
-    hpMult: 1.1,
+    hpMult: 1.2,
     startGold: 230,
     waves: [
       { groups: [g('slime', 12, 0.6)] },
@@ -242,7 +242,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar III',
     subtitle: 'Escadaria — a Sentinela de Âmbar e seus escudos',
     map: 'stairs',
-    hpMult: 1.15,
+    hpMult: 1.25,
     startGold: 240,
     waves: [
       { groups: [g('slime', 12, 0.6)] },
@@ -264,7 +264,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar IV',
     subtitle: 'Confluência — dois portais que se encontram no meio',
     map: 'confluence',
-    hpMult: 1,
+    hpMult: 1.25,
     startGold: 250,
     waves: [
       { groups: [g('slime', 8, 0.7, 0, 0), g('slime', 8, 0.7, 0.4, 1)] },
@@ -309,7 +309,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados I',
     subtitle: 'Encosta — toque na ponte para segurar os monstros por 4 s',
     map: 'peak',
-    hpMult: 1.02,
+    hpMult: 1.3,
     startGold: 260,
     waves: [
       { groups: [g('slime', 12, 0.6)] },
@@ -331,7 +331,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados II',
     subtitle: 'Passagem — dois portais; a ponte fica no caminho da direita',
     map: 'pass',
-    hpMult: 0.92,
+    hpMult: 1.1,
     startGold: 260,
     waves: [
       { groups: [g('slime', 8, 0.7, 0, 0), g('slime', 8, 0.7, 0.4, 1)] },
@@ -353,7 +353,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados III',
     subtitle: 'Geleira — Comporta no alto e ponte embaixo',
     map: 'glacier',
-    hpMult: 0.92,
+    hpMult: 1.3,
     startGold: 270,
     waves: [
       { groups: [g('slime', 14, 0.5)] },
@@ -375,7 +375,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados IV',
     subtitle: 'Terraços — a estrada vai e volta seis vezes',
     map: 'terraces',
-    hpMult: 0.92,
+    hpMult: 1.0,
     startGold: 280,
     waves: [
       { groups: [g('wolf', 14, 0.4)] },

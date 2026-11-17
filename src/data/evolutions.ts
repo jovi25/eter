@@ -43,7 +43,7 @@ export const EVOLUTIONS: Record<EvolutionId, EvolutionDef> = {
     tower: 'frost', name: 'Coroa do Inverno', color: 0x9fe8ff, cost: 320,
     desc: 'A cada 10 s: Tumba Glacial congela todos no alcance e causa dano enorme',
     stats: { rateMult: 0.8 }, keepAbility: true,
-    ult: { kind: 'tomb', every: 10, damageMult: 7, freeze: 6 },
+    ult: { kind: 'tomb', every: 10, damageMult: 5, freeze: 6 },
   },
   blizzard: {
     tower: 'frost', name: 'Nevasca Eterna', color: 0xd8f6ff, cost: 300,
@@ -56,7 +56,7 @@ export const EVOLUTIONS: Record<EvolutionId, EvolutionDef> = {
     tower: 'brazier', name: 'Vulcão', color: 0xff4d1f, cost: 320,
     desc: 'A cada 7 s: meteoro no maior grupo, explosão e chão em chamas',
     stats: {}, keepAbility: true,
-    ult: { kind: 'meteor', every: 7, damageMult: 4, radius: 115 },
+    ult: { kind: 'meteor', every: 7, damageMult: 3, radius: 115 },
   },
   furnace: {
     tower: 'brazier', name: 'Fornalha', color: 0xffa02e, cost: 300,
@@ -78,9 +78,9 @@ export const EVOLUTIONS: Record<EvolutionId, EvolutionDef> = {
   // ── Torre do Trovão ──
   thunderLord: {
     tower: 'storm', name: 'Senhor do Trovão', color: 0xfff27a, cost: 320,
-    desc: 'A cada 7 s: raios caem do céu em até 6 inimigos no alcance',
+    desc: 'A cada 7 s: raios caem do céu em até 4 inimigos no alcance',
     stats: {}, keepAbility: true,
-    ult: { kind: 'skyStrike', every: 7, damageMult: 3, targets: 6 },
+    ult: { kind: 'skyStrike', every: 7, damageMult: 2.2, targets: 4 },
   },
   tesla: {
     tower: 'storm', name: 'Bobina Tesla', color: 0x9fd8ff, cost: 300,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dummy, newSim, record, runSeconds } from '../helpers';
+import { REACTION_RULES } from '../../src/data/reactions';
 
 const FIRE = { element: 'fire' as const, damage: 10, burnDps: 4 };
 const ICE = { element: 'ice' as const, damage: 10 };
@@ -180,6 +181,27 @@ describe('reaction table', () => {
   });
 });
 
+describe('the same reaction cannot repeat on one enemy right away', () => {
+  it('locks for REACTION_RULES.repeatLock seconds; another reaction still goes off', () => {
+    const sim = newSim();
+    const e = dummy(sim);
+    const log: string[] = [];
+    sim.events.on('reactionTriggered', (r) => log.push(r.reaction));
+    sim.applyHit(e, ICE);
+    sim.applyHit(e, { element: 'lightning', damage: 1 }); // superconduct
+    sim.applyHit(e, ICE);
+    sim.applyHit(e, { element: 'lightning', damage: 1 }); // locked: a plain hit
+    expect(log).toEqual(['superconduct']);
+    expect(e.chillStacks).toBeGreaterThan(0); // the aura was not spent
+    sim.applyHit(e, FIRE); // a different reaction is fine
+    expect(log).toEqual(['superconduct', 'melt']);
+    runSeconds(sim, REACTION_RULES.repeatLock + 0.1);
+    sim.applyHit(e, ICE);
+    sim.applyHit(e, { element: 'lightning', damage: 1 });
+    expect(log).toEqual(['superconduct', 'melt', 'superconduct']);
+  });
+});
+
 describe('combo meter', () => {
   it('chained reactions raise the multiplier by 5% each, capped at ×1,5', () => {
     const sim = newSim();
@@ -187,6 +209,7 @@ describe('combo meter', () => {
     const mults: number[] = [];
     sim.events.on('reactionTriggered', (r) => mults.push(r.comboMult));
     for (let i = 0; i < 14; i++) {
+      e.reactionLock = 0; // the lock on repeating a reaction is tested on its own
       sim.applyHit(e, ICE);
       sim.applyHit(e, FIRE); // melt
     }
@@ -204,6 +227,7 @@ describe('combo meter', () => {
     sim.events.on('enemyHit', (h) => h.reaction && dmg.push(h.damage));
     sim.applyHit(e, ICE);
     sim.applyHit(e, { element: 'fire', damage: 100 });
+    e.reactionLock = 0;
     sim.applyHit(e, ICE);
     sim.applyHit(e, { element: 'fire', damage: 100 });
     expect(dmg).toEqual([175, 184]); // 175 × 1.05 = 183.75
@@ -215,6 +239,7 @@ describe('combo meter', () => {
     const ended = record(sim, 'comboEnded');
     sim.applyHit(e, ICE);
     sim.applyHit(e, FIRE);
+    e.reactionLock = 0;
     sim.applyHit(e, ICE);
     sim.applyHit(e, FIRE);
     expect(sim.state.combo.count).toBe(2);

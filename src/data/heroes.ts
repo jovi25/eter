@@ -69,7 +69,7 @@ export const HEROES: Record<HeroClass, HeroDef> = {
   },
   priest: {
     name: 'Sacerdotisa',
-    role: 'Torres perto dela atacam 25% mais rápido. Habilidade: Bênção (torres +45% de dano).',
+    role: 'Torres perto dela atacam 15% mais rápido. Habilidade: Bênção (torres +30% de dano).',
     texture: 'hero_priest',
     unlockAfter: 'v3',
     attack: { element: 'arcane', damage: 7, rate: 1.0, range: 160, projectileSpeed: 700 },
@@ -82,8 +82,8 @@ export const BEAR: BlockerStats = { hp: 620, damage: 16, rate: 1.0, maxBlock: 2,
 
 export const PRIEST = {
   auraRadius: 190, // towers within this distance attack faster
-  auraRateMult: 1.25,
-  blessDamageMult: 1.45,
+  auraRateMult: 1.15,
+  blessDamageMult: 1.3,
   blessDuration: 5,
 };
 

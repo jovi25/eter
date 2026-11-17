@@ -105,7 +105,7 @@ describe('Bênçãos de Éter', () => {
 });
 
 describe('lightning reactions', () => {
-  it('Queimando + Raio = SOBRECARGA: ×1,5 and 60% splash to neighbours', () => {
+  it('Queimando + Raio = SOBRECARGA: ×1,5 and a splash to neighbours', () => {
     const sim = newSim();
     const e = dummy(sim, 500);
     const near = dummy(sim, 540);
@@ -116,7 +116,7 @@ describe('lightning reactions', () => {
     sim.applyHit(e, { element: 'lightning', damage: 100 });
     expect(reacts.map((r) => r.payload.reaction)).toEqual(['overload']);
     expect(hits.find((h) => h.payload.enemyId === e.id)!.payload.damage).toBe(150);
-    expect(hits.find((h) => h.payload.enemyId === near.id)!.payload.damage).toBe(90);
+    expect(hits.find((h) => h.payload.enemyId === near.id)!.payload.damage).toBe(60); // 150 × 0.4
     expect(far.hp).toBe(far.maxHp);
     expect(e.burnTime).toBe(0);
   });

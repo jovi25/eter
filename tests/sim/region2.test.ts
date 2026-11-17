@@ -85,6 +85,7 @@ describe('boss shields', () => {
     expect(boss.shieldHits).toBe(shields.hits);
     // DERRETIMENTO (burning + ice) × hits
     for (let i = 0; i < shields.hits; i++) {
+      boss.reactionLock = 0; // in a match the cracks must come a few seconds apart
       sim.applyHit(boss, { element: 'fire', damage: 1, burnDps: 1 });
       sim.applyHit(boss, { element: 'ice', damage: 1 });
     }

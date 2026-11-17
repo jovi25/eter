@@ -30,6 +30,8 @@ export interface EnemyState {
   chillStacks: number;
   chillTime: number;
   frozenTime: number;
+  lastReaction: ReactionId | null; // the last reaction it suffered...
+  reactionLock: number; // ...which cannot repeat on it while this is > 0
   freezeImmuneTime: number; // after a freeze: chill still slows, but no new freeze
   rootTime: number;
   rootImmuneTime: number;

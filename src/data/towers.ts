@@ -117,11 +117,11 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     hitsFlying: true,
     levels: [
       { cost: 80, damage: 13, rate: 0.65, range: 165, chainCount: 3, chainRange: 120, chainFalloff: 0.7 },
-      { cost: 90, damage: 19, rate: 0.7, range: 170, chainCount: 4, chainRange: 130, chainFalloff: 0.72 },
-      { cost: 120, damage: 28, rate: 0.75, range: 180, chainCount: 5, chainRange: 140, chainFalloff: 0.75 },
+      { cost: 90, damage: 19, rate: 0.7, range: 170, chainCount: 3, chainRange: 130, chainFalloff: 0.7 },
+      { cost: 120, damage: 25, rate: 0.75, range: 180, chainCount: 4, chainRange: 140, chainFalloff: 0.7 },
     ],
-    ability: { id: 'supercharge', every: 3, chainMult: 2 },
-    abilityInfo: { name: 'Supertensão', desc: 'A cada 3º raio: dobro de saltos, sem perda' },
+    ability: { id: 'supercharge', every: 3, chainMult: 1.5 },
+    abilityInfo: { name: 'Supertensão', desc: 'A cada 3º raio: 50% mais saltos, sem perda' },
   },
 };
 

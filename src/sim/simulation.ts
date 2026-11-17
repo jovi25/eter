@@ -9,7 +9,7 @@ import type { Element } from '../data/elements';
 import type { Vec2 } from '../data/maps';
 import { BRIDGE, MAPS } from '../data/maps';
 import { defaultModifiers, type SimModifiers } from '../data/modifiers';
-import { COMBO, REACTION_IDS, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
+import { COMBO, REACTION_IDS, REACTION_RULES, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
@@ -959,6 +959,8 @@ export class Simulation {
       chillStacks: 0,
       chillTime: 0,
       frozenTime: 0,
+      lastReaction: null,
+      reactionLock: 0,
       freezeImmuneTime: 0,
       rootTime: 0,
       rootImmuneTime: 0,
@@ -1088,6 +1090,7 @@ export class Simulation {
       }
     }
     if (e.freezeImmuneTime > 0) e.freezeImmuneTime = Math.max(0, e.freezeImmuneTime - DT);
+    if (e.reactionLock > 0) e.reactionLock = Math.max(0, e.reactionLock - DT);
     if (e.frozenTime > 0) {
       e.frozenTime = Math.max(0, e.frozenTime - DT);
       if (e.frozenTime === 0) e.freezeImmuneTime = STATUS.frozen.immunityAfter;
@@ -1295,7 +1298,7 @@ export class Simulation {
     let falloff = lvl.chainFalloff ?? 1;
     const ab = this.abilityOf(t);
     if (ab?.id === 'supercharge' && t.shots % ab.every === 0) {
-      count *= ab.chainMult;
+      count = Math.round(count * ab.chainMult);
       falloff = 1;
       this.events.emit('towerAbility', { towerId: t.id, ability: 'supercharge', x: t.x, y: t.y });
     }
@@ -1669,7 +1672,13 @@ export class Simulation {
    */
   applyHit(e: EnemyState, hit: HitSpec): void {
     if (!e.alive) return;
-    const found = this.findReaction(e, hit.element);
+    let found = this.findReaction(e, hit.element);
+    // The same reaction cannot repeat on the same enemy right away (a plain hit instead; the aura stays).
+    if (found && e.reactionLock > 0 && e.lastReaction === found.reaction) found = null;
+    if (found) {
+      e.lastReaction = found.reaction;
+      e.reactionLock = REACTION_RULES.repeatLock;
+    }
     let mult = 1;
     if (found && e.shield === found.reaction) {
       // The right reaction cracks the shield; the breaking hit already lands at full strength.

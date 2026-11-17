@@ -101,7 +101,7 @@ describe('max-level tower abilities', () => {
     expect(abilities[0]!.payload.ability).toBe('entangle');
   });
 
-  it('Trovão — Supertensão: every 3rd bolt doubles the jumps with no falloff', () => {
+  it('Trovão — Supertensão: every 3rd bolt has more jumps and no falloff', () => {
     const sim = newSim();
     tower(sim, 'storm');
     for (let d = 300; d <= 900; d += 40) dummy(sim, d);
@@ -111,7 +111,8 @@ describe('max-level tower abilities', () => {
     expect(bolts.length).toBeGreaterThanOrEqual(3);
     const lvl = TOWERS.storm.levels[2];
     expect(bolts[0]!.payload.points.length - 1).toBe(lvl.chainCount);
-    expect(bolts[2]!.payload.points.length - 1).toBe((lvl.chainCount ?? 0) * 2);
+    const ab = TOWERS.storm.ability;
+    expect(bolts[2]!.payload.points.length - 1).toBe(Math.round((lvl.chainCount ?? 0) * (ab.id === 'supercharge' ? ab.chainMult : 1)));
     expect(abilities.map((a) => a.payload.ability)).toContain('supercharge');
   });
 });

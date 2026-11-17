@@ -11,8 +11,8 @@ import { Simulation } from '../../src/sim/simulation';
  * A robot that plays like a person who found the easy way: few towers, all the way up (level 3 + evolution),
  * every Bênção taken. Reports the gold left over — the measure of "too easy".
  */
-export function fewTowers(stage: StageId, plan: TowerId[], seed: number, hpMult = 1, branch: 0 | 1 = 0, carry: { boons?: string[]; lives?: number } = {}) {
-  const sim = new Simulation({ stage, seed, run: { hpMult, ...carry } });
+export function fewTowers(stage: StageId, plan: TowerId[], seed: number, hpMult = 1, branch: 0 | 1 = 0, carry: { boons?: string[]; lives?: number } = {}, heroClass: 'mage' | 'priest' = 'mage', tallFirst = false) {
+  const sim = new Simulation({ stage, seed, modifiers: { heroClass }, run: { hpMult, ...carry } });
   const cov = sim.slots
     .map((s, i) => {
       let n = 0;
@@ -24,7 +24,9 @@ export function fewTowers(stage: StageId, plan: TowerId[], seed: number, hpMult 
   let peak = 0;
   while (sim.state.result === 'playing' && sim.state.tick < 900 * SIM_TICKS_PER_SECOND) {
     const n = sim.state.towers.length;
-    if (n < plan.length) sim.build(cov[n]!, plan[n]!);
+    // tallFirst: 3 towers, then finish every tower (level 3 + evolution) before adding the next one.
+    const pending = sim.state.towers.some((t) => !t.evo);
+    if (n < plan.length && (!tallFirst || n < 3 || !pending)) sim.build(cov[n]!, plan[n]!);
     else
       for (const t of sim.state.towers) {
         if (sim.upgrade(t.id)) break;
@@ -40,6 +42,73 @@ export function fewTowers(stage: StageId, plan: TowerId[], seed: number, hpMult 
   }
   return { sim, peak };
 }
+
+/** The build the player reported (nov/2026): Trovão golpe final + Nevasca constante + 1 extra, Sacerdotisa. */
+describe.runIf(process.env.npm_lifecycle_event === 'probe')('player build probe', () => {
+  it('thunder lord + blizzard', () => {
+    const builds: Record<string, [TowerId, 0 | 1][]> = {
+      'raio+nevasca+fogo': [['storm', 0], ['frost', 1], ['brazier', 0]],
+      'raio+nevasca': [['storm', 0], ['frost', 1]],
+      'tesla+nevasca+fogo': [['storm', 1], ['frost', 1], ['brazier', 1]],
+      'fogo+vinha+gelo(golpes)': [['brazier', 0], ['vine', 0], ['frost', 0]],
+    };
+    for (const [name, build] of Object.entries(builds)) {
+      for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5'] as StageId[]) {
+        const sim = new Simulation({ stage: st, seed: 1, modifiers: { heroClass: (process.env.HERO ?? 'priest') as 'priest' }, run: { hpMult: Number(process.env.HP_SCALE ?? '1') } });
+        const cov = sim.slots
+          .map((s, i) => {
+            let n = 0;
+            for (const p of sim.paths) for (let d = 0; d < p.length; d += 8) if (Math.hypot(p.pointAt(d).x - s.x, p.pointAt(d).y - s.y) <= 170) n++;
+            return { i, n };
+          })
+          .sort((a, b) => b.n - a.n);
+        // Neighbouring slots, as a person would place a combo.
+        const first = sim.slots[cov[0]!.i]!;
+        const near = cov.map((c) => c.i).sort((a, b) => Math.hypot(sim.slots[a]!.x - first.x, sim.slots[a]!.y - first.y) - Math.hypot(sim.slots[b]!.x - first.x, sim.slots[b]!.y - first.y));
+        let earned = sim.state.gold;
+        let last = sim.state.gold;
+        while (sim.state.result === 'playing' && sim.state.tick < 900 * SIM_TICKS_PER_SECOND) {
+          const n = sim.state.towers.length;
+          if (n < build.length) {
+            if (sim.build(near[n]!, build[n]![0]) && n === 0) sim.moveHero(first.x + 40, first.y + 40);
+          } else
+            for (const t of sim.state.towers) {
+              const b = build.find((x) => x[0] === t.type)!;
+              if (sim.upgrade(t.id)) break;
+              if (t.level >= 3 && !t.evo && sim.evolve(t.id, TOWER_EVOLUTIONS[t.type][b[1]])) break;
+            }
+          if (sim.state.boonOffers.length) sim.chooseBoon(0);
+          sim.step();
+          if (sim.state.gold > last) earned += sim.state.gold - last;
+          last = sim.state.gold;
+        }
+        const s = sim.state;
+        const dmg = Object.entries(s.stats.damageByTower).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${Math.round(v / 1000)}k`).join(' ');
+        const reac = Object.entries(s.stats.reactions).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(' ');
+        console.log('BUILD', name, st, s.result === 'won' ? `W${s.lives}` : `L${s.wave}`, `sobra $${Math.round(s.gold)} de $${Math.round(earned)}`, '|', dmg, '|', reac);
+      }
+    }
+  });
+});
+
+/**
+ * Calibration: a stage is right when 3 evolved towers LOSE and a full evolved defence wins with some scars
+ * and little gold left. HP_SCALE tries a multiplier on monster life before it goes into src/data/stages.ts.
+ */
+describe.runIf(process.env.npm_lifecycle_event === 'probe')('calibration', () => {
+  it('3 towers vs full defence', () => {
+    const scale = Number(process.env.HP_SCALE ?? '1');
+    const three: TowerId[][] = [['storm', 'frost', 'brazier'], ['brazier', 'vine', 'frost'], ['frost', 'storm', 'archer']];
+    const full: TowerId[] = ['frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'brazier', 'vine', 'archer', 'storm', 'frost', 'brazier', 'vine', 'archer'];
+    for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5'] as StageId[]) {
+      const few = three.flatMap((plan) => [0, 1].map((br) => fewTowers(st, plan, 1, scale, br as 0 | 1, {}, 'priest').sim.state));
+      const fewTxt = few.map((s) => (s.result === 'won' ? `W${s.lives}` : `L${s.wave}`)).join(',');
+      const fl = [1, 2].map((seed) => fewTowers(st, full, seed, scale, 0, {}, 'mage', true).sim.state);
+      const flTxt = fl.map((s) => (s.result === 'won' ? `W${s.lives}` : `L${s.wave}`) + `/$${Math.round(s.gold)}/t${s.towers.length}`).join(' ');
+      console.log('CAL', st, '3 torres:', fewTxt, '| cheio:', flTxt);
+    }
+  });
+});
 
 describe.runIf(process.env.npm_lifecycle_event === 'probe')('expedition probe', () => {
   it('3 legs with carried boons', () => {

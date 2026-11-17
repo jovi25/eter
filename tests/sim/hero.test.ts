@@ -84,8 +84,8 @@ describe('Catalisar', () => {
     const sim = setup();
     sim.castCatalyze();
     const cd = sim.state.hero.catalyzeCooldown;
-    const e = dummy(sim, 1500); // far away, a tower combo there
     for (let i = 0; i < 4; i++) {
+      const e = dummy(sim, 1500); // far away, a tower combo there (the same reaction cannot repeat on one enemy right away)
       sim.applyHit(e, { element: 'ice', damage: 1 });
       sim.applyHit(e, { element: 'fire', damage: 1 }); // melt
     }

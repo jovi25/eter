@@ -24,7 +24,7 @@ export const REACTIONS: Record<ReactionId, ReactionDef> = {
   melt: { name: 'DERRETIMENTO', color: 0xffb347, damageMult: 1.75 },
   thornfrost: { name: 'GEADA ESPINHOSA', color: 0x7fffd4, damageMult: 1, rootDurationMult: 2, appliesFragile: true },
   shatter: { name: 'ESTILHAÇO', color: 0xd8f6ff, damageMult: 1.5 },
-  overload: { name: 'SOBRECARGA', color: 0xffe95c, damageMult: 1.5, splashRadius: 75, splashFactor: 0.6 },
+  overload: { name: 'SOBRECARGA', color: 0xffe95c, damageMult: 1.5, splashRadius: 75, splashFactor: 0.4 },
   superconduct: { name: 'SUPERCONDUÇÃO', color: 0x9fd8ff, damageMult: 1.25, appliesFragile: true, fragileRadius: 75 },
 };
 
@@ -46,6 +46,12 @@ export const REACTION_TABLE: ReadonlyArray<{ aura: AuraKey; trigger: Element; re
   { aura: 'chilled', trigger: 'nature', reaction: 'thornfrost' },
   { aura: 'rooted', trigger: 'ice', reaction: 'thornfrost' },
 ];
+
+/**
+ * Classic "internal cooldown": the SAME reaction cannot go off again on the SAME enemy for this long.
+ * A different reaction still can — mixing combos beats repeating one (e.g. Nevasca + Trovão spam).
+ */
+export const REACTION_RULES = { repeatLock: 2.5 };
 
 export const COMBO = {
   window: 2, // seconds between reactions to keep the chain

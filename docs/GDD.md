@@ -492,3 +492,11 @@ A cada 5º disparo, a torre acerta o mesmo alvo também com o elemento de uma vi
 dela, com 40% da queimadura, 1 acúmulo de Resfriado ou a chance de raiz. Com várias vizinhas, reveza a cada vez.
 Torres iguais não se ligam. Torres de fusão e as formas "constantes" de tempestade emprestam o elemento, mas não recebem.
 Fases 1 a 3 do tutorial não têm vínculos; da fase 4 em diante sim, em todos os modos.
+
+## Fase 14b — Equilíbrio "poucas torres não bastam"
+
+Regra nova (src/data/reactions.ts, REACTION_RULES.repeatLock = 2,5 s): a mesma reação não pode se repetir no mesmo monstro
+enquanto a trava dura; o golpe vira um golpe comum e o estado (Resfriado, Queimando...) continua lá. Reações diferentes passam.
+Os escudos de chefe seguem a mesma regra: as rachaduras precisam vir espaçadas.
+Alvo de equilíbrio daqui para frente: uma defesa de 3 torres evoluídas deve perder nas Regiões 2 e 3; o jogador precisa
+continuar construindo e termina com pouco ouro. Conferir com npm run probe a cada mudança de números.
