@@ -310,3 +310,15 @@ export function drawRuneStone(c: Ctx, kind: 'haste' | 'power' | null): void {
     shape(c, star(c, cx, cy - 36, 7, 0.45), '#fff3a8', INK, 1.5);
   }
 }
+
+/** Semana Mutante: a bubbling flask of strange green brew. */
+export function drawIconMutant(c: Ctx): void {
+  const cx = 36;
+  const cy = 40;
+  shape(c, roundRect(cx - 7, cy - 32, 14, 18, 4), linear(c, cx - 7, 0, cx + 7, 0, [[0, '#cfd8e8'], [1, '#8a94b0']]), INK, 3);
+  shape(c, roundRect(cx - 9, cy - 36, 18, 7, 3), '#8a5a2a', INK, 2);
+  shape(c, poly([[cx - 7, cy - 16], [cx + 7, cy - 16], [cx + 26, cy + 20], [cx + 20, cy + 28], [cx - 20, cy + 28], [cx - 26, cy + 20]]), linear(c, 0, cy - 16, 0, cy + 28, [[0, '#e6f0ff'], [1, '#c4d0ea']]), INK, 3);
+  shape(c, poly([[cx - 15, cy + 4], [cx + 15, cy + 4], [cx + 23, cy + 19], [cx + 18, cy + 25], [cx - 18, cy + 25], [cx - 23, cy + 19]]), radial(c, cx, cy + 16, 24, [[0, '#d8ff7a'], [0.6, '#6ad44a'], [1, '#2f8a2a']], cx - 4, cy + 10), INK, 0);
+  for (const [x, y, r] of [[cx - 6, cy + 12, 4], [cx + 7, cy + 16, 3], [cx + 2, cy - 2, 3], [cx - 3, cy - 22, 4], [cx + 8, cy - 34, 3]] as const) shape(c, circle(x, y, r), 'rgba(220,255,170,0.9)', INK, 1.5);
+  gloss(c, cx - 12, cy + 2, 4, 10, 0.5);
+}

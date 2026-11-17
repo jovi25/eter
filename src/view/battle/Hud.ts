@@ -138,6 +138,8 @@ export class Hud {
       enabled = true;
     } else if (s.wavePhase === 'spawning') {
       label = `ONDA ${s.wave} CHEGANDO...`;
+    } else if (s.wavePhase === 'fight') {
+      label = 'DERROTE O CHEFE!';
     } else {
       label = s.result === 'playing' ? 'ONDA FINAL!' : s.result === 'won' ? 'VITÓRIA!' : 'FIM';
     }

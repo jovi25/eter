@@ -95,8 +95,8 @@ export class BuildMenu {
       const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
-      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, `tower_${type}`, def.levels[0].cost, locked, () => {
-        if (this.sim.state.gold < def.levels[0].cost || locked) {
+      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, `tower_${type}`, this.sim.buildCost(type), locked, () => {
+        if (this.sim.state.gold < this.sim.buildCost(type) || locked) {
           playSfx('error');
           this.shake(opt.root);
           return;
@@ -148,7 +148,12 @@ export class BuildMenu {
     const sellPos = evolving ? { x: 110, y: 96 } : { x: 0, y: 96 };
     // Selling by accident hurts: the first tap asks, the second sells.
     let sellArmed = false;
+    const canSell = this.sim.canSell(); // Semana Mutante (Liquidação): nothing can be sold
     const sell = this.option(sellPos.x, sellPos.y, 0xc0504a, 'coin', null, false, () => {
+      if (!canSell) {
+        playSfx('error');
+        return;
+      }
       if (!sellArmed) {
         sellArmed = true;
         playSfx('ui', 0.7);
@@ -159,7 +164,8 @@ export class BuildMenu {
       this.actions.sell(tower.id);
       this.close();
     });
-    sell.cost.setText(`+${this.sim.sellValue(tower)}`).setColor(PAL.goldCss);
+    sell.cost.setText(canSell ? `+${this.sim.sellValue(tower)}` : 'Não vende').setColor(canSell ? PAL.goldCss : PAL.uiDim);
+    if (!canSell) sell.root.setAlpha(0.5);
     root.add(sell.root);
     const fuDef = tower.fusion ? FUSIONS[tower.fusion] : null;
     const evoDef = tower.evo ? EVOLUTIONS[tower.evo] : fuDef;

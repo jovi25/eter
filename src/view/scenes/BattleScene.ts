@@ -27,6 +27,10 @@ import { playSfx, type SfxName } from '../audio/sfx';
 import { playMusic, setMusicIntensity, type ThemeId } from '../audio/music';
 import { PAL } from '../art/palette';
 import { BoonPicker } from '../battle/BoonPicker';
+import { HuntShop } from '../battle/HuntShop';
+import { uiText } from '../ui/Button';
+import { HUNT, huntTime } from '../../data/hunt';
+import { MUTANT, MUTATIONS, type MutationId } from '../../data/mutations';
 import { BuildMenu } from '../battle/BuildMenu';
 import { BOONS } from '../../data/boons';
 import { CHALLENGES, challengeText, dailyScore, dailySetup, evaluateChallenges, type DailySetup } from '../../data/challenges';
@@ -62,6 +66,7 @@ export interface BattleData {
   hero?: HeroClass;
   daily?: boolean; // desafio do dia: stage, hero, seed and starting boon come from the date
   expedition?: number; // Expedição de Éter: which of the 2 trails of the saved run to play
+  mutant?: boolean; // Semana Mutante: this week's rule on a won stage
 }
 
 /** One match: owns the simulation, steps it at a fixed rate and turns its events into visuals and sound. */
@@ -93,7 +98,10 @@ export class BattleScene extends Phaser.Scene {
   private hero!: HeroView;
   private catalyzeBtn!: CatalyzeButton;
   private summons: SummonView[] = [];
-  private picker: BoonPicker | null = null;
+  private picker: BoonPicker | HuntShop | null = null;
+  /** Semana Mutante: the rule in force (null = none). */
+  private mutation: MutationId | null = null;
+  private huntClock: Phaser.GameObjects.Text | null = null;
   private tutorial!: Tutorial;
   private pausePanel: PausePanel | null = null;
 
@@ -114,7 +122,7 @@ export class BattleScene extends Phaser.Scene {
 
   private again(stage: StageId = this.stageId): BattleData {
     if (this.trip) return { expedition: this.trip.index };
-    return this.daily ? { daily: true } : { stage, hero: this.heroClass };
+    return this.daily ? { daily: true } : { stage, hero: this.heroClass, mutant: !!this.mutation };
   }
   private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
@@ -128,7 +136,13 @@ export class BattleScene extends Phaser.Scene {
     const t = this.tutorial;
     const sim = this.sim;
     const slot = (i: number) => () => sim.slots[i] ?? null;
-    switch (this.daily ? 'daily' : this.stageId) {
+    switch (this.daily ? 'daily' : this.mutation ? 'mutant' : this.stageId) {
+      case 'mutant':
+        t.request('mutant');
+        break;
+      case 'hunt':
+        t.request('hunt');
+        break;
       // Tutorial: each stage introduces something new.
       case 'v1':
         t.request('archer');
@@ -234,8 +248,9 @@ export class BattleScene extends Phaser.Scene {
   private toMap(openStage?: CampaignStageId): void {
     this.cameras.main.fadeOut(220, 11, 7, 22);
     const region = Math.max(0, regionOf(openStage ?? this.stageId));
-    const trip = !!this.trip;
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', trip ? { region: -1, expedition: true } : { region, openStage }));
+    // Expedição, Caçada and Semana Mutante live on the Mapa de Éter: back there with their card open.
+    const mode = this.trip ? 'expedition' : this.stageId === 'hunt' ? 'hunt' : this.mutation ? 'mutant' : null;
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', mode ? { region: -1, mode } : { region, openStage }));
   }
 
   /** First time a specialist enemy shows up in a match: a short card with its weaknesses. */
@@ -275,6 +290,7 @@ export class BattleScene extends Phaser.Scene {
     this.heroClass = this.daily?.hero ?? this.trip?.run.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
     // During the tutorial only the Arcanista, and no relics or talents (nothing that the tutorial has not taught).
     const learning = !this.daily && !getSave().tutorialDone();
+    this.mutation = data.mutant && !this.daily && !this.trip && STAGE_ORDER.includes(this.stageId as CampaignStageId) ? getSave().mutantWeek().mutation : null;
     if (learning) this.heroClass = 'mage';
     // Relíquias and revealed Bênçãos count everywhere except the daily challenge (same for everyone).
     const save = getSave();
@@ -291,6 +307,8 @@ export class BattleScene extends Phaser.Scene {
       relics: this.daily || learning ? [] : save.loadout(),
       limits: !this.trip,
       run: leg ?? undefined,
+      waves: this.stageId === 'hunt' ? save.huntBosses() : undefined,
+      mutation: this.mutation ?? undefined,
     });
     if (this.daily) {
       // The daily run starts with one boon already in hand.
@@ -324,6 +342,16 @@ export class BattleScene extends Phaser.Scene {
       // Expedição: remind which trail (pact) is in force.
       const pact = PACTS[this.trip.route.pact];
       this.time.delayedCall(500, () => this.fx.bigBanner(pact.name, "#c8fff2", 46, 1600));
+    }
+    if (this.mutation) {
+      const m = MUTATIONS[this.mutation];
+      this.time.delayedCall(500, () => this.fx.bigBanner(`MUTANTE: ${m.name}`, '#' + m.color.toString(16).padStart(6, '0'), 44, 1800));
+    }
+    this.enemies.scale = this.sim.mods.enemyScale;
+    this.huntClock = null;
+    if (this.stageId === 'hunt') {
+      this.time.delayedCall(500, () => this.fx.bigBanner(`CAÇADA: ${this.sim.state.totalWaves} CHEFES`, '#ffd34d', 46, 1600));
+      this.huntClock = uiText(this, GAME_WIDTH - 16, 140, '⏱ 0:00', 28, '#ffe9a8', 6).setOrigin(1, 0.5).setScrollFactor(0).setDepth(DEPTH.hud);
     }
     // Região 2: Comporta and boss shields.
     this.shields = new ShieldLayer(this, this.enemies);
@@ -935,14 +963,32 @@ export class BattleScene extends Phaser.Scene {
       const save = getSave();
       const isRift = this.stageId === 'rift';
       const campaign = STAGE_ORDER.includes(this.stageId as CampaignStageId);
-      const firstWin = !isRift && !this.daily && g.won && (campaign ? save.stars(this.stageId as CampaignStageId) === 0 : !save.data.galeWon);
+      const firstWin = !isRift && !this.daily && !this.mutation && this.stageId !== 'hunt' && g.won && (campaign ? save.stars(this.stageId as CampaignStageId) === 0 : !save.data.galeWon);
       let newChallenges = 0;
       let firstDailyToday = false;
       let challenges: { text: string; done: boolean; fresh: boolean }[] | undefined;
       let daily: { score: number; best: number; record: boolean } | undefined;
       let trip: { leg: number; legs: number; finished: boolean; pact: string; streak: number } | undefined;
       let tripCoins = 0;
-      if (this.trip) {
+      let hunt: { time: string; bosses: number; down: number; best: string; record: boolean } | undefined;
+      let mutant: { name: string; fresh: boolean; won: number; total: number } | undefined;
+      let modeCoins = -1; // Caçada / Semana Mutante pay their own way
+      if (this.stageId === 'hunt') {
+        const s = this.sim.state;
+        const down = g.won ? s.totalWaves : Math.max(0, s.wave - 1);
+        const record = g.won && save.recordHunt(s.totalWaves, s.runTime);
+        modeCoins = down * HUNT.coins.perBoss + (g.won ? HUNT.coins.clear : 0) + (record ? HUNT.coins.record : 0);
+        hunt = { time: huntTime(s.runTime), bosses: s.totalWaves, down, best: save.data.hunt.best > 0 ? huntTime(save.data.hunt.best) : '', record };
+      } else if (this.mutation) {
+        const fresh = g.won && save.recordMutant(this.stageId as CampaignStageId);
+        const w = save.mutantWeek();
+        const all = fresh && w.won.length === w.stages.length;
+        modeCoins = (fresh ? MUTANT.coinsPerWin : COINS.loss) + (all ? MUTANT.allBonus : 0);
+        mutant = { name: MUTATIONS[this.mutation].name, fresh, won: w.won.length, total: w.stages.length };
+      }
+      if (hunt || mutant) {
+        // Nothing else to record: no stars or challenges in these modes.
+      } else if (this.trip) {
         // Expedição: a win carries lives and Bênçãos to the next battle; a defeat ends the run.
         const { run, route } = this.trip;
         const after = advanceRun(run, this.sim.state.lives, this.sim.state.boons, save.expeditionCtx());
@@ -975,7 +1021,7 @@ export class BattleScene extends Phaser.Scene {
       const lv = save.addHeroXp(this.heroClass, xp);
       const unlocked = lv.after > lv.before ? unlockAt(this.heroClass, lv.after) : undefined;
       const heroXp = { name: HEROES[this.heroClass].name, gained: xp, level: lv.after, levelUp: lv.after > lv.before, unlock: unlocked };
-      const coins = this.trip ? tripCoins : matchCoins({
+      const coins = this.trip ? tripCoins : modeCoins >= 0 ? modeCoins : matchCoins({
         mode: this.daily ? 'daily' : isRift ? 'rift' : 'stage',
         won: g.won,
         stars: g.stars,
@@ -985,7 +1031,7 @@ export class BattleScene extends Phaser.Scene {
         firstDailyToday,
       });
       save.addCoins(coins);
-      const next = !campaign || this.daily || this.trip ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId as CampaignStageId) + 1];
+      const next = !campaign || this.daily || this.trip || this.mutation ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId as CampaignStageId) + 1];
       // Next stage: back to the map with its card open (missions, hero and strategy can change first).
       const onNext = trip ? (g.won && !trip.finished ? () => this.toMap() : undefined) : g.won && next ? () => this.toMap(next) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
@@ -1009,6 +1055,8 @@ export class BattleScene extends Phaser.Scene {
             challenges,
             daily,
             trip,
+            hunt,
+            mutant,
             coins,
             heroXp,
           },
@@ -1043,6 +1091,19 @@ export class BattleScene extends Phaser.Scene {
     // A pending Bênção pauses the match until the player picks a card.
     this.tutorial.update(dtMs, !this.picker && !this.paused && !this.ended);
     this.checkTips();
+    if (!this.picker && !this.paused && !this.ended && !this.tutorial.blocking && this.sim.state.shop) {
+      this.menu.close();
+      const shop = this.sim.state.shop;
+      this.picker = asUi(this, () => new HuntShop(this, shop.items, {
+        gold: () => this.sim.state.gold,
+        onBuy: (i) => this.sim.buyShop(i),
+        onClose: () => {
+          this.sim.closeShop();
+          this.picker = null;
+        },
+        next: this.sim.state.wave + 1,
+      }));
+    }
     if (!this.picker && !this.paused && !this.ended && !this.tutorial.blocking && this.sim.state.boonOffers.length > 0) {
       this.menu.close();
       const fromAltar = this.altarOffer;
@@ -1105,6 +1166,7 @@ export class BattleScene extends Phaser.Scene {
     this.fx.update(dtMs);
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
+    this.huntClock?.setText(`⏱ ${huntTime(this.sim.state.runTime)}`);
     this.shields.update(this.sim);
     this.links.update(this.sim);
     this.bridge?.update();

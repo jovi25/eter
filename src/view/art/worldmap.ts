@@ -27,12 +27,14 @@ export const WORLD_TRAIL: Vec2[] = [
 /** Index in WORLD_TRAIL of each region stop (the last one is the region still to come). */
 export const REGION_AT = [2, 4, 6, 8, 9];
 
-export type ModeSpot = 'rift' | 'daily' | 'expedition';
+export type ModeSpot = 'rift' | 'daily' | 'expedition' | 'hunt' | 'mutant';
 /** Game modes: where they stand and which trail point their side path leaves from. */
 export const MODE_SPOTS: Record<ModeSpot, { x: number; y: number; from: number }> = {
   rift: { x: 585, y: 985, from: 0 },
   daily: { x: 125, y: 760, from: 3 },
   expedition: { x: 590, y: 545, from: 5 },
+  hunt: { x: 88, y: 398, from: 7 },
+  mutant: { x: 632, y: 180, from: 8 },
 };
 
 let canvas: HTMLCanvasElement | null = null;
@@ -302,8 +304,8 @@ export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: b
   // Landmarks, back to front.
   for (const [x, y, w, h] of [[70, 470, 150, 120], [660, 440, 160, 130], [130, 400, 120, 90], [600, 390, 110, 80], [40, 600, 110, 80], [690, 640, 120, 90]] as const) mountain(c, x, y, w, h);
   for (const [x, y, w, h] of [[650, 690, 130, 62], [300, 745, 100, 46], [660, 810, 90, 40]] as const) mesa(c, x, y, w, h);
-  for (const [x, y, w] of [[600, 262, 120], [110, 318, 96], [395, 168, 80], [660, 360, 56]] as const) island(c, x, y, w);
-  for (const [x, y, s] of [[600, 250, 30], [110, 306, 24], [395, 158, 20], [160, 200, 16], [50, 400, 18]] as const) crystal(c, x, y, s);
+  for (const [x, y, w] of [[650, 322, 100], [100, 258, 84], [395, 168, 80]] as const) island(c, x, y, w);
+  for (const [x, y, s] of [[650, 312, 26], [100, 248, 22], [395, 158, 20], [160, 200, 16]] as const) crystal(c, x, y, s);
 
   // The trail: bright where the player can walk, faded beyond.
   const lastOpen = REGION_AT[Math.max(0, Math.min(reached, REGION_AT.length) - 1)]!;
@@ -333,7 +335,7 @@ export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: b
   for (let i = 0; i < 6; i++) c.fillRect(-33 + i * 11.2, -15, 9, 30);
   c.restore();
 
-  compass(c, 655, 178, 34);
+  compass(c, 52, 166, 28);
 
   // Old-map edges.
   c.fillStyle = radial(c, W / 2, H / 2, H * 0.72, [

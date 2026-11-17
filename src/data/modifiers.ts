@@ -34,6 +34,16 @@ export interface SimModifiers {
   upgradeCostMult: number;
   rangeMult: number;
   unlockedBoons: string[]; // locked Bênçãos revealed by Relicários (Fase 7)
+  // Semana Mutante (src/data/mutations.ts)
+  towerCostMult: number; // build, upgrade and evolution prices
+  noSell: boolean;
+  plainHitMult: number; // damage of hits that do NOT set off a reaction
+  enemyHpMult: number;
+  enemySpeedMult: number;
+  enemyCountMult: number; // monsters per group (bosses stay alone)
+  towerRateMult: number;
+  enemyScale: number; // view only: how big the monsters look
+  wildWeather: boolean; // a random weather every wave
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -61,5 +71,14 @@ export function defaultModifiers(): SimModifiers {
     upgradeCostMult: 1,
     rangeMult: 1,
     unlockedBoons: [],
+    towerCostMult: 1,
+    noSell: false,
+    plainHitMult: 1,
+    enemyHpMult: 1,
+    enemySpeedMult: 1,
+    enemyCountMult: 1,
+    towerRateMult: 1,
+    enemyScale: 1,
+    wildWeather: false,
   };
 }

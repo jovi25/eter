@@ -6,7 +6,7 @@ import { getSettings } from '../settings';
 import { audioNodes } from './sfx';
 import { economyOn } from '../perf';
 
-export type ThemeId = 'map' | 'map2' | 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'i1' | 'i2' | 'i3' | 'i4' | 'i5' | 'gale' | 'rift';
+export type ThemeId = 'map' | 'map2' | 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'i1' | 'i2' | 'i3' | 'i4' | 'i5' | 'gale' | 'hunt' | 'rift';
 
 interface Theme {
   bpm: number;
@@ -55,6 +55,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   i4: { bpm: 120, root: 54, scale: HARMONIC, prog: [0, 3, 4, 0], arp: [0, 1, 4, 2, 5, 4, 2, 1], pad: 'sawtooth', lead: 'triangle', drums: true, seed: 227, bright: 1500 },
   i5: { bpm: 132, root: 49, scale: HARMONIC, prog: [0, 1, 6, 4], arp: [0, 3, 4, 7, 4, 3, 1, 2], pad: 'sawtooth', lead: 'square', drums: true, seed: 233, bright: 1300 },
   gale: { bpm: 112, root: 57, scale: LYDIAN, prog: [0, 4, 1, 5], arp: [0, 2, 4, 5, 4, 2, 1, 3], pad: 'triangle', lead: 'sine', drums: true, seed: 241, bright: 2000 },
+  hunt: { bpm: 136, root: 52, scale: MINOR, prog: [0, 6, 5, 4], arp: [0, 3, 4, 7, 4, 3, 2, 1], pad: 'sawtooth', lead: 'square', drums: true, seed: 517, bright: 2200 },
   rift: { bpm: 128, root: 59, scale: MINOR, prog: [0, 5, 6, 4], arp: [0, 2, 4, 5, 4, 2, 3, 1], pad: 'sawtooth', lead: 'square', drums: true, seed: 97, bright: 1800 },
 };
 

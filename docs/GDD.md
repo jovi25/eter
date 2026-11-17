@@ -532,3 +532,13 @@ Números em src/data/towers.ts (WIND, wind), reactions.ts, evolutions.ts e stage
 - Evoluções: Olho do Furacão (ult a cada 8 s: dano ×1,5 e empurra 90 px todos no alcance); Brisa Cortante (aura a cada 0,8 s, dano ×0,35).
 - Vale dos Ventos: fase bônus de 10 ondas, fora da contagem de estrelas; abre ao vencer o Trono da Geada. Vencer = save.galeWon,
   e a torre aparece no menu de todas as fases (exceto as Expedições com pacto de torres, que usam as 5 clássicas).
+
+## Fase 18 — Caçada de Chefes e Semana Mutante
+- **Caçada de Chefes** (`src/data/hunt.ts`, fase `hunt`, mapa `arena`): uma onda por chefe já vencido na campanha
+  (Arauto → Sentinela → Devorador → Titã → Prisma). Abre com 2. A próxima onda só começa quando a anterior é limpa
+  (fase `fight`); então paga recompensa (`HUNT.bounty`), dá 12 s de folga e abre a **Loja**: 3 Bênçãos por ouro
+  (Comum 90, Rara 150, Épica 230), compra quantas quiser. O relógio (`runTime`) conta do 1º chefe ao último e para
+  com o jogo pausado/na loja. Recorde salvo em `save.hunt`.
+- **Semana Mutante** (`src/data/mutations.ts`): semana começa na segunda (data local). Rodízio fixo de 6 regras,
+  aplicadas como modificadores da simulação (custo, venda, dano comum, vida/velocidade/quantidade de monstros,
+  cadência, clima aleatório). 3 fases sorteadas entre as já vencidas e fixadas no save na 1ª vez que a semana é vista.

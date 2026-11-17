@@ -62,6 +62,9 @@ export class EnemyLayer {
   /** Called every ~0.12 s for each burning enemy so the FX layer can emit flames. */
   onBurning?: (x: number, y: number) => void;
 
+  /** Semana Mutante (Gigantes): how big the monsters look. */
+  scale = 1;
+
   constructor(private scene: Phaser.Scene) {}
 
   get(id: number): EnemyView | undefined {
@@ -144,7 +147,7 @@ export class EnemyLayer {
     v.flying = def.flying;
     // Spawn pop
     v.root.setScale(0.2);
-    this.scene.tweens.add({ targets: v.root, scale: 1, duration: 220, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: v.root, scale: this.scale, duration: 220, ease: 'Back.easeOut' });
     this.views.set(e.id, v);
     return v;
   }

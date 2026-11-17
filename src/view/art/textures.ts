@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { RELIC_IDS, RELICS } from '../../data/relics';
-import { drawChest, drawEterCoin, drawIconCheck, drawIconCodex, drawIconDaily, drawIconGear, drawNavBadge, drawRelic, drawRuneStone, RELIC_ICON } from './relicArt';
+import { drawChest, drawEterCoin, drawIconCheck, drawIconCodex, drawIconDaily, drawIconGear, drawIconMutant, drawNavBadge, drawRelic, drawRuneStone, RELIC_ICON } from './relicArt';
 import { ASSETS, type AssetKey } from '../../assets/manifest';
 import {
   blush,
@@ -1398,6 +1398,7 @@ export function generateTextures(scene: Phaser.Scene): void {
     c.fillRect(0, 0, 8, 32);
   });
   paint('icon_daily', 72, 72, drawIconDaily);
+  paint('icon_mutant', 72, 72, drawIconMutant);
   paint('icon_check', 48, 48, drawIconCheck);
   paint('icon_codex', 72, 72, drawIconCodex);
   paint('icon_gear', 72, 72, drawIconGear);

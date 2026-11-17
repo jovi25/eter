@@ -28,13 +28,15 @@ export interface StageDef {
   fusion?: boolean; // Torres de fusão allowed (default true)
   links?: boolean; // Vínculos de Éter between neighbouring towers (default true)
   boons?: boolean; // Bênçãos offered between waves (default true)
+  /** Caçada de Chefes: each wave waits for the last to be cleared; a shop opens between them (src/data/hunt.ts). */
+  hunt?: boolean;
   /** Região 4: weather that arrives with these waves (1-based wave → weather). */
   weather?: Partial<Record<number, WeatherId>>;
   waves: WaveDef[];
 }
 
 export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'i1' | 'i2' | 'i3' | 'i4' | 'i5';
-export type StageId = CampaignStageId | 'rift' | 'gale';
+export type StageId = CampaignStageId | 'rift' | 'gale' | 'hunt';
 /** Campaign order; each stage unlocks the next. Região 2 (a1..a5) opens after v5. */
 export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5', 'i1', 'i2', 'i3', 'i4', 'i5'];
 export const REGIONS: { name: string; stages: CampaignStageId[] }[] = [
@@ -87,6 +89,24 @@ export const STAGES: Record<StageId, StageDef> = {
     hpMult: 0.9,
     startGold: 220,
     waves: Array.from({ length: RIFT.waves }, (_, i) => riftWave(i + 1)),
+  },
+
+  // Caçada de Chefes (Fase 18): one wave per boss, in campaign order; the game cuts it to the bosses already beaten.
+  hunt: {
+    runes: true,
+    hunt: true,
+    name: 'Caçada de Chefes',
+    subtitle: 'Os chefes que você já venceu, um atrás do outro. Entre eles, uma loja. Quanto tempo você leva?',
+    map: 'arena',
+    hpMult: 0.85,
+    startGold: 1300,
+    waves: [
+      { groups: [g('herald', 1, 0), g('slime', 8, 0.7, 3), g('wolf', 8, 0.5, 9)] },
+      { groups: [g('sentinel', 1, 0), g('golem', 4, 1.4, 3), g('skeleton', 8, 0.7, 9)] },
+      { groups: [g('devourer', 1, 0), g('bat', 10, 0.5, 3), g('shaman', 6, 0.8, 9)] },
+      { groups: [g('titan', 1, 0), g('monk', 5, 1.0, 3), g('gargoyle', 8, 0.6, 9)] },
+      { groups: [g('prism', 1, 0), g('imp', 6, 0.9, 3), g('yeti', 8, 0.8, 9)] },
+    ],
   },
 
   gale: {

@@ -107,7 +107,8 @@ export interface ZoneState {
   tickTimer: number;
 }
 
-export type WavePhase = 'prep' | 'spawning' | 'countdown' | 'done';
+// 'fight' (Caçada de Chefes): everything spawned, the next wave waits until this one is cleared.
+export type WavePhase = 'prep' | 'spawning' | 'countdown' | 'fight' | 'done';
 export type MatchResult = 'playing' | 'won' | 'lost';
 
 export interface MatchStats {
@@ -151,6 +152,10 @@ export interface SimState {
   /** Clima (Região 4): the weather now, seconds left, and the forecast for the next wave. */
   weather: { kind: WeatherId | null; left: number; next: WeatherId | null };
   combo: { count: number; mult: number; timer: number };
+  /** Seconds since the first wave started (the Caçada's clock; pauses with the game). */
+  runTime: number;
+  /** Caçada de Chefes: the shop open between bosses (null = closed). */
+  shop: { items: { boon: BoonId; cost: number; sold: boolean }[] } | null;
   hero: HeroState;
   stats: MatchStats;
 }

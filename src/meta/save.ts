@@ -10,6 +10,8 @@ import { REACTIONS } from '../data/reactions';
 import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, regionOf, type CampaignStageId, type StageId } from '../data/stages';
 import { EXPEDITION, PACTS, visitRest, type ExpeditionRun, type TrailCtx } from '../data/expedition';
 import { BOONS } from '../data/boons';
+import { HUNT } from '../data/hunt';
+import { MUTANT, weekIndex, weekMutation, weekStages, type MutationId } from '../data/mutations';
 
 export const SAVE_VERSION = 7;
 const KEY = 'eter.save';
@@ -31,6 +33,10 @@ export interface SaveData {
   expeditionStreak: number; // expeditions finished in a row
   expeditionBest: number; // best streak
   galeWon: boolean; // Vale dos Ventos won: the Torre do Vento is unlocked
+  /** Caçada de Chefes: best time (seconds, 0 = none) for the number of bosses it had. */
+  hunt: { bosses: number; best: number };
+  /** Semana Mutante: the week, its 3 stages (fixed when the week is first seen) and the ones won. */
+  mutant: { week: number; stages: CampaignStageId[]; won: CampaignStageId[] };
   challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
   daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
   codex: { enemies: string[]; reactions: string[] }; // Códice discoveries (v5+)
@@ -57,7 +63,7 @@ function freshHeroes(xp = 0): Record<HeroClass, HeroProgress> {
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false, hunt: { bosses: 0, best: 0 }, mutant: { week: -1, stages: [], won: [] } };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -68,7 +74,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false, hunt: { bosses: 0, best: 0 }, mutant: { week: -1, stages: [], won: [] } };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -139,6 +145,11 @@ export function migrate(raw: unknown): SaveData {
   out.expeditionWins = clampInt(out.expeditionWins, 0, 1e9);
   out.expeditionStreak = clampInt(out.expeditionStreak, 0, 1e9);
   out.galeWon = out.galeWon === true;
+  const hu = out.hunt;
+  out.hunt = { bosses: clampInt(hu?.bosses, 0, HUNT.bosses.length), best: Math.max(0, Number(hu?.best) || 0) };
+  const mu = out.mutant;
+  const okStages = (l: unknown): CampaignStageId[] => (Array.isArray(l) ? l.filter((s): s is CampaignStageId => STAGE_ORDER.includes(s)) : []);
+  out.mutant = mu && typeof mu === 'object' ? { week: Math.floor(Number(mu.week)) || -1, stages: okStages(mu.stages), won: okStages(mu.won) } : { week: -1, stages: [], won: [] };
   out.expeditionBest = Math.max(out.expeditionStreak, clampInt(out.expeditionBest, 0, 1e9));
   const ex = out.expedition;
   const okBoons = (l: unknown): boolean => Array.isArray(l) && l.every((b) => typeof b === 'string' && b in BOONS);
@@ -213,6 +224,7 @@ export class SaveStore {
 
   isUnlocked(id: StageId): boolean {
     if (id === 'rift' || id === 'gale') return this.tutorialDone();
+    if (id === 'hunt') return this.huntBosses() >= HUNT.minBosses;
     const r = REGIONS.findIndex((g) => g.stages.includes(id));
     const stages = REGIONS[r]?.stages ?? [];
     const i = stages.indexOf(id);
@@ -362,6 +374,51 @@ export class SaveStore {
     this.persist();
   }
 
+  // ───────────── Caçada de Chefes e Semana Mutante (Fase 18) ─────────────
+
+  /** How many bosses the Caçada has: the ones already beaten in the campaign (always the first N of the list). */
+  huntBosses(): number {
+    let n = 0;
+    for (const b of HUNT.bosses) {
+      if (this.stars(b.stage) === 0) break;
+      n++;
+    }
+    return n;
+  }
+
+  /** A won Caçada. True when it is a new record (more bosses always beats fewer). */
+  recordHunt(bosses: number, seconds: number): boolean {
+    const h = this.data.hunt;
+    const better = bosses > h.bosses || h.best <= 0 || seconds < h.best;
+    if (better) this.data.hunt = { bosses, best: seconds };
+    this.persist();
+    return better;
+  }
+
+  /** This week's mutation and stages (picked once per week from the stages won so far). */
+  mutantWeek(now = new Date()): { week: number; mutation: MutationId; stages: CampaignStageId[]; won: CampaignStageId[] } {
+    const week = weekIndex(now);
+    const m = this.data.mutant;
+    if (m.week !== week || m.stages.length < MUTANT.stages) {
+      const won = STAGE_ORDER.filter((id) => this.stars(id) > 0);
+      const stages = weekStages(week, won, STAGE_ORDER);
+      const keep = m.week === week ? m.won.filter((s) => stages.includes(s)) : [];
+      this.data.mutant = { week, stages, won: keep };
+      this.persist();
+    }
+    const d = this.data.mutant;
+    return { week, mutation: weekMutation(week), stages: d.stages, won: d.won };
+  }
+
+  /** A mutant win: true the first time this stage is won this week. */
+  recordMutant(stage: CampaignStageId, now = new Date()): boolean {
+    const w = this.mutantWeek(now);
+    if (!w.stages.includes(stage) || w.won.includes(stage)) return false;
+    this.data.mutant.won.push(stage);
+    this.persist();
+    return true;
+  }
+
   recordRift(wave: number): boolean {
     if (wave <= this.data.riftBest) return false;
     this.data.riftBest = wave;
@@ -422,7 +479,7 @@ export class SaveStore {
 
   /** Record a finished match. Returns true if this was the first win of the stage. */
   recordResult(id: StageId, won: boolean, stars: number): boolean {
-    if (!won || id === 'rift') return false;
+    if (!won || id === 'rift' || id === 'hunt') return false;
     if (id === 'gale') {
       const first = !this.data.galeWon;
       this.data.galeWon = true;

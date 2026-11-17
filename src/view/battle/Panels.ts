@@ -109,6 +109,10 @@ export interface EndStats {
   daily?: { score: number; best: number; record: boolean };
   /** Expedição de Éter: which battle of the run this was. */
   trip?: { leg: number; legs: number; finished: boolean; pact: string; streak: number };
+  /** Caçada de Chefes: the clock and the record. */
+  hunt?: { time: string; bosses: number; down: number; best: string; record: boolean };
+  /** Semana Mutante: the rule and the week's progress. */
+  mutant?: { name: string; fresh: boolean; won: number; total: number };
   coins?: number;
   heroXp?: { name: string; gained: number; level: number; levelUp: boolean; unlock?: string };
 }
@@ -117,7 +121,7 @@ export class EndPanel {
   constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void; onStats?: () => void }) {
     backdrop(scene);
     const p = panel(scene, 600, 880);
-    const title = uiText(scene, 0, -340, s.rift ? 'FIM DA FENDA' : s.trip?.finished ? 'EXPEDIÇÃO COMPLETA!' : s.trip && !s.won ? 'FIM DA EXPEDIÇÃO' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : s.trip && (s.trip.finished || !s.won) ? 46 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
+    const title = uiText(scene, 0, -340, s.hunt ? (s.won ? 'CAÇADA COMPLETA!' : 'FIM DA CAÇADA') : s.rift ? 'FIM DA FENDA' : s.trip?.finished ? 'EXPEDIÇÃO COMPLETA!' : s.trip && !s.won ? 'FIM DA EXPEDIÇÃO' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : s.hunt || (s.trip && (s.trip.finished || !s.won)) ? 46 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
     p.add(title);
     scene.tweens.add({ targets: title, scale: { from: 1.08, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -127,7 +131,13 @@ export class EndPanel {
       p.add(uiText(scene, 0, -132, s.rift.record ? '★ NOVO RECORDE! ★' : `Recorde: onda ${s.rift.best}`, 28, s.rift.record ? PAL.goldCss : PAL.uiDim, 6));
       if (s.rift.record) playSfx('star');
     }
-    for (let i = 0; i < (s.rift ? 0 : 3); i++) {
+    if (s.hunt) {
+      p.add(uiText(scene, 0, -196, s.won ? `⏱ ${s.hunt.time}` : `${s.hunt.down} de ${s.hunt.bosses} chefes`, 70, '#ffffff', 12));
+      const rec = s.hunt.record ? '★ NOVO RECORDE! ★' : s.hunt.best ? `Recorde: ${s.hunt.best}` : 'Vença todos para marcar um tempo';
+      p.add(uiText(scene, 0, -130, rec, 26, s.hunt.record ? PAL.goldCss : PAL.uiDim, 6));
+      if (s.hunt.record) playSfx('star');
+    }
+    for (let i = 0; i < (s.rift || s.hunt || s.mutant ? 0 : 3); i++) {
       const x = (i - 1) * 140;
       const y = i === 1 ? -170 : -150;
       p.add(scene.add.image(x, y, 'starEmpty').setScale(1.4));
@@ -171,6 +181,11 @@ export class EndPanel {
       p.add(uiText(scene, 0, 106, 'Parada ' + s.trip.leg + ' de ' + s.trip.legs + ' • ' + s.trip.pact, 24, '#ffffff', 6));
       const msg = s.trip.finished ? '★ Chefe final derrotado! Sequência: ' + s.trip.streak + ' ★' : s.won ? 'Vidas e Bênçãos seguem com você' : 'A expedição acabou. Comece outra no mapa!';
       p.add(uiText(scene, 0, 148, msg, 21, s.won ? PAL.goldCss : PAL.uiDim, 5).setWordWrapWidth(540));
+    } else if (s.mutant) {
+      p.add(uiText(scene, 0, 66, 'SEMANA MUTANTE', 22, PAL.uiDim, 5));
+      p.add(uiText(scene, 0, 106, s.mutant.name, 30, '#ffffff', 6));
+      const msg = s.mutant.fresh ? `★ Fase vencida! ${s.mutant.won} de ${s.mutant.total} desta semana ★` : `Desta semana: ${s.mutant.won} de ${s.mutant.total}`;
+      p.add(uiText(scene, 0, 148, msg, 21, s.mutant.fresh ? PAL.goldCss : PAL.uiDim, 5));
     } else if (s.daily) {
       p.add(uiText(scene, 0, 66, 'PONTUAÇÃO DO DIA', 22, PAL.uiDim, 5));
       p.add(uiText(scene, 0, 108, `${s.daily.score}`, 54, '#ffffff', 9));
@@ -190,7 +205,7 @@ export class EndPanel {
     if (s.coins) {
       const ct = uiText(scene, 16, 0, `+${s.coins} moedas`, 26, '#d6c4ff', 6).setOrigin(0, 0.5);
       const ci = scene.add.image(-6, 0, 'eter_coin').setScale(0.85);
-      const row = scene.add.container(-ct.width / 2, s.rift ? -272 : -244, [ci, ct]);
+      const row = scene.add.container(-ct.width / 2, s.rift || s.hunt ? -272 : -244, [ci, ct]);
       p.add(row);
       row.setScale(0);
       scene.tweens.add({ targets: row, scale: 1, delay: 900, duration: 300, ease: 'Back.easeOut', onStart: () => playSfx('coin', 1.2) });

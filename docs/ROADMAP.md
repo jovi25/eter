@@ -179,10 +179,15 @@ O jogador venceu a Expedição com 3 torres (Nevasca + Senhor do Trovão + 1), 2
 - [~] Fusões com o Vento: **adiadas** (as 5 fusões atuais continuam)
 - *Calibragem:* builds com vento rendem parecido com as clássicas; 3 torres com vento perdem nas Regiões 2–4
 
-### Fase 18 — Caçada de Chefes e Semana Mutante
-- [ ] **Caçada**: todos os chefes em fila, com uma loja curta entre eles; recorde de tempo
-- [ ] **Semana Mutante**: toda semana uma regra maluca igual para todos (torres custam metade mas não se vendem;
-      só reações causam dano; monstros gigantes e lentos...)
+### Fase 18 — Caçada de Chefes e Semana Mutante ✔
+- [x] **Caçada** (abre com 2 chefes vencidos): os chefes já vencidos em fila na **Arena**; o próximo só vem quando o
+      anterior cai. Entre eles, **Loja da Caçada** (Bênçãos por ouro, relógio parado). Sem Bênçãos de graça.
+      Recorde de tempo (mais chefes sempre vence). Moedas por chefe, por completar e por recorde
+- [x] **Semana Mutante** (abre ao fim do tutorial): 6 regras em rodízio toda segunda — Gigantes, Liquidação,
+      Céu Louco, Alquimia Pura, Enxame, Pressa. Vale em 3 fases já vencidas (fixadas na semana); +50 moedas por
+      fase e +100 pelas 3. Não mexe em estrelas nem desafios
+- *Calibragem:* Caçada — robô com 8 torres em combo vence (2 chefes ≈ 1:40, 5 chefes ≈ 5 min); 3 torres perdem.
+  Mutações: Liquidação/Pressa mais fáceis, Gigantes/Céu Louco mais difíceis
 
 ### Fase 19 — O mundo ganha voz
 - [ ] Cenas curtas pintadas ao abrir cada região; falas dos chefes ao entrar e ao cair; diário do herói no Códice

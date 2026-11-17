@@ -20,6 +20,8 @@ import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
+import { HUNT, huntTime } from '../../data/hunt';
+import { MUTANT, MUTATIONS, daysLeft } from '../../data/mutations';
 import { HeroPanel } from '../ui/HeroPanel';
 import { TALENTS, WEAPONS } from '../../data/talents';
 import { canVisit, EXPEDITION, newRun, PACTS, REST_INFO } from '../../data/expedition';
@@ -87,7 +89,7 @@ export class WorldMapScene extends Phaser.Scene {
 
 
 
-  create(data?: { region?: number; openStage?: CampaignStageId; expedition?: boolean }): void {
+  create(data?: { region?: number; openStage?: CampaignStageId; mode?: 'expedition' | 'hunt' | 'mutant' }): void {
     fitCamera(this);
     frameCap(this, 'menu');
     const save = getSave();
@@ -96,7 +98,7 @@ export class WorldMapScene extends Phaser.Scene {
     if (region >= 0 && !save.isRegionOpen(region)) region = -1;
     lastRegion = region;
     if (region < 0) {
-      this.hub(!!data?.expedition);
+      this.hub(data?.mode);
       return;
     }
     const theme = REGION_LOOK[region]?.theme ?? 'meadow';
@@ -174,7 +176,7 @@ export class WorldMapScene extends Phaser.Scene {
    * Mapa de Éter: a painted world crossed by a dashed trail. Each stop is a region (a sub-map of 5 stages)
    * that opens when the previous one has 3 stars everywhere; side paths lead to the game modes.
    */
-  private hub(openExpedition = false): void {
+  private hub(open?: 'expedition' | 'hunt' | 'mutant'): void {
     const save = getSave();
     playMusic('map');
     setMusicIntensity(0);
@@ -293,11 +295,20 @@ export class WorldMapScene extends Phaser.Scene {
     const m = MODE_SPOTS;
     stop(m.rift.x, m.rift.y, 46, 0x7a4fd0, 'portal', 0.5, 'Fenda Infinita', done ? (save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : '40 ondas sem fim') : 'Fim do tutorial', done, () => this.showStageCard('rift'), lockTip);
     stop(m.daily.x, m.daily.y, 46, 0xb0479a, 'icon_daily', 0.8, 'Desafio do dia', done ? 'Igual para todos' : 'Fim do tutorial', done, () => this.showDailyCard(), lockTip, false, done && save.dailyBest(today.key) === 0);
+    const huntOpen = save.isUnlocked('hunt');
+    const hb = save.huntBosses();
+    const huntSub = !huntOpen ? `Vença ${HUNT.minBosses} chefes` : save.data.hunt.best > 0 && save.data.hunt.bosses === hb ? `Recorde: ${huntTime(save.data.hunt.best)}` : `${hb} chefes em fila`;
+    stop(m.hunt.x, m.hunt.y, 46, 0xc0504a, 'enemy_herald', 0.42, 'Caçada', huntSub, huntOpen, () => this.showStageCard('hunt'), `Vença o chefe de ${STAGES[HUNT.bosses[HUNT.minBosses - 1]!.stage].name} para abrir`, false, huntOpen && save.data.hunt.best === 0);
+    const week = done ? save.mutantWeek() : null;
+    const mut = week ? MUTATIONS[week.mutation] : null;
+    stop(m.mutant.x, m.mutant.y, 46, mut?.color ?? 0x8a5fd0, 'icon_mutant', 0.8, 'Semana Mutante', week && mut ? `${mut.name} • ${week.won.length}/${week.stages.length}` : 'Fim do tutorial', done, () => this.showMutantCard(), lockTip, false, !!week && week.won.length === 0);
     stop(m.expedition.x, m.expedition.y, 46, 0x2f9a8a, 'chest', 0.3, 'Expedição', done ? (run ? `Parada ${run.leg + 1} de ${EXPEDITION.legs}` : 'Trilha de 5 paradas') : 'Fim do tutorial', done, () => this.showExpeditionCard(), lockTip, false, done && save.data.expeditionWins === 0 && !run);
 
     this.navBar(false);
     this.cameras.main.fadeIn(250, 11, 7, 22);
-    if (openExpedition && done) this.showExpeditionCard();
+    if (open === 'expedition' && done) this.showExpeditionCard();
+    if (open === 'hunt' && save.isUnlocked('hunt')) this.showStageCard('hunt');
+    if (open === 'mutant' && done) this.showMutantCard();
   }
 
   /**
@@ -615,6 +626,10 @@ export class WorldMapScene extends Phaser.Scene {
     c.add(uiText(this, 0, -236, st.subtitle, 21, PAL.uiDim, 5).setWordWrapWidth(560));
     if (id === 'rift') {
       c.add(uiText(this, 0, -178, save.data.riftBest > 0 ? `Seu recorde: onda ${save.data.riftBest}` : 'Sem recorde ainda', 26, PAL.goldCss, 5));
+    } else if (id === 'hunt') {
+      const hb = save.huntBosses();
+      const h = save.data.hunt;
+      c.add(uiText(this, 0, -178, h.best > 0 ? `Recorde: ${huntTime(h.best)} (${h.bosses} chefes)` : `${hb} chefes • sem recorde ainda`, 24, PAL.goldCss, 5));
     } else if (id === 'gale') {
       c.add(uiText(this, 0, -178, save.data.galeWon ? '✔ Torre do Vento liberada' : 'Vença para liberar a Torre do Vento', 24, '#9ff0d0', 5));
     } else {
@@ -668,9 +683,14 @@ export class WorldMapScene extends Phaser.Scene {
     });
 
     // Stage challenges (extra goals on top of the stars).
-    if (id !== 'rift' && id !== 'gale') {
-      const done = save.data.challenges[id] ?? [];
-      CHALLENGES[id].forEach((ch, i) => {
+    if (id === 'hunt') {
+      const list = HUNT.bosses.slice(0, save.huntBosses()).map((b) => ENEMIES[b.boss].name).join(' → ');
+      c.add(uiText(this, 0, 150, list, 18, '#ffb38a', 4).setWordWrapWidth(580));
+      c.add(uiText(this, 0, 196, 'Sem Bênçãos de graça: a loja entre os chefes vende por ouro', 17, PAL.uiDim, 4).setWordWrapWidth(580));
+    } else if (STAGE_ORDER.includes(id as CampaignStageId)) {
+      const cid = id as CampaignStageId;
+      const done = save.data.challenges[cid] ?? [];
+      CHALLENGES[cid].forEach((ch, i) => {
         c.add(uiText(this, 0, 150 + i * 30, `${done[i] ? '✔' : '○'} ${challengeText(ch)}`, 20, done[i] ? '#9be89b' : PAL.uiText, 4));
       });
     }
@@ -703,6 +723,57 @@ export class WorldMapScene extends Phaser.Scene {
       c.setScale(0.7).setAlpha(0);
       this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
     }
+    this.card = c;
+  }
+
+  /** Semana Mutante: this week's rule on 3 stages already won. Each win of the week pays moedas. */
+  private showMutantCard(): void {
+    this.card?.destroy();
+    const save = getSave();
+    const w = save.mutantWeek();
+    const m = MUTATIONS[w.mutation];
+    const css = '#' + m.color.toString(16).padStart(6, '0');
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(50);
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.6).setInteractive();
+    shade.on('pointerdown', () => {
+      c.destroy();
+      this.card = null;
+    });
+    const g = this.add.graphics();
+    g.fillStyle(PAL.ink, 1);
+    g.fillRoundedRect(-320, -380, 640, 760, 30);
+    g.fillStyle(0x2a1a3a, 1);
+    g.fillRoundedRect(-315, -375, 630, 750, 26);
+    g.fillStyle(m.color, 0.18);
+    g.fillRoundedRect(-290, -270, 580, 170, 22);
+    c.add([shade, g]);
+    c.add(uiText(this, 0, -330, 'Semana Mutante', 40, '#f3e9ff', 8));
+    const left = daysLeft(new Date());
+    c.add(uiText(this, 0, -292, left <= 1 ? 'A regra muda amanhã!' : `A regra muda em ${left} dias (toda segunda)`, 19, PAL.uiDim, 4));
+    c.add(uiText(this, 0, -232, `${m.icon} ${m.name}`, 40, css, 8));
+    c.add(uiText(this, 0, -164, m.desc, 21, PAL.uiText, 5).setWordWrapWidth(540));
+    c.add(uiText(this, 0, -66, `Vitórias desta semana: ${w.won.length} de ${w.stages.length}`, 24, PAL.goldCss, 5));
+    c.add(uiText(this, 0, -30, `+${MUTANT.coinsPerWin} moedas por fase • +${MUTANT.allBonus} pelas 3`, 18, PAL.uiDim, 4));
+    w.stages.forEach((id, i) => {
+      const won = w.won.includes(id);
+      const y = 50 + i * 104;
+      c.add(
+        new Button(this, 0, y, {
+          width: 540,
+          height: 84,
+          label: `${won ? '✔ ' : ''}${STAGES[id].name}`,
+          fontSize: 26,
+          color: won ? 0x3a5a3a : 0x6a3fb0,
+          onClick: () => {
+            this.cameras.main.fadeOut(220, 11, 7, 22);
+            this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { stage: id, hero: getSave().data.hero, mutant: true }));
+          },
+        }),
+      );
+    });
+    c.add(uiText(this, 0, 352, `Herói: ${HEROES[save.data.hero].name} (troque no cartão de qualquer fase)`, 17, PAL.uiDim, 4));
+    c.setScale(0.7).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
     this.card = c;
   }
 

@@ -33,7 +33,9 @@ export type TipId =
   | 'weather'
   | 'thief'
   | 'prism'
-  | 'wind';
+  | 'wind'
+  | 'hunt'
+  | 'mutant';
 
 export interface TipDef {
   title: string;
@@ -70,6 +72,8 @@ export const TIPS: Record<TipId, TipDef> = {
   boss: { title: 'Chefe MVP', text: 'O Arauto da Geada fica imune a Resfriado de tempos em tempos e chama gosmas. Guarde dano forte para ele.' },
   // ── Depois do tutorial ──
   rift: { title: 'Fenda Infinita', text: '40 ondas cada vez mais duras. Quanto mais longe, mais moedas para o Relicário.' },
+  hunt: { title: 'Caçada de Chefes', text: 'Só chefes, um atrás do outro. O próximo só vem quando o anterior cai. Entre eles, a LOJA vende Bênçãos por ouro. O relógio conta: chame o próximo chefe cedo!' },
+  mutant: { title: 'Semana Mutante', text: 'Esta fase está com a regra maluca da semana. Ela muda toda segunda-feira. Vença para ganhar moedas!' },
   altar: { title: 'Altar de Éter', text: 'Ouro sobrando? Toque no ALTAR e troque ouro por uma Bênção extra.' },
   // ── Região 3 ──
   bridge: { title: 'Ponte levadiça', text: 'Toque na ponte para erguê-la: os monstros que andam ficam parados na frente dela por 4 s (voadores passam). Depois ela precisa de um tempo para subir de novo.' },

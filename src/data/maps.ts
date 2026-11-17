@@ -26,7 +26,7 @@ export interface MapDef {
   theme?: MapTheme;
 }
 
-export type MapId = 'meadow' | 'twin' | 'ring' | 'corridor' | 'fork' | 'canyon' | 'sluice' | 'stairs' | 'confluence' | 'abyss' | 'peak' | 'pass' | 'glacier' | 'terraces' | 'summit' | 'isles' | 'drift' | 'shards' | 'vortex' | 'nexus' | 'valley';
+export type MapId = 'meadow' | 'twin' | 'ring' | 'corridor' | 'fork' | 'canyon' | 'sluice' | 'stairs' | 'confluence' | 'abyss' | 'peak' | 'pass' | 'glacier' | 'terraces' | 'summit' | 'isles' | 'drift' | 'shards' | 'vortex' | 'nexus' | 'valley' | 'arena';
 
 const P = (pts: [number, number][]): Vec2[] => pts.map(([x, y]) => ({ x, y }));
 const S = P;
@@ -201,6 +201,15 @@ export const MAPS: Record<MapId, MapDef> = {
     heroStart: { x: 456, y: 1690 },
     gate: { x: 360, y: 228, paths: [0, 1] },
     bridge: { x: 120, y: 1350 },
+  },
+  // Caçada de Chefes: the Arena — three long sand lanes, the crystal in the far corner.
+  arena: {
+    name: 'Arena',
+    paths: [P([[120, 144], [120, 1060], [360, 1060], [360, 300], [600, 300], [600, 1130]])],
+    slots: S([[240, 936], [480, 408], [240, 408], [240, 552], [240, 696], [480, 552], [480, 696], [480, 840], [480, 984], [240, 264]]),
+    runes: S([[192, 792], [336, 240]]),
+    heroStart: { x: 480, y: 1120 },
+    theme: 'amber',
   },
   // Fase bônus: Vale dos Ventos (one screen, a long zig-zag where pushing monsters back pays off).
   valley: {

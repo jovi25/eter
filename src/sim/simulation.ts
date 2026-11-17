@@ -13,6 +13,8 @@ import { COMBO, REACTION_IDS, REACTION_RULES, REACTION_TABLE, REACTIONS, type Au
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
 import { WEATHER, type WeatherDef, type WeatherId } from '../data/weather';
+import { HUNT } from '../data/hunt';
+import { MUTATIONS, type MutationId } from '../data/mutations';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
@@ -33,6 +35,10 @@ export interface SimOptions {
   limits?: boolean;
   /** Expedição de Éter: tougher monsters, carried lives and Bênçãos, a pact's gold. */
   run?: { hpMult?: number; gold?: number; lives?: number; boons?: string[]; extraBoon?: boolean };
+  /** Caçada de Chefes: play only the first N waves (one per boss already beaten). */
+  waves?: number;
+  /** Semana Mutante: this week's crazy rule. */
+  mutation?: MutationId;
 }
 
 export interface SpawnOptions {
@@ -107,6 +113,16 @@ export class Simulation {
       return best;
     });
     this.mods = { ...defaultModifiers(), ...opts.modifiers };
+    if (opts.mutation) MUTATIONS[opts.mutation].apply(this.mods);
+    if (opts.waves) this.stage = { ...this.stage, waves: this.stage.waves.slice(0, Math.max(1, opts.waves)) };
+    if (this.mods.wildWeather) {
+      // Céu Louco: every wave brings a weather (its own stream: the battle's rolls stay the same).
+      const sky = new Rng((opts.seed ^ 0x2545f491) >>> 0);
+      const kinds = Object.keys(WEATHER) as WeatherId[];
+      const weather: Partial<Record<number, WeatherId>> = {};
+      this.stage.waves.forEach((_, i) => (weather[i + 1] = kinds[sky.int(0, kinds.length - 1)]!));
+      this.stage = { ...this.stage, weather };
+    }
     this.rules = opts.limits ? this.stage : {};
     const only = this.rules.towers;
     if (only) this.mods.unlockedTowers = this.mods.unlockedTowers.filter((t) => only.includes(t));
@@ -139,6 +155,8 @@ export class Simulation {
       projectiles: [],
       zones: [],
       combo: { count: 0, mult: 1, timer: 0 },
+      runTime: 0,
+      shop: null,
       hero: {
         id: -1,
         cls: this.mods.heroClass,
@@ -372,7 +390,7 @@ export class Simulation {
 
   /** Towers near the Sacerdotisa attack faster. */
   private towerRateMult(t: TowerState): number {
-    let m = this.runeMult(t, 'rateMult');
+    let m = this.runeMult(t, 'rateMult') * this.mods.towerRateMult;
     if (this.mods.heroClass !== 'priest' || !this.state.hero.alive || this.talent('smite')) return m;
     const h = this.state.hero;
     const choir = this.talent('choir');
@@ -691,11 +709,19 @@ export class Simulation {
   /** Cost of the next upgrade, or null if maxed. */
   upgradeCost(tower: TowerState): number | null {
     const next = TOWERS[tower.type].levels[tower.level];
-    return next ? Math.round(next.cost * this.mods.upgradeCostMult) : null;
+    return next ? Math.round(next.cost * this.mods.upgradeCostMult * this.mods.towerCostMult) : null;
   }
 
   sellValue(tower: TowerState): number {
     return Math.floor(tower.invested * ECONOMY.sellRefund);
+  }
+
+  buildCost(type: TowerId): number {
+    return Math.round(TOWERS[type].levels[0].cost * this.mods.towerCostMult);
+  }
+
+  canSell(): boolean {
+    return !this.mods.noSell;
   }
 
   build(slot: number, type: TowerId): TowerState | null {
@@ -703,7 +729,7 @@ export class Simulation {
     const pos = this.slots[slot];
     if (s.result !== 'playing' || !pos || this.towerAt(slot)) return null;
     if (!this.mods.unlockedTowers.includes(type)) return null;
-    const cost = TOWERS[type].levels[0].cost;
+    const cost = this.buildCost(type);
     if (s.gold < cost) return null;
     const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, evo: null, ultTimer: 0, fusion: null };
     s.towers.push(tower);
@@ -730,7 +756,7 @@ export class Simulation {
   sell(towerId: number): boolean {
     const s = this.state;
     const i = s.towers.findIndex((t) => t.id === towerId);
-    if (s.result !== 'playing' || i < 0) return false;
+    if (s.result !== 'playing' || i < 0 || this.mods.noSell) return false;
     const t = s.towers[i]!;
     const refund = this.sellValue(t);
     s.towers.splice(i, 1);
@@ -829,17 +855,43 @@ export class Simulation {
     return true;
   }
 
+  // ───────────────────────────── Caçada: loja ─────────────────────────────
+
+  private openShop(): void {
+    const items = this.rollBoons(HUNT.shop.weights, HUNT.shop.exclude).map((boon) => ({ boon, cost: HUNT.shop.cost[(BOONS[boon] as BoonDef).rarity], sold: false }));
+    this.state.shop = { items };
+  }
+
+  /** Buy a Bênção in the Caçada's shop (any number, while the gold lasts). */
+  buyShop(index: number): boolean {
+    const s = this.state;
+    const item = s.shop?.items[index];
+    if (!item || item.sold || s.result !== 'playing' || s.gold < item.cost) return false;
+    this.addGold(-item.cost);
+    item.sold = true;
+    this.grantBoon(item.boon);
+    return true;
+  }
+
+  closeShop(): void {
+    this.state.shop = null;
+  }
+
+  private grantBoon(id: BoonId): void {
+    this.state.boons.push(id);
+    const livesBefore = this.state.lives;
+    (BOONS[id] as BoonDef).apply({ mods: this.mods, state: this.state, addGold: (n) => this.addGold(n) });
+    if (this.state.lives !== livesBefore) this.events.emit('livesChanged', { lives: this.state.lives, delta: this.state.lives - livesBefore });
+    this.events.emit('boonChosen', { id });
+  }
+
   /** Take one boon from the oldest pending offer. */
   chooseBoon(index: number): boolean {
     const offer = this.state.boonOffers[0];
     const id = offer?.[index];
     if (!offer || !id || this.state.result !== 'playing') return false;
     this.state.boonOffers.shift();
-    this.state.boons.push(id);
-    const livesBefore = this.state.lives;
-    (BOONS[id] as BoonDef).apply({ mods: this.mods, state: this.state, addGold: (n) => this.addGold(n) });
-    if (this.state.lives !== livesBefore) this.events.emit('livesChanged', { lives: this.state.lives, delta: this.state.lives - livesBefore });
-    this.events.emit('boonChosen', { id });
+    this.grantBoon(id);
     return true;
   }
 
@@ -851,6 +903,7 @@ export class Simulation {
     if (s.result !== 'playing') return;
     s.tick++;
     s.time += DT;
+    if (s.wave > 0) s.runTime += DT;
     this.updateWaves();
     this.updateWeather();
     this.updateBridge();
@@ -876,10 +929,13 @@ export class Simulation {
     const def = this.stage.waves[s.wave - 1]!;
     this.pending = [];
     for (const g of def.groups) {
-      for (let i = 0; i < g.count; i++) {
+      // Enxame: more monsters in the same time (bosses always come alone).
+      const many = ENEMIES[g.enemy].boss ? 1 : this.mods.enemyCountMult;
+      const count = Math.round(g.count * many);
+      for (let i = 0; i < count; i++) {
         // On a Comporta map, free groups take whatever branch is open when they spawn (-1 = decide then).
         const path = g.path !== undefined ? Math.min(g.path, this.paths.length - 1) : this.gateDef ? -1 : i % this.paths.length;
-        this.pending.push({ at: (g.delay ?? 0) + i * g.interval, enemy: g.enemy, path });
+        this.pending.push({ at: (g.delay ?? 0) + (i * g.interval) / many, enemy: g.enemy, path });
       }
     }
     // Sometimes a Gosma Dourada sneaks in: no lives at stake, lots of gold if you catch it.
@@ -910,7 +966,9 @@ export class Simulation {
       this.spawnEnemy(p.enemy, { wave: s.wave, path: p.path < 0 ? this.gatePath() : p.path });
     }
     if (this.pending.length === 0) {
-      if (s.wave < s.totalWaves) {
+      if (s.wave < s.totalWaves && this.stage.hunt) {
+        s.wavePhase = 'fight'; // Caçada: the next boss waits for this one to fall
+      } else if (s.wave < s.totalWaves) {
         s.wavePhase = 'countdown';
         s.nextWaveTimer = WAVE_TIMING.timeBetweenWaves;
         if (this.rules.boons !== false && s.wave % BOON_RULES.every === BOON_RULES.offset) this.offerBoons();
@@ -934,6 +992,13 @@ export class Simulation {
     const bonus = ECONOMY.waveClearBonusBase + ECONOMY.waveClearBonusPerWave * wave;
     this.addGold(bonus);
     this.events.emit('waveCleared', { wave, bonus });
+    if (this.stage.hunt && s.wavePhase === 'fight' && wave === s.wave) {
+      // Caçada: the boss is down — bounty, a breather, and the shop.
+      s.wavePhase = 'countdown';
+      s.nextWaveTimer = HUNT.breather;
+      this.addGold(HUNT.bounty);
+      this.openShop();
+    }
   }
 
   // ───────────────────────────── enemies ─────────────────────────────
@@ -943,7 +1008,7 @@ export class Simulation {
     const def = ENEMIES[type];
     const wave = opts.wave ?? Math.max(1, s.wave);
     const growth = def.scalesWithWave ? Math.pow(DIFFICULTY.hpGrowthPerWave, wave - 1) : 1;
-    const hp = opts.hp ?? Math.round(def.hp * growth * this.stage.hpMult);
+    const hp = opts.hp ?? Math.round(def.hp * growth * this.stage.hpMult * this.mods.enemyHpMult);
     const dist = opts.dist ?? 0;
     const pathIndex = Math.min(opts.path ?? 0, this.paths.length - 1);
     const pos = this.paths[pathIndex]!.pointAt(dist, this.tmp);
@@ -1140,7 +1205,7 @@ export class Simulation {
       if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
       const before = e.dist;
-      let speed = def.speed;
+      let speed = def.speed * this.mods.enemySpeedMult;
       if (e.flying) speed *= this.weatherDef?.flyerSpeed ?? 1;
       if (e.fleeing && def.thief) speed *= def.thief.fleeMult;
       e.dist += speed * (1 - slow) * DT;
@@ -1438,7 +1503,7 @@ export class Simulation {
   /** Price of evolving this tower, or null if it can't (not level 3 yet, or already evolved). */
   evolveCost(t: TowerState, evo: EvolutionId): number | null {
     if (this.rules.evolve === false || t.level < MAX_LEVEL || t.evo || t.fusion || EVOLUTIONS[evo].tower !== t.type) return null;
-    return Math.round(EVOLUTIONS[evo].cost * this.mods.upgradeCostMult);
+    return Math.round(EVOLUTIONS[evo].cost * this.mods.upgradeCostMult * this.mods.towerCostMult);
   }
 
   evolve(towerId: number, evo: EvolutionId): boolean {
@@ -1536,7 +1601,7 @@ export class Simulation {
   // ───────────────────────────── Torres de fusão ─────────────────────────────
 
   fusionCost(): number {
-    return Math.round(FUSION.cost * this.mods.upgradeCostMult);
+    return Math.round(FUSION.cost * this.mods.upgradeCostMult * this.mods.towerCostMult);
   }
 
   /** Towers this one can fuse with: level 3, not evolved or fused, reacting elements, close enough. */
@@ -1796,7 +1861,7 @@ export class Simulation {
       e.lastReaction = found.reaction;
       e.reactionLock = REACTION_RULES.repeatLock;
     }
-    let mult = 1;
+    let mult = found ? 1 : this.mods.plainHitMult; // Alquimia Pura: plain hits are weak
     if (found && e.shield === found.reaction) {
       // The right reaction cracks the shield; the breaking hit already lands at full strength.
       e.shieldHits--;
