@@ -7,6 +7,7 @@ import type { HeroClass } from '../data/heroes';
 import type { BoonId } from '../data/boons';
 import type { ReactionId } from '../data/reactions';
 import type { TowerAbility, TowerId } from '../data/towers';
+import type { WeatherId } from '../data/weather';
 
 export interface EnemyState {
   id: number;
@@ -44,6 +45,12 @@ export interface EnemyState {
   shieldHits: number; // reactions still needed to break it
   shieldPhase: number; // index of the last shield raised
   shieldGrace: number; // seconds after a break before the next shield may rise
+  // Região 4
+  form: number; // Prisma do Vazio: index into boss.forms.list of the current form (-1 = none)
+  formPhase: number; // how many forms it has taken so far, minus one
+  formOrder: number[]; // shuffled order of the forms (empty for everyone else)
+  stolen: number; // Diabrete Ladrão: gold it carries
+  fleeing: boolean; // it already grabbed the gold and runs
 }
 
 export interface TowerState {
@@ -137,6 +144,8 @@ export interface SimState {
   rerolls: number; // offers re-rolled this match
   gate: number; // Comporta: which of map.gate.paths new enemies take (0 or 1)
   bridge: { up: number; cooldown: number }; // Ponte levadiça: seconds left raised / until it can be raised again
+  /** Clima (Região 4): the weather now, seconds left, and the forecast for the next wave. */
+  weather: { kind: WeatherId | null; left: number; next: WeatherId | null };
   combo: { count: number; mult: number; timer: number };
   hero: HeroState;
   stats: MatchStats;

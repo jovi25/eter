@@ -63,6 +63,11 @@ it('all stages × strategies × seeds', () => {
     c3: ['frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'brazier', 'archer', 'storm', 'vine'],
     c4: ['storm', 'frost', 'brazier', 'vine', 'storm', 'frost', 'brazier', 'archer', 'storm', 'frost', 'vine', 'brazier', 'storm'],
     c5: ['frost', 'storm', 'vine', 'brazier', 'frost', 'storm', 'vine', 'brazier', 'frost', 'storm', 'archer', 'vine', 'brazier'],
+    i1: ['storm', 'frost', 'vine', 'archer', 'storm', 'frost', 'brazier', 'vine', 'storm', 'frost', 'archer', 'brazier'],
+    i2: ['archer', 'storm', 'frost', 'brazier', 'archer', 'storm', 'frost', 'vine', 'archer', 'storm', 'brazier'],
+    i3: ['frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'brazier', 'vine', 'archer', 'frost', 'storm', 'brazier'],
+    i4: ['frost', 'storm', 'vine', 'archer', 'frost', 'storm', 'brazier', 'vine', 'archer', 'storm', 'frost', 'brazier', 'archer'],
+    i5: ['storm', 'frost', 'brazier', 'vine', 'archer', 'storm', 'frost', 'brazier', 'vine', 'archer', 'storm', 'frost'],
   };
   for (const st of STAGE_ORDER) {
     const out: string[] = [];

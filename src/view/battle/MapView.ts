@@ -111,6 +111,17 @@ const GROUND: Record<MapTheme, { top: string; bottom: string; light: string; dar
     road: ['#3e4a66', '#76869f', 'rgba(170,190,220,0.5)', 'rgba(235,242,255,0.35)'],
     vignette: 'rgba(20,30,60,0.35)',
   },
+  // Região 4: Ilhas do Vazio — violet moss over floating rock, pale starlit roads.
+  void: {
+    top: '#4a3a7a',
+    bottom: '#2e2552',
+    light: 'rgba(200,170,255,0.18)',
+    dark: 'rgba(10,5,30,0.3)',
+    bladeDark: 'rgba(60,40,110,0.6)',
+    bladeLight: 'rgba(190,150,255,0.55)',
+    road: ['#2a2048', '#9a8cc4', 'rgba(210,195,255,0.5)', 'rgba(245,240,255,0.35)'],
+    vignette: 'rgba(8,4,25,0.5)',
+  },
 };
 
 /** Paint grass + every road into one canvas texture; returns the background image (world size). */
@@ -249,7 +260,7 @@ export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: read
     const r = kind < 0.42 ? 34 : kind < 0.65 ? 20 : 8;
     if (!clearOf(x, y, r)) continue;
     const k = kind < 0.42 ? 'tree' : kind < 0.65 ? 'rock' : 'flower';
-    const img = scene.add.image(x, y, k === 'tree' && theme === 'amber' ? 'tree_amber' : k === 'tree' && theme === 'snow' ? 'tree_snow' : k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
+    const img = scene.add.image(x, y, k === 'tree' && theme === 'amber' ? 'tree_amber' : k === 'tree' && theme === 'snow' ? 'tree_snow' : k === 'tree' && theme === 'void' ? 'tree_void' : k).setDepth(k === 'flower' ? DEPTH.decor : unitDepth(y + 30));
     if (k === 'tree') {
       img.setScale(0.78 + rng.next() * 0.35);
       if (!economyOn()) scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.03, duration: 1800 + rng.int(0, 900), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

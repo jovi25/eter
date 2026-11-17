@@ -53,7 +53,7 @@ describe.runIf(process.env.npm_lifecycle_event === 'probe')('player build probe'
       'fogo+vinha+gelo(golpes)': [['brazier', 0], ['vine', 0], ['frost', 0]],
     };
     for (const [name, build] of Object.entries(builds)) {
-      for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5'] as StageId[]) {
+      for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5', 'i1', 'i2', 'i3', 'i4', 'i5'] as StageId[]) {
         const sim = new Simulation({ stage: st, seed: 1, modifiers: { heroClass: (process.env.HERO ?? 'priest') as 'priest' }, run: { hpMult: Number(process.env.HP_SCALE ?? '1') } });
         const cov = sim.slots
           .map((s, i) => {
@@ -100,7 +100,8 @@ describe.runIf(process.env.npm_lifecycle_event === 'probe')('calibration', () =>
     const scale = Number(process.env.HP_SCALE ?? '1');
     const three: TowerId[][] = [['storm', 'frost', 'brazier'], ['brazier', 'vine', 'frost'], ['frost', 'storm', 'archer']];
     const full: TowerId[] = ['frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'brazier', 'vine', 'archer', 'storm', 'frost', 'brazier', 'vine', 'archer'];
-    for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5'] as StageId[]) {
+    for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5', 'i1', 'i2', 'i3', 'i4', 'i5'] as StageId[]) {
+      if (process.env.ONLY && !process.env.ONLY.split(',').includes(st)) continue;
       const few = three.flatMap((plan) => [0, 1].map((br) => fewTowers(st, plan, 1, scale, br as 0 | 1, {}, 'priest').sim.state));
       const fewTxt = few.map((s) => (s.result === 'won' ? `W${s.lives}` : `L${s.wave}`)).join(',');
       const fl = [1, 2].map((seed) => fewTowers(st, full, seed, scale, 0, {}, 'mage', true).sim.state);
@@ -146,7 +147,7 @@ describe.runIf(process.env.npm_lifecycle_event === 'probe')('few towers probe', 
       ['vine', 'brazier', 'frost'],
       ['frost', 'storm', 'archer'],
     ];
-    for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c3', 'c5'] as StageId[]) {
+    for (const st of ['v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c3', 'c5', 'i1', 'i3', 'i5'] as StageId[]) {
       for (const hp of [1, 1.45]) {
         const out = plans.map((plan) => {
           const r = [1, 2].map((seed) => {

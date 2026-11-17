@@ -29,7 +29,10 @@ export type TipId =
   | 'archer'
   | 'bridge'
   | 'links'
-  | 'healer';
+  | 'healer'
+  | 'weather'
+  | 'thief'
+  | 'prism';
 
 export interface TipDef {
   title: string;
@@ -70,6 +73,10 @@ export const TIPS: Record<TipId, TipDef> = {
   // ── Região 3 ──
   bridge: { title: 'Ponte levadiça', text: 'Toque na ponte para erguê-la: os monstros que andam ficam parados na frente dela por 4 s (voadores passam). Depois ela precisa de um tempo para subir de novo.' },
   healer: { title: 'Monge do Gelo', text: 'Ele cura os monstros em volta a cada 3 s. Derrube-o primeiro!' },
+  // ── Região 4 ──
+  weather: { title: 'Clima', text: 'Nas Ilhas do Vazio o tempo muda. O ícone no alto avisa o clima da PRÓXIMA onda: Chuva enfraquece o Fogo e fortalece o Raio, Ventania acelera os voadores, Eclipse dobra as reações.' },
+  thief: { title: 'Diabrete Ladrão', text: 'No meio do caminho ele rouba ouro e corre. Pegue-o antes que fuja: ele devolve o DOBRO.' },
+  prism: { title: 'Prisma do Vazio', text: 'Ele troca de elemento 4 vezes: resiste a um e é fraco contra outro. A cor dele mostra a forma; mude a defesa quando ele mudar.' },
   // ── Região 2 ──
   scroll: { title: 'Mapa maior', text: 'Os mapas dos Ermos são mais altos que a tela: arraste para cima e para baixo. As setas ▲ ▼ contam os inimigos fora da tela.' },
   gate: { title: 'Comporta', text: 'Toque na placa da Comporta para mandar os próximos inimigos pelo outro caminho. Os que já passaram não mudam.' },

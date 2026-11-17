@@ -46,6 +46,12 @@ const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> =
   c3: { x: 192, y: 672, enemy: 'yeti' },
   c4: { x: 528, y: 480, enemy: 'golem' },
   c5: { x: 360, y: 288, enemy: 'titan' },
+  // Região 4: the mirrored climb again.
+  i1: { x: 528, y: 1008, enemy: 'imp' },
+  i2: { x: 192, y: 864, enemy: 'bat' },
+  i3: { x: 528, y: 672, enemy: 'monk' },
+  i4: { x: 192, y: 480, enemy: 'gargoyle' },
+  i5: { x: 360, y: 288, enemy: 'prism' },
 };
 
 const TRAIL = [
@@ -59,16 +65,18 @@ const TRAIL = [
   { x: 528, y: 288 },
   { x: 360, y: 288 },
 ];
-const TRAILS = [TRAIL, TRAIL.map((p) => ({ x: GAME_WIDTH - p.x, y: p.y })), TRAIL];
+const MIRROR = TRAIL.map((p) => ({ x: GAME_WIDTH - p.x, y: p.y }));
+const TRAILS = [TRAIL, MIRROR, TRAIL, MIRROR];
 
 /** Region shown last (the map opens there again). -1 = the Mapa de Éter (hub). */
 let lastRegion = -1;
 
 /** Hub art per region: theme and the monster on its card. */
-const REGION_LOOK: { theme: 'meadow' | 'amber' | 'snow'; enemy: EnemyId; tag: string }[] = [
+const REGION_LOOK: { theme: 'meadow' | 'amber' | 'snow' | 'void'; enemy: EnemyId; tag: string }[] = [
   { theme: 'meadow', enemy: 'herald', tag: 'Tutorial: aprenda cada torre' },
   { theme: 'amber', enemy: 'devourer', tag: 'Mapas grandes, Comporta e escudos' },
   { theme: 'snow', enemy: 'titan', tag: 'Ponte levadiça, monges que curam' },
+  { theme: 'void', enemy: 'prism', tag: 'Clima que muda, ladrões de ouro' },
 ];
 
 /** Region 1 map: 5 stages along a trail; stars; locked stages; save backup. */
@@ -252,7 +260,7 @@ export class WorldMapScene extends Phaser.Scene {
     };
 
     // Regions: the stops of the main trail.
-    const COLORS = { meadow: 0x4fa84a, amber: 0xd9903a, snow: 0x6fa3d9 } as const;
+    const COLORS = { meadow: 0x4fa84a, amber: 0xd9903a, snow: 0x6fa3d9, void: 0x8a5fd0 } as const;
     // The frontier: the last open region that still has stars to earn (the hero waits there).
     let frontier = 0;
     REGIONS.forEach((reg, r) => {

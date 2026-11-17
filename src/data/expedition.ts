@@ -24,7 +24,7 @@ export const EXPEDITION = {
   /** Region 1 stages that can appear (the first two are too small to be fun here). */
   basePool: ['v3', 'v4', 'v5'] as CampaignStageId[],
   /** Stages with a boss: one of the open ones closes the expedition. */
-  bossPool: ['v5', 'a3', 'a5', 'c5'] as CampaignStageId[],
+  bossPool: ['v5', 'a3', 'a5', 'c5', 'i5'] as CampaignStageId[],
   /** Acampamento: lives back (never above the maximum). */
   camp: { lives: 5 },
   /** Mercador: 1 of these Bênçãos for moedas (or walk past for free). */

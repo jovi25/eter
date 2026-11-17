@@ -511,3 +511,12 @@ Substitui o formato de 3 batalhas (números em src/data/expedition.ts).
 - Chefe final: uma das fases de chefe abertas (v5, a3, a5, c5), sem pacto.
 - Moedas ao vencer: 40, 70 e 160. Sequência = expedições completas seguidas; derrota ou desistência zera.
 - As moedas gastas no Mercador são as moedas normais do jogo (compra de item conhecido, nunca sorteio).
+
+## Fase 16 — Região 4: Ilhas do Vazio
+
+Números em src/data/weather.ts, enemies.ts e stages.ts.
+- Abre com 3 estrelas em todas as fases dos Cumes Nevados (regra de sempre).
+- Clima: StageDef.weather liga ondas a um clima. Ele chega com a onda e dura um tempo fixo (Chuva 30 s, Ventania 30 s, Eclipse 10 s).
+  A previsão da onda seguinte aparece num selo no alto à esquerda. Chuva apaga Queimando e impede novas queimaduras.
+- Diabrete Ladrão: ao passar de 40% do caminho rouba 20 de ouro (ou o que houver) e corre 60% mais rápido. Abatido: devolve o dobro, além da recompensa normal. Se fugir, o ouro se perde.
+- Prisma do Vazio: 4 formas (Fogo/Gelo, Gelo/Fogo, Raio/Natureza, Natureza/Raio = resiste/fraco), trocadas a 100/75/50/25% da vida, em ordem sorteada por partida. Físico é sempre neutro. Chama 2 Diabretes a cada 9 s.

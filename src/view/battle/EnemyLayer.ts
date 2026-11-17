@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { ENEMIES } from '../../data/enemies';
+import { ELEMENTS } from '../../data/elements';
 import type { EnemyState } from '../../sim/types';
 import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
@@ -18,6 +19,7 @@ class EnemyView {
   readonly burn: Phaser.GameObjects.Image;
   readonly hpBg: Phaser.GameObjects.Image;
   readonly hpFill: Phaser.GameObjects.Image;
+  readonly loot: Phaser.GameObjects.Image; // gold carried by a Diabrete Ladrão
   id = 0;
   prevX = 0;
   prevY = 0;
@@ -39,8 +41,18 @@ class EnemyView {
     this.burn = scene.add.image(0, 0, 'status_burn').setVisible(false);
     this.hpBg = scene.add.image(0, 0, 'px').setDisplaySize(HP_W + 4, 9).setTint(PAL.ink).setVisible(false);
     this.hpFill = scene.add.image(0, 0, 'px').setOrigin(0, 0.5).setDisplaySize(HP_W, 5).setTint(0x6ee66e).setVisible(false);
-    this.root = scene.add.container(0, 0, [this.shadow, this.roots, this.body, this.ice, this.fragile, this.burn, this.hpBg, this.hpFill]);
+    this.loot = scene.add.image(0, 0, 'coin').setVisible(false);
+    this.root = scene.add.container(0, 0, [this.shadow, this.roots, this.body, this.ice, this.fragile, this.burn, this.hpBg, this.hpFill, this.loot]);
   }
+}
+
+/** Prisma do Vazio: its body takes the colour of the element it resists right now (lightened, so it stays readable). */
+export function formTint(e: EnemyState): number {
+  const f = ENEMIES[e.type].boss?.forms?.list[e.form];
+  if (!f) return 0xffffff;
+  const c = ELEMENTS[f.armor].color;
+  const mix = (v: number) => Math.round(v + (255 - v) * 0.25);
+  return (mix((c >> 16) & 255) << 16) | (mix((c >> 8) & 255) << 8) | mix(c & 255);
 }
 
 /** Draws enemies from the simulation state (interpolated between ticks), with pooling. */
@@ -125,6 +137,7 @@ export class EnemyLayer {
     v.hpFill.setPosition(-HP_W / 2, top).setVisible(false);
     v.fragile.setPosition(HP_W / 2 + 10, top).setVisible(false);
     v.burn.setPosition(-HP_W / 2 - 10, top).setVisible(false);
+    v.loot.setPosition(0, top - 22).setScale(0.7).setVisible(false);
     // Breathing (squash & stretch) — bats flap faster and bob.
     v.phase = (e.id * 0.37) % 1;
     v.breathMs = def.flying ? 180 : 420 + (e.id % 5) * 40;
@@ -145,11 +158,14 @@ export class EnemyLayer {
       if (e.frozenTime > 0) v.body.setTint(0x9fdcff);
       else if (e.chillTime > 0 && e.chillStacks > 0) v.body.setTint(e.chillStacks > 1 ? 0x8fdcff : 0xb5ecff);
       else if (e.burnTime > 0) v.body.setTint(0xffb48a);
+      else if (e.form >= 0) v.body.setTint(formTint(e));
       else v.body.clearTint();
     }
     v.ice.setVisible(e.frozenTime > 0);
     v.roots.setVisible(e.rootTime > 0);
     v.fragile.setVisible(e.fragileTime > 0);
+    v.loot.setVisible(e.stolen > 0);
+    if (e.stolen > 0) v.loot.setY(v.bodyY - v.body.height * 0.5 - 30 + Math.sin(now / 120) * 4);
     v.burn.setVisible(e.burnTime > 0);
     const damaged = e.hp < e.maxHp;
     v.hpBg.setVisible(damaged);

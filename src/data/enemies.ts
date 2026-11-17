@@ -18,7 +18,9 @@ export type EnemyId =
   | 'devourer'
   | 'monk'
   | 'gargoyle'
-  | 'titan';
+  | 'titan'
+  | 'imp'
+  | 'prism';
 
 export interface BossDef {
   cycle: number; // every N seconds...
@@ -29,6 +31,11 @@ export interface BossDef {
    * boss takes only `taken` of the damage; `hits` reactions of the named kind on the boss break it.
    */
   shields?: { reactions: ReactionId[]; at: number[]; hits: number; taken: number; grace: number };
+  /**
+   * Região 4: elemental forms. Form i takes over when hp falls to at[i] (at[0] = 1: on arrival); the order of the
+   * forms is shuffled per match. Each form resists one element (armor) and is weak to another (weak).
+   */
+  forms?: { list: { armor: Element; weak: Element }[]; at: number[]; armor: number; weak: number };
 }
 
 /**
@@ -52,6 +59,8 @@ export interface EnemyDef {
   boss?: BossDef;
   /** Healer: every `every` seconds restores `pct` of max life to the others within `radius`. */
   heal?: { every: number; radius: number; pct: number };
+  /** Gold thief: at this share of the road it grabs gold and runs (speed × fleeMult). Killed: gives it back twice. */
+  thief?: { at: number; steal: number; fleeMult: number };
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -220,6 +229,39 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
       chillImmuneDuration: 0,
       summon: { enemy: 'gargoyle', count: 2, goldMult: 0.3, hpMult: 1.5, spacing: 34 },
       shields: { reactions: ['superconduct', 'thornfrost', 'overload', 'shatter'], at: [1, 0.75, 0.5, 0.25], hits: 3, taken: 0.35, grace: 3 },
+    },
+  },
+
+  // ── Região 4 ──
+  /** Grabs gold halfway down the road and runs for the exit. Catch it to get the gold back twice over. */
+  imp: { name: 'Diabrete Ladrão', hp: 80, speed: 90, gold: 10, livesCost: 1, attack: 6, resist: { arcane: 0.3 }, flying: false, scalesWithWave: true, radius: 20, thief: { at: 0.4, steal: 20, fleeMult: 1.6 } },
+  /** Changes element four times: what worked a moment ago barely scratches it now. */
+  prism: {
+    name: 'Prisma do Vazio',
+    hp: 3200,
+    speed: 32,
+    gold: 240,
+    livesCost: 20, attack: 70,
+    resist: {},
+    rootImmune: true,
+    flying: false,
+    scalesWithWave: false,
+    radius: 50,
+    boss: {
+      cycle: 9,
+      chillImmuneDuration: 0,
+      summon: { enemy: 'imp', count: 2, goldMult: 0.3, hpMult: 1.5, spacing: 34 },
+      forms: {
+        list: [
+          { armor: 'fire', weak: 'ice' },
+          { armor: 'ice', weak: 'fire' },
+          { armor: 'lightning', weak: 'nature' },
+          { armor: 'nature', weak: 'lightning' },
+        ],
+        at: [1, 0.75, 0.5, 0.25],
+        armor: 0.85,
+        weak: 0.5,
+      },
     },
   },
 };

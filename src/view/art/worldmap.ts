@@ -22,9 +22,10 @@ export const WORLD_TRAIL: Vec2[] = [
   { x: 215, y: 545 },
   { x: 330, y: 425 },
   { x: 490, y: 330 },
+  { x: 250, y: 222 },
 ];
 /** Index in WORLD_TRAIL of each region stop (the last one is the region still to come). */
-export const REGION_AT = [2, 4, 6, 8];
+export const REGION_AT = [2, 4, 6, 8, 9];
 
 export type ModeSpot = 'rift' | 'daily' | 'expedition';
 /** Game modes: where they stand and which trail point their side path leaves from. */
@@ -156,6 +157,41 @@ function crystal(c: Ctx, x: number, y: number, s: number): void {
   c.fill();
 }
 
+/** Ilhas do Vazio: a floating island (violet moss on top, rock hanging below). */
+function island(c: Ctx, x: number, y: number, w: number): void {
+  c.fillStyle = radial(c, x, y + w * 0.5, w * 1.1, [
+    [0, 'rgba(180,120,255,0.25)'],
+    [1, 'rgba(0,0,0,0)'],
+  ]);
+  c.fillRect(x - w * 1.2, y - w * 0.6, w * 2.4, w * 2.2);
+  const rock = c.createLinearGradient(0, y, 0, y + w * 0.9);
+  rock.addColorStop(0, '#5a4a7a');
+  rock.addColorStop(1, '#241a3a');
+  c.fillStyle = rock;
+  c.strokeStyle = '#140c24';
+  c.lineWidth = 4;
+  c.lineJoin = 'round';
+  c.beginPath();
+  c.moveTo(x - w / 2, y);
+  c.lineTo(x - w * 0.3, y + w * 0.35);
+  c.lineTo(x - w * 0.08, y + w * 0.9);
+  c.lineTo(x + w * 0.12, y + w * 0.45);
+  c.lineTo(x + w * 0.32, y + w * 0.55);
+  c.lineTo(x + w / 2, y);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.fillStyle = '#7d5ec4';
+  c.beginPath();
+  c.ellipse(x, y, w / 2 + 2, w * 0.16, 0, 0, Math.PI * 2);
+  c.fill();
+  c.stroke();
+  c.fillStyle = 'rgba(230,210,255,0.35)';
+  c.beginPath();
+  c.ellipse(x - w * 0.1, y - w * 0.04, w * 0.28, w * 0.06, 0, 0, Math.PI * 2);
+  c.fill();
+}
+
 function compass(c: Ctx, x: number, y: number, r: number): void {
   c.fillStyle = 'rgba(30,18,8,0.55)';
   c.beginPath();
@@ -266,7 +302,8 @@ export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: b
   // Landmarks, back to front.
   for (const [x, y, w, h] of [[70, 470, 150, 120], [660, 440, 160, 130], [130, 400, 120, 90], [600, 390, 110, 80], [40, 600, 110, 80], [690, 640, 120, 90]] as const) mountain(c, x, y, w, h);
   for (const [x, y, w, h] of [[650, 690, 130, 62], [300, 745, 100, 46], [660, 810, 90, 40]] as const) mesa(c, x, y, w, h);
-  for (const [x, y, s] of [[110, 250, 34], [200, 190, 24], [600, 220, 38], [360, 200, 22], [660, 300, 22], [60, 330, 20]] as const) crystal(c, x, y, s);
+  for (const [x, y, w] of [[600, 262, 120], [110, 318, 96], [395, 168, 80], [660, 360, 56]] as const) island(c, x, y, w);
+  for (const [x, y, s] of [[600, 250, 30], [110, 306, 24], [395, 158, 20], [160, 200, 16], [50, 400, 18]] as const) crystal(c, x, y, s);
 
   // The trail: bright where the player can walk, faded beyond.
   const lastOpen = REGION_AT[Math.max(0, Math.min(reached, REGION_AT.length) - 1)]!;

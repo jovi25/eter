@@ -228,6 +228,32 @@ const DRAW: Record<AssetKey, Drawer> = {
       gloss(c, cx - 8, cy - 36, 7, 4, 0.5);
     },
   },
+  // Região 4: a dark twisted trunk crowned with glowing violet crystals.
+  tree_void: {
+    w: 100,
+    h: 120,
+    draw: (c, cx, cy) => {
+      softShadow(c, cx, cy + 48, 32, 10, 0.4);
+      glow(c, cx, cy - 16, 44, 0xb57bff, 0.35);
+      shape(c, (k) => {
+        k.moveTo(cx - 8, cy + 50);
+        k.quadraticCurveTo(cx - 4, cy + 20, cx - 14, cy + 2);
+        k.lineTo(cx - 6, cy);
+        k.quadraticCurveTo(cx, cy + 14, cx + 6, cy - 2);
+        k.lineTo(cx + 14, cy + 2);
+        k.quadraticCurveTo(cx + 4, cy + 22, cx + 8, cy + 50);
+        k.closePath();
+      }, linear(c, cx - 10, 0, cx + 10, 0, [[0, '#3a2a5a'], [1, '#1a1030']]), INK, 3);
+      const shard = (x: number, y: number, h: number, w: number, tilt: number) =>
+        shape(c, poly([[x + tilt, y - h], [x + w, y - h * 0.35], [x, y], [x - w, y - h * 0.35]]), linear(c, x, y - h, x, y, [[0, '#f3e9ff'], [0.5, '#b98bff'], [1, '#5a33a8']]), INK, 2.5);
+      shard(cx - 20, cy + 2, 34, 11, -6);
+      shard(cx + 20, cy + 2, 32, 11, 6);
+      shard(cx, cy - 6, 52, 14, 0);
+      shard(cx - 9, cy + 8, 24, 9, -3);
+      shard(cx + 10, cy + 6, 22, 8, 4);
+      gloss(c, cx - 4, cy - 44, 4, 8, 0.6);
+    },
+  },
   // Região 2: autumn tree (amber and red leaves, no fruit).
   tree_amber: {
     w: 100,
@@ -772,6 +798,74 @@ const DRAW: Record<AssetKey, Drawer> = {
       c.moveTo(cx - 6, cy + 14); c.lineTo(cx - 2, cy + 11); c.lineTo(cx + 2, cy + 14); c.lineTo(cx + 6, cy + 11);
       c.stroke();
       gloss(c, cx - 8, cy - 4, 7, 4, 0.35);
+    },
+  },
+  // Região 4: a small grinning imp hugging a sack (steals gold).
+  enemy_imp: {
+    w: 84,
+    h: 84,
+    draw: (c, cx, cy) => {
+      // tail
+      c.strokeStyle = INK;
+      c.lineWidth = 6;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(cx - 14, cy + 22);
+      c.quadraticCurveTo(cx - 36, cy + 26, cx - 32, cy + 4);
+      c.stroke();
+      c.strokeStyle = '#8a2a7a';
+      c.lineWidth = 3;
+      c.stroke();
+      shape(c, poly([[cx - 32, cy - 4], [cx - 26, cy + 6], [cx - 38, cy + 6]]), '#8a2a7a', INK, 2);
+      // body
+      shape(c, ellipse(cx, cy + 10, 20, 22), bodyGrad(c, cx, cy + 10, 22, 0xb0409a), INK, 3);
+      // head with horns and big ears
+      for (const s of [-1, 1]) {
+        shape(c, poly([[cx + s * 14, cy - 10], [cx + s * 32, cy - 22], [cx + s * 18, cy - 2]]), '#c25aae', INK, 2.5);
+        shape(c, poly([[cx + s * 6, cy - 22], [cx + s * 12, cy - 38], [cx + s * 14, cy - 20]]), '#f3e2b8', INK, 2);
+      }
+      shape(c, circle(cx, cy - 10, 16), bodyGrad(c, cx, cy - 10, 16, 0xc25aae), INK, 3);
+      for (const s of [-1, 1]) glow(c, cx + s * 6, cy - 12, 4, 0xffe34d, 1);
+      c.strokeStyle = INK;
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx - 7, cy - 3);
+      c.quadraticCurveTo(cx, cy + 2, cx + 7, cy - 3);
+      c.stroke();
+      // the sack it carries
+      shape(c, ellipse(cx + 16, cy + 18, 13, 12), linear(c, cx + 4, cy + 6, cx + 28, cy + 30, [[0, '#e0b46a'], [1, '#8a5a22']]), INK, 2.5);
+      shape(c, roundRect(cx + 11, cy + 4, 10, 6, 3), '#6a4018', INK, 2);
+      gloss(c, cx - 6, cy - 18, 6, 3, 0.5);
+    },
+  },
+  // Região 4 final boss: a floating crystal prism (pale, so its form colour can tint it).
+  enemy_prism: {
+    w: 160,
+    h: 170,
+    draw: (c, cx, cy) => {
+      glow(c, cx, cy, 76, 0xffffff, 0.35);
+      // orbiting shards
+      for (const [x, y, s] of [[-58, -14, 14], [58, -20, 12], [-46, 40, 10], [50, 36, 11]] as const) {
+        shape(c, poly([[cx + x, cy + y - s * 1.4], [cx + x + s * 0.6, cy + y], [cx + x, cy + y + s * 0.9], [cx + x - s * 0.6, cy + y]]), linear(c, 0, cy + y - s, 0, cy + y + s, [[0, '#ffffff'], [1, '#c9c2dc']]), INK, 2.5);
+      }
+      // main crystal: a tall faceted diamond
+      const top = cy - 74;
+      const bot = cy + 66;
+      shape(c, poly([[cx, top], [cx + 40, cy - 22], [cx + 32, cy + 26], [cx, bot], [cx - 32, cy + 26], [cx - 40, cy - 22]]),
+        linear(c, cx - 40, top, cx + 40, bot, [[0, '#ffffff'], [0.45, '#e4def2'], [1, '#9a92b4']]), INK, 4);
+      c.strokeStyle = 'rgba(60,50,90,0.45)';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx, top); c.lineTo(cx - 12, cy - 22); c.lineTo(cx - 40, cy - 22);
+      c.moveTo(cx - 12, cy - 22); c.lineTo(cx, bot);
+      c.moveTo(cx, top); c.lineTo(cx + 14, cy - 22); c.lineTo(cx + 40, cy - 22);
+      c.moveTo(cx + 14, cy - 22); c.lineTo(cx, bot);
+      c.stroke();
+      // the eye
+      shape(c, ellipse(cx, cy - 2, 16, 11), '#1a1030', INK, 3);
+      glow(c, cx, cy - 2, 9, 0xffffff, 1);
+      shape(c, circle(cx, cy - 2, 4), '#1a1030', '#1a1030', 1);
+      gloss(c, cx - 18, cy - 44, 8, 16, 0.6);
     },
   },
   // Região 3 final boss: an obsidian titan with lava cracks.

@@ -1,6 +1,7 @@
 import type { EnemyId } from './enemies';
 import type { MapId } from './maps';
 import type { TowerId } from './towers';
+import type { WeatherId } from './weather';
 
 export interface SpawnGroup {
   enemy: EnemyId;
@@ -27,17 +28,20 @@ export interface StageDef {
   fusion?: boolean; // Torres de fusão allowed (default true)
   links?: boolean; // Vínculos de Éter between neighbouring towers (default true)
   boons?: boolean; // Bênçãos offered between waves (default true)
+  /** Região 4: weather that arrives with these waves (1-based wave → weather). */
+  weather?: Partial<Record<number, WeatherId>>;
   waves: WaveDef[];
 }
 
-export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5';
+export type CampaignStageId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'i1' | 'i2' | 'i3' | 'i4' | 'i5';
 export type StageId = CampaignStageId | 'rift';
 /** Campaign order; each stage unlocks the next. Região 2 (a1..a5) opens after v5. */
-export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5'];
+export const STAGE_ORDER: CampaignStageId[] = ['v1', 'v2', 'v3', 'v4', 'v5', 'a1', 'a2', 'a3', 'a4', 'a5', 'c1', 'c2', 'c3', 'c4', 'c5', 'i1', 'i2', 'i3', 'i4', 'i5'];
 export const REGIONS: { name: string; stages: CampaignStageId[] }[] = [
   { name: 'Vellmora', stages: ['v1', 'v2', 'v3', 'v4', 'v5'] },
   { name: 'Ermos de Âmbar', stages: ['a1', 'a2', 'a3', 'a4', 'a5'] },
   { name: 'Cumes Nevados', stages: ['c1', 'c2', 'c3', 'c4', 'c5'] },
+  { name: 'Ilhas do Vazio', stages: ['i1', 'i2', 'i3', 'i4', 'i5'] },
 ];
 /** The tutorial is over once its last stage is won: the rest of the game opens. */
 export const TUTORIAL_LAST: CampaignStageId = 'v5';
@@ -412,6 +416,122 @@ export const STAGES: Record<StageId, StageDef> = {
       { groups: [g('colossus', 3, 3), g('monk', 6, 0.8, 2)] },
       { groups: [g('gargoyle', 14, 0.4), g('skeleton', 14, 0.4, 2), g('salamander', 10, 0.4, 4)] },
       { groups: [g('titan', 1, 0), g('golem', 6, 1.2, 3), g('monk', 6, 0.8, 5), g('gargoyle', 10, 0.5, 8)] },
+    ],
+  },
+  // ───────────── Região 4: Ilhas do Vazio (clima que muda, Diabrete Ladrão, Prisma do Vazio) ─────────────
+  i1: {
+    runes: true,
+    name: 'Ilhas do Vazio I',
+    subtitle: 'Arquipélago — vem CHUVA: o fogo enfraquece e o raio cresce',
+    map: 'isles',
+    hpMult: 1.3,
+    startGold: 300,
+    weather: { 3: 'rain', 7: 'rain', 10: 'rain' },
+    waves: [
+      { groups: [g('slime', 14, 0.5)] },
+      { groups: [g('salamander', 6, 0.8), g('slime', 8, 0.5, 2)] },
+      { groups: [g('salamander', 7, 0.7), g('golem', 3, 1.6, 3)] },
+      { groups: [g('imp', 3, 1.2), g('skeleton', 6, 0.7, 2)] },
+      { groups: [g('yeti', 8, 0.7), g('monk', 3, 1.4, 2)] },
+      { groups: [g('gargoyle', 10, 0.5), g('imp', 3, 1.2, 3)] },
+      { groups: [g('salamander', 12, 0.4), g('mudling', 8, 0.6, 2)] },
+      { groups: [g('colossus', 2, 5), g('imp', 4, 1.0, 2)] },
+      { groups: [g('shaman', 10, 0.5), g('wolf', 14, 0.3, 3)] },
+      { groups: [g('golem', 8, 0.9), g('salamander', 10, 0.4, 2), g('imp', 4, 0.9, 4)] },
+      { groups: [g('yeti', 12, 0.5), g('gargoyle', 8, 0.5, 2), g('monk', 4, 1.0, 4)] },
+      { groups: [g('colossus', 3, 3), g('imp', 6, 0.8, 2), g('skeleton', 12, 0.4, 4)] },
+    ],
+  },
+  i2: {
+    runes: true,
+    name: 'Ilhas do Vazio II',
+    subtitle: 'Deriva — VENTANIA: voadores mais rápidos, flechas mais fortes',
+    map: 'drift',
+    hpMult: 1.25,
+    startGold: 280,
+    weather: { 4: 'wind', 8: 'wind', 11: 'wind' },
+    waves: [
+      { groups: [g('slime', 8, 0.7, 0, 0), g('slime', 8, 0.7, 0.4, 1)] },
+      { groups: [g('bat', 8, 0.6), g('wolf', 6, 0.5, 2)] },
+      { groups: [g('imp', 3, 1.2), g('golem', 3, 1.6, 2)] },
+      { groups: [g('bat', 8, 0.5), g('gargoyle', 4, 0.8, 2)] },
+      { groups: [g('skeleton', 10, 0.5, 0, 0), g('monk', 4, 1.2, 0, 1)] },
+      { groups: [g('yeti', 8, 0.7), g('imp', 4, 1.0, 2), g('salamander', 8, 0.6, 3)] },
+      { groups: [g('mudling', 10, 0.6), g('shaman', 8, 0.6, 2)] },
+      { groups: [g('gargoyle', 12, 0.4), g('bat', 12, 0.4, 2)] },
+      { groups: [g('colossus', 1, 0, 0, 0), g('colossus', 1, 0, 2, 1), g('imp', 6, 0.8, 3)] },
+      { groups: [g('golem', 8, 0.9), g('monk', 5, 1.0, 2), g('wolf', 14, 0.3, 4)] },
+      { groups: [g('gargoyle', 14, 0.35), g('bat', 14, 0.35, 2), g('imp', 4, 0.9, 4)] },
+      { groups: [g('colossus', 3, 3), g('yeti', 12, 0.4, 2), g('gargoyle', 10, 0.4, 5)] },
+    ],
+  },
+  i3: {
+    runes: true,
+    name: 'Ilhas do Vazio III',
+    subtitle: 'Estilhaços — ECLIPSE: reações em dobro por 10 s',
+    map: 'shards',
+    hpMult: 1.25,
+    startGold: 290,
+    weather: { 3: 'eclipse', 5: 'rain', 7: 'eclipse', 9: 'rain', 11: 'eclipse' },
+    waves: [
+      { groups: [g('slime', 14, 0.5)] },
+      { groups: [g('wolf', 12, 0.4), g('imp', 3, 1.2, 2)] },
+      { groups: [g('golem', 6, 1.2), g('yeti', 6, 0.8, 2)] },
+      { groups: [g('salamander', 10, 0.5), g('monk', 3, 1.4, 2)] },
+      { groups: [g('gargoyle', 10, 0.5), g('skeleton', 8, 0.6, 2)] },
+      { groups: [g('imp', 6, 0.9), g('mudling', 8, 0.6, 2)] },
+      { groups: [g('colossus', 2, 4), g('shaman', 8, 0.6, 2)] },
+      { groups: [g('yeti', 12, 0.4), g('salamander', 10, 0.4, 2)] },
+      { groups: [g('golem', 8, 0.9), g('imp', 5, 0.8, 2), g('monk', 4, 1.0, 4)] },
+      { groups: [g('gargoyle', 12, 0.4), g('wolf', 16, 0.3, 2)] },
+      { groups: [g('colossus', 3, 3), g('skeleton', 14, 0.4, 2), g('imp', 4, 0.8, 5)] },
+      { groups: [g('mudling', 12, 0.5), g('yeti', 12, 0.4, 2), g('monk', 6, 0.8, 4)] },
+    ],
+  },
+  i4: {
+    runes: true,
+    name: 'Ilhas do Vazio IV',
+    subtitle: 'Redemoinho — Comporta e os três climas',
+    map: 'vortex',
+    hpMult: 1.2,
+    startGold: 320,
+    weather: { 2: 'rain', 4: 'wind', 6: 'eclipse', 8: 'rain', 10: 'wind', 12: 'eclipse' },
+    waves: [
+      { groups: [g('slime', 16, 0.45)] },
+      { groups: [g('salamander', 7, 0.7), g('slime', 8, 0.5, 2)] },
+      { groups: [g('golem', 4, 1.6), g('imp', 3, 1.2, 2)] },
+      { groups: [g('bat', 8, 0.6), g('gargoyle', 3, 0.9, 2)] },
+      { groups: [g('skeleton', 10, 0.5), g('imp', 4, 1.0, 3)] },
+      { groups: [g('yeti', 10, 0.5), g('mudling', 8, 0.6, 2)] },
+      { groups: [g('colossus', 2, 4), g('wolf', 14, 0.3, 2)] },
+      { groups: [g('salamander', 12, 0.4), g('shaman', 10, 0.5, 2)] },
+      { groups: [g('gargoyle', 12, 0.4), g('imp', 6, 0.7, 2)] },
+      { groups: [g('golem', 8, 0.8), g('monk', 6, 0.8, 2), g('bat', 12, 0.4, 4)] },
+      { groups: [g('colossus', 3, 3), g('yeti', 12, 0.4, 2), g('imp', 5, 0.8, 5)] },
+      { groups: [g('gargoyle', 14, 0.35), g('skeleton', 14, 0.35, 2), g('monk', 6, 0.8, 5)] },
+    ],
+  },
+  i5: {
+    runes: true,
+    name: 'Coração do Vazio',
+    subtitle: 'Nexo — o Prisma do Vazio muda de elemento',
+    map: 'nexus',
+    hpMult: 0.9,
+    startGold: 310,
+    weather: { 3: 'rain', 6: 'wind', 9: 'eclipse', 12: 'eclipse' },
+    waves: [
+      { groups: [g('slime', 16, 0.45)] },
+      { groups: [g('imp', 3, 1.2), g('wolf', 8, 0.5, 2)] },
+      { groups: [g('salamander', 7, 0.7), g('golem', 3, 1.6, 2)] },
+      { groups: [g('monk', 3, 1.4), g('yeti', 8, 0.6, 2)] },
+      { groups: [g('gargoyle', 12, 0.45), g('imp', 4, 0.9, 3)] },
+      { groups: [g('bat', 14, 0.35), g('skeleton', 10, 0.5, 2)] },
+      { groups: [g('colossus', 2, 4), g('mudling', 10, 0.5, 2)] },
+      { groups: [g('shaman', 12, 0.5), g('imp', 6, 0.7, 2), g('monk', 4, 1.0, 4)] },
+      { groups: [g('golem', 8, 0.8), g('salamander', 12, 0.4, 2)] },
+      { groups: [g('colossus', 3, 3), g('gargoyle', 10, 0.4, 2)] },
+      { groups: [g('yeti', 14, 0.35), g('imp', 6, 0.7, 2), g('skeleton', 12, 0.4, 4)] },
+      { groups: [g('prism', 1, 0), g('golem', 6, 1.2, 3), g('monk', 6, 0.8, 5), g('imp', 6, 0.8, 8)] },
     ],
   },
 };

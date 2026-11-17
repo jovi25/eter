@@ -4,6 +4,8 @@ import { LinkLayer } from '../battle/LinkLayer';
 import { BridgeView, GateView, ShieldLayer } from '../battle/RegionTwoView';
 import { MAPS } from '../../data/maps';
 import { ScrollHint } from '../battle/ScrollHint';
+import { WeatherLayer } from '../battle/WeatherLayer';
+import { WEATHER } from '../../data/weather';
 import { asUi } from '../ui/uiLayer';
 import { matchXp, SKILL2, unlockAt } from '../../data/talents';
 import { economyOn, fitCamera, frameCap } from '../perf';
@@ -177,12 +179,14 @@ export class BattleScene extends Phaser.Scene {
         const e = sim.state.enemies.find((x) => x.id === s.enemyId);
         return e ? { x: e.x, y: e.y } : null;
       };
-      if (s.isBoss) t.request('boss', where);
+      if (s.isBoss) t.request(def.boss?.forms ? 'prism' : 'boss', where);
+      else if (def.thief) t.request('thief', where);
       else if (def.heal) t.request('healer', where);
       else if (def.flying) t.request('flying', where);
       else if (Object.keys(def.resist).length > 0) t.request('resist', where);
     });
     ev.on('boonChosen', () => t.request('boon'));
+    ev.on('weatherForecast', () => t.request('weather'));
     ev.on('enemyHealed', (h) => {
       this.fx.shockwave(h.x, h.y - 20, 0x9ff3ff, h.radius / 54, 450);
       this.fx.burst(h.x, h.y - 40, 0x9ff3ff, 8);
@@ -318,6 +322,7 @@ export class BattleScene extends Phaser.Scene {
     }
     // Região 2: Comporta and boss shields.
     this.shields = new ShieldLayer(this, this.enemies);
+    this.weather = this.sim.stage.weather ? new WeatherLayer(this) : null;
     this.bridge = this.sim.bridgeDef ? new BridgeView(this, this.sim, this.fx, () => !this.paused && !this.ended && !this.picker && !this.dragging) : null;
     if (this.sim.gateDef) new GateView(this, this.sim, this.fx, () => !this.paused && !this.ended && !this.picker && !this.dragging);
     this.enemies.onBurning = (x, y) => this.fx.flame(x, y);
@@ -438,6 +443,7 @@ export class BattleScene extends Phaser.Scene {
   private shields!: ShieldLayer;
   private links!: LinkLayer;
   private bridge: BridgeView | null = null;
+  private weather: WeatherLayer | null = null;
   private downOn: Phaser.GameObjects.GameObject | 'blocked' | null = null;
   private heroDrag = false;
   private dragging = false;
@@ -708,6 +714,45 @@ export class BattleScene extends Phaser.Scene {
       this.shake(300, 0.01);
       playSfx('mvp', 1.3);
       vibrate([40, 30, 60]);
+    });
+
+    // ── Região 4: clima, Diabrete Ladrão, Prisma do Vazio ──
+    ev.on('weatherChanged', (w) => {
+      if (!w.kind) {
+        this.hud.floatText(GAME_WIDTH / 2, 250, 'O céu abriu', '#e8f0ff');
+        return;
+      }
+      const def = WEATHER[w.kind];
+      this.fx.bigBanner(`${def.icon} ${def.name.toUpperCase()}!\n${def.text}`, `#${def.color.toString(16).padStart(6, '0')}`, 34, 1500);
+      playSfx(w.kind === 'eclipse' ? 'boss_cast' : 'ui', 0.7);
+    });
+    ev.on('weatherForecast', (f) => {
+      const def = WEATHER[f.kind];
+      this.hud.floatText(GAME_WIDTH / 2, 250, `Próxima onda: ${def.icon} ${def.name}`, `#${def.color.toString(16).padStart(6, '0')}`);
+    });
+    ev.on('goldStolen', (g) => {
+      if (g.amount <= 0) return;
+      this.hud.floatText(g.x, g.y - 70 - this.cameras.main.scrollY, `-${g.amount} roubado!`, PAL.redCss);
+      this.fx.burst(g.x, g.y - 30, 0xffd34d, 10);
+      playSfx('coin', 0.6);
+      vibrate(25);
+    });
+    ev.on('goldRecovered', (g) => {
+      this.hud.floatText(g.x, g.y - 70 - this.cameras.main.scrollY, `+${g.amount} recuperado!`, PAL.goldCss);
+      this.fx.burst(g.x, g.y - 30, 0xffd34d, 22);
+      this.fx.coinsTo(g.x, g.y - 20, this.hud.goldIconPos.x, this.hud.goldIconPos.y + this.cameras.main.scrollY, 5, () => {
+        this.hud.pulseGold();
+        playSfx('coin', 1.2);
+      });
+    });
+    ev.on('bossShift', (b) => {
+      const armor = ELEMENTS[b.armor];
+      const weak = ELEMENTS[b.weak];
+      this.fx.bigBanner(`PRISMA: ${armor.name.toUpperCase()}\nfraco contra ${weak.name}`, `#${armor.color.toString(16).padStart(6, '0')}`, 52, 1400);
+      for (let i = 0; i < 3; i++) this.fx.shockwave(b.x, b.y - 40, i % 2 ? 0xffffff : armor.color, 1.6 + i, 550);
+      this.fx.burst(b.x, b.y - 40, armor.color, 24);
+      this.shake(250, 0.008);
+      playSfx('boss_cast');
     });
 
     ev.on('bossAbility', (b) => {
@@ -1056,6 +1101,7 @@ export class BattleScene extends Phaser.Scene {
     this.shields.update(this.sim);
     this.links.update(this.sim);
     this.bridge?.update();
+    this.weather?.update(this.sim, dtMs);
     this.scrollHint?.update(this.sim, this.cameras.main.scrollY);
     this.menu.refresh();
     logicMs.value = logicMs.value * 0.9 + (performance.now() - t0) * 0.1;

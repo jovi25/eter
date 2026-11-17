@@ -7,6 +7,7 @@ import type { EnemyId } from '../data/enemies';
 import type { HeroClass } from '../data/heroes';
 import type { ReactionId } from '../data/reactions';
 import type { TowerId } from '../data/towers';
+import type { WeatherId } from '../data/weather';
 
 /** Everything the simulation tells the outside world. The view turns these into juice. */
 export interface SimEvents {
@@ -59,6 +60,16 @@ export interface SimEvents {
   gateToggled: { path: number };
   bridgeRaised: { duration: number };
   bridgeLowered: Record<string, never>;
+  /** Clima: the weather changed (null = clear sky again). */
+  weatherChanged: { kind: WeatherId | null };
+  /** Clima: this weather arrives with the next wave. */
+  weatherForecast: { kind: WeatherId; wave: number };
+  /** Diabrete Ladrão grabbed gold and runs. */
+  goldStolen: { enemyId: number; amount: number; x: number; y: number };
+  /** A thief was caught: the gold comes back twice over. */
+  goldRecovered: { enemyId: number; amount: number; x: number; y: number };
+  /** Prisma do Vazio took a new form. */
+  bossShift: { enemyId: number; armor: Element; weak: Element; x: number; y: number };
   /** A Monge do Gelo healed the enemies around it. */
   enemyHealed: { enemyId: number; x: number; y: number; radius: number; count: number };
   goldChanged: { gold: number; delta: number };

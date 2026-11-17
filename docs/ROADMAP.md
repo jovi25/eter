@@ -160,11 +160,14 @@ O jogador venceu a Expedição com 3 torres (Nevasca + Senhor do Trovão + 1), 2
 - [~] Enigma (aposta de vidas) e relíquias temporárias: **cortados** — o Santuário já é a aposta, e as Bênçãos já são o poder temporário
 - *Nota:* expedições em andamento salvas pela versão de 3 batalhas são descartadas (formato novo).
 
-### Fase 16 — Região 4: Ilhas do Vazio (as "Terras por descobrir" do mapa)
-- [ ] **Clima que muda no meio da partida**: chuva (fogo −, raio +, apaga Queimando), ventania (voadores mais rápidos),
-      eclipse (reações em dobro por 10 s). O aviso chega uma onda antes, para dar tempo de reagir
-- [ ] Chefe que **troca de elemento** a cada fase e obriga a remontar a defesa
-- [ ] Inimigo que **rouba ouro** e foge (se abatido, devolve em dobro)
+### Fase 16 — Região 4: Ilhas do Vazio ✔
+- [x] 5 fases de 12 ondas em mapas altos novos (Arquipélago, Deriva, Estilhaços, Redemoinho com Comporta, Nexo com Ponte)
+- [x] **Clima que muda no meio da partida**: Chuva (Fogo −40%, Raio +30%, nada queima), Ventania (voadores +50% de
+      velocidade, flechas +30%), Eclipse (reações em dobro por 10 s). O aviso aparece uma onda antes
+- [x] **Prisma do Vazio**: chefe que troca de elemento 4 vezes (resiste 85% a um, +50% de dano de outro), em ordem sorteada
+- [x] **Diabrete Ladrão**: rouba 20 de ouro no meio do caminho e corre; abatido, devolve o dobro
+- [x] Mapa de Éter: ilhas flutuantes no topo e um novo "???" depois da Região 4; Expedição pode sortear o Prisma como chefe final
+- *Calibragem:* robôs de 3 torres perdem todas as 5 fases (como nos Cumes); robôs simples chegam às ondas 7–12
 
 ### Fase 17 — Sexta torre: Vento
 - [ ] Torre de Vento: empurra monstros para trás e **espalha o estado** de um monstro para os vizinhos

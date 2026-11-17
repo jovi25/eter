@@ -6,7 +6,7 @@ import { getSettings } from '../settings';
 import { audioNodes } from './sfx';
 import { economyOn } from '../perf';
 
-export type ThemeId = 'map' | 'map2' | 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'rift';
+export type ThemeId = 'map' | 'map2' | 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'i1' | 'i2' | 'i3' | 'i4' | 'i5' | 'rift';
 
 interface Theme {
   bpm: number;
@@ -48,6 +48,12 @@ export const THEMES: Record<ThemeId, Theme> = {
   c3: { bpm: 112, root: 52, scale: MINOR, prog: [0, 3, 5, 4], arp: [0, 2, 3, 5, 3, 2, 1, 2], pad: 'sawtooth', lead: 'triangle', drums: true, seed: 173, bright: 1500 },
   c4: { bpm: 110, root: 54, scale: LYDIAN, prog: [0, 1, 4, 5], arp: [0, 1, 2, 4, 2, 1, 3, 2], pad: 'triangle', lead: 'triangle', drums: true, seed: 181, bright: 1700 },
   c5: { bpm: 128, root: 50, scale: PHRYGIAN, prog: [0, 1, 5, 4], arp: [0, 2, 4, 2, 5, 4, 2, 1], pad: 'sawtooth', lead: 'square', drums: true, seed: 191, bright: 1300 },
+  // Região 4: floating, strange, a bit dreamy.
+  i1: { bpm: 104, root: 53, scale: DORIAN, prog: [0, 5, 3, 4], arp: [0, 3, 5, 7, 5, 3, 2, 4], pad: 'triangle', lead: 'sine', drums: true, seed: 197, bright: 1600 },
+  i2: { bpm: 116, root: 56, scale: MINOR, prog: [0, 6, 5, 4], arp: [0, 4, 2, 6, 4, 2, 3, 1], pad: 'sawtooth', lead: 'triangle', drums: true, seed: 211, bright: 1700 },
+  i3: { bpm: 110, root: 51, scale: PHRYGIAN, prog: [0, 1, 4, 3], arp: [0, 2, 1, 4, 3, 5, 2, 1], pad: 'triangle', lead: 'sine', drums: true, seed: 223, bright: 1400 },
+  i4: { bpm: 120, root: 54, scale: HARMONIC, prog: [0, 3, 4, 0], arp: [0, 1, 4, 2, 5, 4, 2, 1], pad: 'sawtooth', lead: 'triangle', drums: true, seed: 227, bright: 1500 },
+  i5: { bpm: 132, root: 49, scale: HARMONIC, prog: [0, 1, 6, 4], arp: [0, 3, 4, 7, 4, 3, 1, 2], pad: 'sawtooth', lead: 'square', drums: true, seed: 233, bright: 1300 },
   rift: { bpm: 128, root: 59, scale: MINOR, prog: [0, 5, 6, 4], arp: [0, 2, 4, 5, 4, 2, 3, 1], pad: 'sawtooth', lead: 'square', drums: true, seed: 97, bright: 1800 },
 };
 

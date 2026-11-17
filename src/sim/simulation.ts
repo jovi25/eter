@@ -12,6 +12,7 @@ import { defaultModifiers, type SimModifiers } from '../data/modifiers';
 import { COMBO, REACTION_IDS, REACTION_RULES, REACTION_TABLE, REACTIONS, type AuraKey, type ReactionId } from '../data/reactions';
 import { STAGES, type StageDef, type StageId } from '../data/stages';
 import { STATUS } from '../data/statuses';
+import { WEATHER, type WeatherDef, type WeatherId } from '../data/weather';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
@@ -166,6 +167,7 @@ export class Simulation {
       rerolls: 0,
       gate: 0,
       bridge: { up: 0, cooldown: 0 },
+      weather: { kind: null, left: 0, next: this.stage.weather?.[1] ?? null },
       stats: {
         reactions: { wildfire: 0, melt: 0, thornfrost: 0, shatter: 0, overload: 0, superconduct: 0 },
         damageByTower: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0 },
@@ -849,6 +851,7 @@ export class Simulation {
     s.tick++;
     s.time += DT;
     this.updateWaves();
+    this.updateWeather();
     this.updateBridge();
     this.updateEnemies();
     this.updateHero();
@@ -885,6 +888,11 @@ export class Simulation {
     this.pending.sort((a, b) => a.at - b.at);
     if (bonus > 0) this.addGold(bonus);
     this.events.emit('waveStarted', { wave: s.wave, early, bonus });
+    // Clima: this wave's weather arrives; the next one is announced.
+    const w = this.stage.weather?.[s.wave];
+    if (w) this.setWeather(w);
+    s.weather.next = this.stage.weather?.[s.wave + 1] ?? null;
+    if (s.weather.next) this.events.emit('weatherForecast', { kind: s.weather.next, wave: s.wave + 1 });
   }
 
   private updateWaves(): void {
@@ -971,12 +979,27 @@ export class Simulation {
       shieldHits: 0,
       shieldPhase: -1,
       shieldGrace: 0,
+      form: -1,
+      formPhase: -1,
+      formOrder: [],
+      stolen: 0,
+      fleeing: false,
     };
     s.enemies.push(e);
     this.enemyById.set(e.id, e);
     this.aliveByWave.set(wave, (this.aliveByWave.get(wave) ?? 0) + 1);
     this.events.emit('enemySpawned', { enemyId: e.id, type, isBoss: e.isBoss });
     if (def.boss?.shields) this.raiseShield(e, 0);
+    if (def.boss?.forms) {
+      // The order of the forms changes every match: no defense can be built for all of them in advance.
+      const order = def.boss.forms.list.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = this.eventRng.int(0, i);
+        [order[i], order[j]] = [order[j]!, order[i]!];
+      }
+      e.formOrder = order;
+      this.shiftForm(e, 0);
+    }
     return e;
   }
 
@@ -1001,6 +1024,61 @@ export class Simulation {
     }
     const next = e.shieldPhase + 1;
     if (next < sh.reactions.length && e.hp / e.maxHp <= sh.at[next]!) this.raiseShield(e, next);
+  }
+
+  // ───────────── Região 4: Prisma do Vazio, Diabrete Ladrão, Clima ─────────────
+
+  private shiftForm(e: EnemyState, phase: number): void {
+    const fm = ENEMIES[e.type].boss?.forms;
+    if (!fm || phase >= e.formOrder.length) return;
+    e.formPhase = phase;
+    e.form = e.formOrder[phase]!;
+    const f = fm.list[e.form]!;
+    this.events.emit('bossShift', { enemyId: e.id, armor: f.armor, weak: f.weak, x: e.x, y: e.y });
+  }
+
+  /** The next form takes over when hp falls to its threshold. */
+  private tickForm(e: EnemyState): void {
+    const fm = ENEMIES[e.type].boss?.forms;
+    if (!fm) return;
+    const next = e.formPhase + 1;
+    if (next < e.formOrder.length && e.hp / e.maxHp <= fm.at[next]!) this.shiftForm(e, next);
+  }
+
+  /** Diabrete Ladrão: grabs gold and starts running. */
+  private steal(e: EnemyState, amount: number): void {
+    const s = this.state;
+    const took = Math.max(0, Math.min(amount, s.gold));
+    e.fleeing = true;
+    e.stolen = took;
+    if (took > 0) this.addGold(-took);
+    this.events.emit('goldStolen', { enemyId: e.id, amount: took, x: e.x, y: e.y });
+  }
+
+  /** The weather right now (null = clear sky). */
+  get weatherDef(): WeatherDef | null {
+    const k = this.state.weather.kind;
+    return k ? WEATHER[k] : null;
+  }
+
+  private setWeather(kind: WeatherId): void {
+    const w = this.state.weather;
+    w.kind = kind;
+    w.left = WEATHER[kind].duration;
+    if (WEATHER[kind].noBurn) {
+      // The rain puts every fire out.
+      for (const e of this.state.enemies) e.burnTime = 0;
+    }
+    this.events.emit('weatherChanged', { kind });
+  }
+
+  private updateWeather(): void {
+    const w = this.state.weather;
+    if (!w.kind) return;
+    w.left = Math.max(0, w.left - DT);
+    if (w.left > 0) return;
+    w.kind = null;
+    this.events.emit('weatherChanged', { kind: null });
   }
 
   get bridgeDef(): Vec2 | undefined {
@@ -1059,7 +1137,10 @@ export class Simulation {
       if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
       const before = e.dist;
-      e.dist += def.speed * (1 - slow) * DT;
+      let speed = def.speed;
+      if (e.flying) speed *= this.weatherDef?.flyerSpeed ?? 1;
+      if (e.fleeing && def.thief) speed *= def.thief.fleeMult;
+      e.dist += speed * (1 - slow) * DT;
       // Ponte levadiça up: ground enemies stop in front of it.
       const bd = this.bridgeDist[e.pathIndex] ?? -1;
       if (s.bridge.up > 0 && bd >= 0 && !e.flying && before <= bd - BRIDGE.hold) e.dist = Math.min(e.dist, bd - BRIDGE.hold);
@@ -1067,6 +1148,7 @@ export class Simulation {
       path.pointAt(e.dist, this.tmp);
       e.x = this.tmp.x;
       e.y = this.tmp.y;
+      if (def.thief && !e.fleeing && e.dist >= path.length * def.thief.at) this.steal(e, def.thief.steal);
       if (e.dist >= path.length) this.leak(e);
     }
   }
@@ -1128,6 +1210,7 @@ export class Simulation {
     if (!boss) return;
     if (e.chillImmuneTime > 0) e.chillImmuneTime = Math.max(0, e.chillImmuneTime - DT);
     this.tickShield(e);
+    this.tickForm(e);
     e.bossCycleTimer -= DT;
     if (e.bossCycleTimer > 0) return;
     e.bossCycleTimer += boss.cycle;
@@ -1174,6 +1257,12 @@ export class Simulation {
     const gold = Math.round(e.gold * this.mods.goldMult);
     this.addGold(gold);
     this.events.emit('enemyKilled', { enemyId: e.id, type: e.type, x: e.x, y: e.y, gold, isBoss: e.isBoss });
+    if (e.stolen > 0) {
+      // Caught the thief: the stolen gold comes back twice over.
+      const back = e.stolen * 2;
+      this.addGold(back);
+      this.events.emit('goldRecovered', { enemyId: e.id, amount: back, x: e.x, y: e.y });
+    }
     this.onEnemyGone(e);
   }
 
@@ -1693,7 +1782,7 @@ export class Simulation {
     if (found) {
       this.consumeAura(e, found.aura);
       const comboMult = this.bumpCombo();
-      mult = REACTIONS[found.reaction].damageMult * comboMult * this.mods.reactionDamageMult;
+      mult = REACTIONS[found.reaction].damageMult * comboMult * this.mods.reactionDamageMult * (this.weatherDef?.reactionMult ?? 1);
       this.state.stats.reactions[found.reaction]++;
       const h = this.state.hero;
       const back = this.talent('comboPact') ? TALENT_NUM.comboPact.cooldownPerReaction : HERO.catalyze.cooldownPerReaction;
@@ -1818,7 +1907,7 @@ export class Simulation {
   }
 
   private applyBurn(e: EnemyState, baseDps: number): void {
-    if (baseDps <= 0) return;
+    if (baseDps <= 0 || this.weatherDef?.noBurn) return;
     const dps = baseDps * this.mods.burnDpsMult;
     if (e.burnTime <= 0) {
       e.burnTickTimer = STATUS.burning.tickInterval;
@@ -1851,6 +1940,12 @@ export class Simulation {
   /** Element multiplier from the enemy's resistances (1 = neutral, 0 = immune, >1 = weakness). */
   damageMultiplier(e: EnemyState, element: Element): number {
     let r = ENEMIES[e.type].resist[element] ?? 0;
+    const fm = ENEMIES[e.type].boss?.forms;
+    if (fm && e.form >= 0) {
+      const f = fm.list[e.form]!;
+      if (element === f.armor) r = fm.armor;
+      else if (element === f.weak) r = -fm.weak;
+    }
     if (element === 'physical' && r > 0 && this.mods.physicalIgnoresResist) r = 0;
     return Math.max(0, 1 - r);
   }
@@ -1869,6 +1964,7 @@ export class Simulation {
       return;
     }
     dmg *= eff;
+    dmg *= this.weatherDef?.damage?.[element as 'fire'] ?? 1;
     if (e.fragileTime > 0) dmg *= 1 + STATUS.fragile.damageTakenBonus;
     if (e.shield) dmg *= ENEMIES[e.type].boss?.shields?.taken ?? 1;
     if (e.rootTime > 0 && this.talent('hungrySoil')) dmg *= TALENT_NUM.hungrySoil.rootedDamageTaken;
