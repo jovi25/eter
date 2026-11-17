@@ -478,7 +478,7 @@ aos modos de jogo (Fenda Infinita, Desafio do dia, Expedição). O herói escolh
 
 **Expedição de Éter** (números em src/data/expedition.ts). Abre ao fim do tutorial.
 - 3 batalhas seguidas. Vidas e Bênçãos passam de uma batalha para a outra (os presentes imediatos das Bênçãos valem de novo).
-- Vida dos monstros por batalha: ×1, ×1,2, ×1,45 (vezes o ajuste da própria fase).
+- Vida dos monstros por batalha: ×1,15, ×1,6, ×2,2 (vezes o ajuste da própria fase). Medido com robôs: com ×1,45 na 3ª batalha, as Bênçãos acumuladas (até 12) deixavam o chefe final trivial.
 - Antes de cada batalha, 2 trilhas sorteadas (fase aberta + pacto, sempre diferentes entre si).
 - Pactos: Tranquila, Horda, Mercador, Voto, Tesouro (cada um com um prêmio e um preço escritos no cartão).
 - Fases possíveis: as abertas, menos as 2 primeiras do tutorial. Sem limites de tutorial; relíquias e talentos valem.

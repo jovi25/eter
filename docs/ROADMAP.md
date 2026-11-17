@@ -115,7 +115,7 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Modos de jogo viram paradas em caminhos laterais pontilhados: Fenda Infinita, Desafio do dia e Expedição
 - [x] O herói escolhido espera na região da vez; árvores de cada terra; bússola; ponte sobre o rio
 - [x] **Expedição de Éter** (modo novo, depois do tutorial): 3 batalhas seguidas; vidas e Bênçãos seguem de uma para a outra;
-      monstros ×1 / ×1,2 / ×1,45; antes de cada batalha, 1 de 2 **trilhas** (fase + pacto com prêmio e preço)
+      monstros ×1,15 / ×1,6 / ×2,2 (era ×1 / ×1,2 / ×1,45: fácil demais, as Bênçãos acumuladas passavam por cima); antes de cada batalha, 1 de 2 **trilhas** (fase + pacto com prêmio e preço)
 - [x] 5 pactos: Tranquila (+3 vidas), Horda (+25% vida dos monstros, 1 Bênção extra), Mercador (+200 ouro, −4 vidas),
       Voto (só 3 tipos de torre, +35% de dano), Tesouro (+40% ouro, +15% vida dos monstros)
 - [x] Moedas 40 → 70 → 140; perder uma batalha encerra a expedição; a expedição fica salva entre as batalhas

@@ -12,7 +12,7 @@ import { TOWER_IDS, type TowerId } from './towers';
 export const EXPEDITION = {
   legs: 3,
   /** Monster life per leg (the carried Bênçãos make the party stronger each battle). */
-  hpMult: [1, 1.2, 1.45],
+  hpMult: [1.15, 1.6, 2.2],
   /** Moedas paid when each leg is won. */
   coins: [40, 70, 140],
   /** Region 1 stages that can appear (the first two are too small to be fun here). */
