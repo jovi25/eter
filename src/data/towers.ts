@@ -44,6 +44,13 @@ export interface TowerDef {
 
 export const MAX_LEVEL = 3;
 
+/**
+ * Vínculos de Éter (Fase 14): two towers of different kinds on neighbouring slots are linked.
+ * Every Nth attack, a linked tower also hits its target with the neighbour's element
+ * (part of the neighbour's damage, plus its burn / chill / root). With two or more neighbours it takes turns.
+ */
+export const LINK = { maxDist: 250, every: 5, damageMult: 0.35, burnMult: 0.4 };
+
 
 export const TOWERS: Record<TowerId, TowerDef> = {
   archer: {

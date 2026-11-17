@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { FUSIONS } from '../../data/fusions';
+import { LinkLayer } from '../battle/LinkLayer';
 import { BridgeView, GateView, ShieldLayer } from '../battle/RegionTwoView';
 import { MAPS } from '../../data/maps';
 import { ScrollHint } from '../battle/ScrollHint';
@@ -160,7 +161,9 @@ export class BattleScene extends Phaser.Scene {
         break;
     }
     const ev = sim.events;
-    ev.on('towerBuilt', () => {
+    ev.on('towerBuilt', (b) => {
+      const built = sim.getTower(b.towerId);
+      if (built && sim.linksOf(built).length > 0) t.request('links', () => ({ x: built.x, y: built.y }));
       t.request('elements');
       t.request('hero', () => ({ x: sim.state.hero.x, y: sim.state.hero.y - 40 }));
     });
@@ -304,6 +307,7 @@ export class BattleScene extends Phaser.Scene {
     this.map = new MapView(this, this.sim);
     this.enemies = new EnemyLayer(this);
     this.towers = new TowerLayer(this);
+    this.links = new LinkLayer(this);
     this.projectiles = new ProjectileLayer(this);
     this.hero = new HeroView(this, this.sim.state.hero, this.sim.mods.heroAffinity);
     this.fx = new FxLayer(this);
@@ -336,6 +340,7 @@ export class BattleScene extends Phaser.Scene {
         this.sim.callNextWave();
       },
     }));
+    this.time.delayedCall(0, () => (this.menu.onLinkPreview = (slot) => this.links.showPreview(this.sim, slot)));
     this.menu = new BuildMenu(this, this.sim, {
       build: (slot, type) => this.sim.build(slot, type),
       upgrade: (id) => this.sim.upgrade(id),
@@ -431,6 +436,7 @@ export class BattleScene extends Phaser.Scene {
   // ───────────────────────────── tall maps: drag to scroll ─────────────────────────────
 
   private shields!: ShieldLayer;
+  private links!: LinkLayer;
   private bridge: BridgeView | null = null;
   private downOn: Phaser.GameObjects.GameObject | 'blocked' | null = null;
   private heroDrag = false;
@@ -824,6 +830,11 @@ export class BattleScene extends Phaser.Scene {
       }
     });
 
+    ev.on('linkEcho', (l) => {
+      this.links.flash(l.towerId, l.fromId);
+      this.fx.hit(l.x, l.y - 24, ELEMENTS[l.element].color);
+    });
+
     ev.on('towerFused', (f) => {
       const t = this.sim.getTower(f.towerId);
       if (!t) return;
@@ -1042,6 +1053,7 @@ export class BattleScene extends Phaser.Scene {
     this.catalyzeBtn.update(this.sim.state.hero);
     this.hud.update(this.sim);
     this.shields.update(this.sim);
+    this.links.update(this.sim);
     this.bridge?.update();
     this.scrollHint?.update(this.sim, this.cameras.main.scrollY);
     this.menu.refresh();

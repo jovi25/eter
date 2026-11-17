@@ -128,12 +128,15 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 > Ideia central: o jogo já tem bastante **conteúdo**; o que falta é **cada partida contar uma história diferente** e o
 > **lugar das torres importar mais**. As fases abaixo estão em ordem de impacto por esforço.
 
-### Fase 14 — Vínculos de Éter (o lugar das torres importa) ★ recomendada a seguir
-- [ ] Torres vizinhas (a até ~150 px) criam um **vínculo visível** (um fio de luz entre elas) com efeito próprio por par:
-      Braseiro+Trovão = faísca que salta; Gelo+Vinha = raiz que congela; Arqueira+qualquer = flecha com o elemento da vizinha
-- [ ] O menu de construir mostra **antes** quais vínculos o espaço escolhido vai criar
-- [ ] Um desafio por fase ligado a vínculos
-- *Por quê:* o jogador pediu foco em "estratégia de locais e torres". Hoje o lugar só importa pelo alcance.
+### Fase 14 — Vínculos de Éter (o lugar das torres importa) ✔
+- [x] Torres de **tipos diferentes** em espaços vizinhos (até 250 px) ficam ligadas por um **fio de luz**
+- [x] Regra única: a cada 5º disparo, a torre acerta também com o **elemento da vizinha** (35% do dano dela, mais a queimadura,
+      o resfriado ou a raiz). Com 2 ou mais vizinhas, reveza. Ex.: Arqueiro entre Braseiro e Gélido faz DERRETIMENTO sozinho
+- [x] Ao tocar num espaço vazio, o menu mostra os fios que seriam criados e escreve "Vínculo com: ..."
+- [x] Entra no tutorial a partir da fase 4 (dica própria); fases 1 a 3 continuam sem vínculos
+- [x] Equilíbrio: medido com os robôs antes e depois; Região 3 ganhou ~8% de vida para compensar
+- [~] Desafio por fase ligado a vínculos: **cortado** (mexeria nos desafios já concluídos no save)
+- *Mudou em relação à proposta:* em vez de um efeito por par, uma regra só que vale para todos os pares (mais fácil de aprender).
 
 ### Fase 15 — Expedição 2.0 (a aventura de verdade)
 - [ ] Mapa da expedição com **bifurcações desenhadas** (escolher o caminho num mini-mapa de trilha tracejada)

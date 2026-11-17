@@ -52,6 +52,8 @@ export interface SimEvents {
   shieldHit: { enemyId: number; reaction: ReactionId; left: number; x: number; y: number };
   shieldBroken: { enemyId: number; reaction: ReactionId; x: number; y: number };
   /** Two towers became one (the partner's slot is free again). */
+  /** Vínculo de Éter: a tower hit its target with a neighbour's element. */
+  linkEcho: { towerId: number; fromId: number; targetId: number; element: Element; x: number; y: number };
   towerFused: { towerId: number; partnerId: number; partnerSlot: number; fusion: FusionId };
   /** Comporta switched: new enemies take this path. */
   gateToggled: { path: number };

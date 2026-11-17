@@ -25,6 +25,7 @@ export interface StageDef {
   towers?: TowerId[]; // only these can be built (default: all)
   evolve?: boolean; // Evoluções allowed (default true)
   fusion?: boolean; // Torres de fusão allowed (default true)
+  links?: boolean; // Vínculos de Éter between neighbouring towers (default true)
   boons?: boolean; // Bênçãos offered between waves (default true)
   waves: WaveDef[];
 }
@@ -87,6 +88,7 @@ export const STAGES: Record<StageId, StageDef> = {
     towers: ['archer'],
     evolve: false,
     fusion: false,
+    links: false,
     boons: false,
     map: 'meadow',
     hpMult: 1,
@@ -109,6 +111,7 @@ export const STAGES: Record<StageId, StageDef> = {
     towers: ['archer', 'brazier', 'vine'],
     evolve: false,
     fusion: false,
+    links: false,
     boons: false,
     map: 'twin',
     hpMult: 0.75,
@@ -131,6 +134,7 @@ export const STAGES: Record<StageId, StageDef> = {
     subtitle: 'Tutorial 3 — Gelo e Raio: congelar, quebrar e combinar',
     evolve: false,
     fusion: false,
+    links: false,
     boons: false,
     map: 'ring',
     hpMult: 1,
@@ -305,7 +309,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados I',
     subtitle: 'Encosta — toque na ponte para segurar os monstros por 4 s',
     map: 'peak',
-    hpMult: 0.95,
+    hpMult: 1.02,
     startGold: 260,
     waves: [
       { groups: [g('slime', 12, 0.6)] },
@@ -327,7 +331,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados II',
     subtitle: 'Passagem — dois portais; a ponte fica no caminho da direita',
     map: 'pass',
-    hpMult: 0.85,
+    hpMult: 0.92,
     startGold: 260,
     waves: [
       { groups: [g('slime', 8, 0.7, 0, 0), g('slime', 8, 0.7, 0.4, 1)] },
@@ -349,7 +353,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados III',
     subtitle: 'Geleira — Comporta no alto e ponte embaixo',
     map: 'glacier',
-    hpMult: 0.85,
+    hpMult: 0.92,
     startGold: 270,
     waves: [
       { groups: [g('slime', 14, 0.5)] },
@@ -371,7 +375,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados IV',
     subtitle: 'Terraços — a estrada vai e volta seis vezes',
     map: 'terraces',
-    hpMult: 0.85,
+    hpMult: 0.92,
     startGold: 280,
     waves: [
       { groups: [g('wolf', 14, 0.4)] },
@@ -393,7 +397,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Trono de Obsidiana',
     subtitle: 'Cume — o Titã de Obsidiana',
     map: 'summit',
-    hpMult: 0.65,
+    hpMult: 0.7,
     startGold: 290,
     waves: [
       { groups: [g('slime', 16, 0.5)] },

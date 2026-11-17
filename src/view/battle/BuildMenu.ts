@@ -49,6 +49,9 @@ export class BuildMenu {
     this.range = scene.add.graphics().setDepth(DEPTH.range).setVisible(false);
   }
 
+  /** Vínculos de Éter: show (slot) or hide (null) the threads a new tower would get. */
+  onLinkPreview?: (slot: number | null) => void;
+
   get isOpen(): boolean {
     return this.root !== null;
   }
@@ -62,6 +65,7 @@ export class BuildMenu {
     this.partners = null;
     this.fuseFrom = null;
     this.range.clear().setVisible(false);
+    this.onLinkPreview?.(null);
     this.scene.tweens.add({ targets: r, scale: 0.5, alpha: 0, duration: 120, onComplete: () => r.destroy() });
   }
 
@@ -72,6 +76,13 @@ export class BuildMenu {
     const root = this.makeRoot(pos.x, pos.y, 156, top ? 221 : 240, 995);
     // Options on a circle; near the top of the map the arc is flipped so nothing hides under the HUD.
     const ids = TOWER_IDS.filter((t) => this.sim.mods.unlockedTowers.includes(t)); // tutorial: only what was taught
+    // Vínculos de Éter: which neighbours a tower here would link with.
+    const near = this.sim.linkPreview(slot);
+    if (near.length > 0) {
+      this.onLinkPreview?.(slot);
+      const names = [...new Set(near.map((t) => TOWERS[t.type].short))].join(', ');
+      root.add(uiText(this.scene, 0, top ? 214 : -186, 'Vínculo com: ' + names, 18, PAL.goldCss, 5));
+    }
     const n = ids.length;
     const start = top ? Math.PI / 2 : -Math.PI / 2;
     const offsets = ids.map((_, i) => {

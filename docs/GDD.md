@@ -484,3 +484,11 @@ aos modos de jogo (Fenda Infinita, Desafio do dia, Expedição). O herói escolh
 - Fases possíveis: as abertas, menos as 2 primeiras do tutorial. Sem limites de tutorial; relíquias e talentos valem.
 - Moedas por batalha vencida: 40, 70, 140. Derrota encerra a expedição (10 moedas). Não conta estrelas nem desafios.
 - A expedição fica no save; sair no meio de uma batalha recomeça aquela batalha.
+
+## Fase 14 — Vínculos de Éter
+
+Números em src/data/towers.ts (LINK). Duas torres de tipos diferentes a até 250 px uma da outra ficam ligadas (fio de luz).
+A cada 5º disparo, a torre acerta o mesmo alvo também com o elemento de uma vizinha ligada: 35% do dano da vizinha no nível
+dela, com 40% da queimadura, 1 acúmulo de Resfriado ou a chance de raiz. Com várias vizinhas, reveza a cada vez.
+Torres iguais não se ligam. Torres de fusão e as formas "constantes" de tempestade emprestam o elemento, mas não recebem.
+Fases 1 a 3 do tutorial não têm vínculos; da fase 4 em diante sim, em todos os modos.

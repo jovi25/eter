@@ -16,7 +16,7 @@ import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
 import { EVOLUTIONS, evolvedLevel, type EvolutionId } from '../data/evolutions';
-import { MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
+import { LINK, MAX_LEVEL, TOWERS, type TowerAbility, type TowerId, type TowerLevel } from '../data/towers';
 import { EventBus, type SimEvents } from './events';
 import { Path } from './path';
 import { Rng } from './rng';
@@ -65,7 +65,7 @@ export class Simulation {
   readonly slots: readonly Vec2[];
   readonly mods: SimModifiers;
   /** Teaching limits in force (empty = everything allowed). */
-  readonly rules: Pick<StageDef, 'towers' | 'evolve' | 'fusion' | 'boons'>;
+  readonly rules: Pick<StageDef, 'towers' | 'evolve' | 'fusion' | 'boons' | 'links'>;
 
   private readonly rng: Rng;
   /** Separate streams so boons/bonus spawns never disturb combat rolls. */
@@ -1181,6 +1181,51 @@ export class Simulation {
 
   // ───────────────────────────── towers & projectiles ─────────────────────────────
 
+  // ───────────────────────────── Vínculos de Éter ─────────────────────────────
+
+  private linked(ax: number, ay: number, b: TowerState): boolean {
+    return (ax - b.x) ** 2 + (ay - b.y) ** 2 <= LINK.maxDist ** 2;
+  }
+
+  /** Neighbouring towers of another kind (the ones this tower borrows elements from). */
+  linksOf(t: TowerState): TowerState[] {
+    if (this.rules.links === false) return [];
+    return this.state.towers.filter((o) => o !== t && o.type !== t.type && this.linked(t.x, t.y, o));
+  }
+
+  /** Every link on the field, lowest tower id first (for the threads of light). */
+  linkPairs(): [TowerState, TowerState][] {
+    const out: [TowerState, TowerState][] = [];
+    for (const a of this.state.towers) for (const b of this.linksOf(a)) if (a.id < b.id) out.push([a, b]);
+    return out;
+  }
+
+  /** Towers that would link with a new tower on this slot (of the given kind, or of any kind). */
+  linkPreview(slot: number, type?: TowerId): TowerState[] {
+    const at = this.slots[slot];
+    if (!at || this.rules.links === false) return [];
+    return this.state.towers.filter((o) => o.slot !== slot && o.type !== type && this.linked(at.x, at.y, o));
+  }
+
+  /** Every LINK.every-th attack also carries a neighbour's element (neighbours take turns). */
+  private echo(t: TowerState, target: EnemyState): void {
+    if (t.shots % LINK.every !== 0 || !target.alive) return;
+    const ns = this.linksOf(t);
+    if (ns.length === 0) return;
+    const n = ns[(t.shots / LINK.every) % ns.length]!;
+    const def = TOWERS[n.type];
+    const lvl = this.levelOf(n);
+    this.events.emit('linkEcho', { towerId: t.id, fromId: n.id, targetId: target.id, element: def.element, x: target.x, y: target.y });
+    this.applyHit(target, {
+      element: def.element,
+      damage: lvl.damage * LINK.damageMult * this.mods.towerDamageMult[n.type] * this.mods.elementDamageMult[def.element],
+      burnDps: lvl.burnDps ? lvl.burnDps * LINK.burnMult : undefined,
+      rootChance: lvl.rootChance,
+      towerId: t.id,
+      towerType: n.type,
+    });
+  }
+
   levelOf(t: TowerState): TowerLevel {
     if (t.fusion) {
       const f = FUSIONS[t.fusion];
@@ -1457,6 +1502,7 @@ export class Simulation {
     t.shots++;
     if (def.projectileSpeed <= 0) {
       this.fireChain(t, target);
+      this.echo(t, target);
       return;
     }
     const ab = this.abilityOf(t);
@@ -1482,6 +1528,7 @@ export class Simulation {
     }
     t.cooldown = 1 / lvl.rate;
     this.events.emit('towerFired', { towerId: t.id, targetId: target.id });
+    this.echo(t, target);
   }
 
   private launch(t: TowerState, target: EnemyState): void {
