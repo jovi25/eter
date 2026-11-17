@@ -15,7 +15,7 @@ import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTION_IDS, REACTIONS } from '../../data/reactions';
 import { regionOf, STAGE_ORDER, type CampaignStageId, type StageId } from '../../data/stages';
 import { COINS, matchCoins } from '../../data/relics';
-import { advanceRun, EXPEDITION, legSetup, PACTS, type ExpeditionRun, type Route } from '../../data/expedition';
+import { advanceRun, EXPEDITION, legSetup, PACTS, type BattleNode, type ExpeditionRun } from '../../data/expedition';
 import { defaultModifiers } from '../../data/modifiers';
 import { getSave } from '../../meta/save';
 import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
@@ -107,7 +107,7 @@ export class BattleScene extends Phaser.Scene {
   private stageId: StageId = 'v1';
   private daily: DailySetup | null = null;
   /** Expedição de Éter: the run and the trail being played (null in every other mode). */
-  private trip: { run: ExpeditionRun; route: Route; index: number } | null = null;
+  private trip: { run: ExpeditionRun; route: BattleNode; index: number } | null = null;
   private altarOffer = false;
 
   private again(stage: StageId = this.stageId): BattleData {
@@ -262,8 +262,8 @@ export class BattleScene extends Phaser.Scene {
     this.daily = data.daily ? dailySetup(new Date()) : null;
     const seed = this.daily?.seed ?? data.seed ?? Math.floor(Math.random() * 1e9);
     const run = data.expedition !== undefined && !this.daily ? getSave().data.expedition : null;
-    const route = run?.routes[data.expedition ?? 0];
-    this.trip = run && route ? { run, route, index: data.expedition ?? 0 } : null;
+    const route = run?.nodes[data.expedition ?? 0];
+    this.trip = run && route?.kind === 'battle' ? { run, route, index: data.expedition ?? 0 } : null;
     this.stageId = this.daily?.stage ?? this.trip?.route.stage ?? data.stage ?? 'v1';
     this.heroClass = this.daily?.hero ?? this.trip?.run.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
     // During the tutorial only the Arcanista, and no relics or talents (nothing that the tutorial has not taught).
@@ -889,17 +889,18 @@ export class BattleScene extends Phaser.Scene {
       let firstDailyToday = false;
       let challenges: { text: string; done: boolean; fresh: boolean }[] | undefined;
       let daily: { score: number; best: number; record: boolean } | undefined;
-      let trip: { leg: number; legs: number; finished: boolean; pact: string } | undefined;
+      let trip: { leg: number; legs: number; finished: boolean; pact: string; streak: number } | undefined;
       let tripCoins = 0;
       if (this.trip) {
         // Expedição: a win carries lives and Bênçãos to the next battle; a defeat ends the run.
         const { run, route } = this.trip;
-        const after = advanceRun(run, this.sim.state.lives, this.sim.state.boons, save.expeditionPool());
+        const after = advanceRun(run, this.sim.state.lives, this.sim.state.boons, save.expeditionCtx());
         const finished = g.won && after.leg >= EXPEDITION.legs;
-        trip = { leg: run.leg + 1, legs: EXPEDITION.legs, finished, pact: PACTS[route.pact].name };
         tripCoins = g.won ? (EXPEDITION.coins[run.leg] ?? 0) : COINS.loss;
         if (finished) save.finishExpedition();
-        else save.setExpedition(g.won ? after : null);
+        else if (g.won) save.setExpedition(after);
+        else save.failExpedition();
+        trip = { leg: run.leg + 1, legs: EXPEDITION.legs, finished, pact: PACTS[route.pact].name, streak: save.data.expeditionStreak };
       } else if (this.daily) {
         const score = dailyScore(this.sim.state);
         firstDailyToday = save.data.daily.key !== this.daily.key || save.data.daily.plays === 0;

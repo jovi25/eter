@@ -150,12 +150,15 @@ O jogador venceu a Expedição com 3 torres (Nevasca + Senhor do Trovão + 1), 2
 - *Medida de sucesso:* 3 torres evoluídas perdem na maioria das fases; quem continua construindo vence com pouco ouro sobrando.
 - *Risco assumido:* os robôs antigos (que não evoluem torres) agora perdem quase toda a Região 2 e 3. Falta o teste do jogador.
 
-### Fase 15 — Expedição 2.0 (a aventura de verdade)
-- [ ] Mapa da expedição com **bifurcações desenhadas** (escolher o caminho num mini-mapa de trilha tracejada)
-- [ ] Paradas que não são batalha: **Acampamento** (cura), **Mercador** (troca moedas da expedição por Bênção),
-      **Santuário** (troca uma Bênção por outra melhor), **Enigma** (aposta de vidas)
-- [ ] 5 paradas e um **chefe final sorteado**; relíquias temporárias que só valem naquela expedição
-- [ ] Recorde: expedições seguidas sem perder ("sequência")
+### Fase 15 — Expedição 2.0 (a aventura de verdade) ✔
+- [x] A expedição vira uma **trilha de 5 paradas** desenhada no cartão: Batalha → Parada → Batalha → Parada → **Chefe final**
+- [x] Paradas que não são batalha (1 de 2 por vez): **Acampamento** (+5 vidas), **Mercador** (1 de 3 Bênçãos por 40 moedas),
+      **Santuário** (1 de 2 Bênçãos raras/épicas por 3 vidas); sempre dá para passar direto
+- [x] **Chefe final sorteado** entre as fases de chefe já abertas (Arauto, Sentinela, Devorador, Titã)
+- [x] **Sequência** de expedições completas seguidas e melhor sequência (perder ou desistir zera)
+- [x] Monstros por parada: ×1 / ×1,2 / ×1,45 (as fases das Regiões 2 e 3 já ficaram mais duras na Fase 14b); moedas 40 / 70 / 160
+- [~] Enigma (aposta de vidas) e relíquias temporárias: **cortados** — o Santuário já é a aposta, e as Bênçãos já são o poder temporário
+- *Nota:* expedições em andamento salvas pela versão de 3 batalhas são descartadas (formato novo).
 
 ### Fase 16 — Região 4: Ilhas do Vazio (as "Terras por descobrir" do mapa)
 - [ ] **Clima que muda no meio da partida**: chuva (fogo −, raio +, apaga Queimando), ventania (voadores mais rápidos),

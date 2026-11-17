@@ -116,8 +116,8 @@ describe.runIf(process.env.npm_lifecycle_event === 'probe')('expedition probe', 
       tres: ['frost', 'brazier', 'storm'],
       cheio: ['vine', 'brazier', 'frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'archer', 'brazier'],
     };
-    const routes: StageId[][] = [['v5', 'a1', 'a3'], ['a1', 'a3', 'c3'], ['v3', 'v4', 'v5'], ['a3', 'c3', 'c5']];
-    const mults = (process.env.EXP_HP ?? '1,1.2,1.45').split(',').map(Number);
+    const routes: StageId[][] = [['v4', 'v3', 'v5'], ['a1', 'a2', 'a3'], ['a2', 'c2', 'a5'], ['a4', 'c1', 'c5'], ['a3', 'c4', 'v5']];
+    const mults = (process.env.EXP_HP ?? '1,1.2,1.45').split(',').map(Number); // battle 1, battle 2, boss
     for (const [name, plan] of Object.entries(plans)) {
       for (const route of routes) {
         for (const seed of [1, 2]) {
@@ -125,11 +125,12 @@ describe.runIf(process.env.npm_lifecycle_event === 'probe')('expedition probe', 
           let lives = 20;
           const out: string[] = [];
           for (let leg = 0; leg < 3; leg++) {
-            const { sim } = fewTowers(route[leg]!, plan, seed + leg, mults[leg]!, 0, { boons, lives });
+            const { sim } = fewTowers(route[leg]!, plan, seed + leg, mults[leg]!, 0, { boons, lives }, 'mage', true);
             out.push(`${route[leg]}:${sim.state.result === 'won' ? 'W' + sim.state.lives : 'L' + sim.state.wave}/$${Math.round(sim.state.gold)}/b${sim.state.boons.length}`);
             if (sim.state.result !== 'won') break;
             boons = [...sim.state.boons];
-            lives = sim.state.lives;
+            lives = Math.min(20, sim.state.lives + 5); // a camp on the way
+            boons.push('catalyst'); // ...or a Bênção from the merchant
           }
           console.log('EXP', name, out.join('  ->  '));
         }

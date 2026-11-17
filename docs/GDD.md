@@ -500,3 +500,14 @@ enquanto a trava dura; o golpe vira um golpe comum e o estado (Resfriado, Queima
 Os escudos de chefe seguem a mesma regra: as rachaduras precisam vir espaçadas.
 Alvo de equilíbrio daqui para frente: uma defesa de 3 torres evoluídas deve perder nas Regiões 2 e 3; o jogador precisa
 continuar construindo e termina com pouco ouro. Conferir com npm run probe a cada mudança de números.
+
+## Fase 15 — Expedição 2.0
+
+Substitui o formato de 3 batalhas (números em src/data/expedition.ts).
+- Trilha fixa de 5 paradas: batalha, parada, batalha, parada, chefe final. Em cada parada, 1 de 2 caminhos (o chefe é um só).
+- Batalhas: fase aberta + pacto, como antes. Vida dos monstros ×1, ×1,2 e ×1,45 (1ª batalha, 2ª batalha, chefe).
+- Paradas: duas diferentes entre Acampamento (+5 vidas, até 20), Mercador (1 de 3 Bênçãos comuns/raras por 40 moedas)
+  e Santuário (1 de 2 Bênçãos raras/épicas por 3 vidas; não aceita as últimas vidas). "Passar direto" é sempre possível.
+- Chefe final: uma das fases de chefe abertas (v5, a3, a5, c5), sem pacto.
+- Moedas ao vencer: 40, 70 e 160. Sequência = expedições completas seguidas; derrota ou desistência zera.
+- As moedas gastas no Mercador são as moedas normais do jogo (compra de item conhecido, nunca sorteio).

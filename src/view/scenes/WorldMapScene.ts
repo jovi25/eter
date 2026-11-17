@@ -22,7 +22,7 @@ import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
 import { HeroPanel } from '../ui/HeroPanel';
 import { TALENTS, WEAPONS } from '../../data/talents';
-import { EXPEDITION, newRun, PACTS } from '../../data/expedition';
+import { canVisit, EXPEDITION, newRun, PACTS, REST_INFO } from '../../data/expedition';
 import type { Vec2 } from '../../data/maps';
 import { TOWERS } from '../../data/towers';
 import { Rng } from '../../sim/rng';
@@ -283,7 +283,7 @@ export class WorldMapScene extends Phaser.Scene {
     const m = MODE_SPOTS;
     stop(m.rift.x, m.rift.y, 46, 0x7a4fd0, 'portal', 0.5, 'Fenda Infinita', done ? (save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : '40 ondas sem fim') : 'Fim do tutorial', done, () => this.showStageCard('rift'), lockTip);
     stop(m.daily.x, m.daily.y, 46, 0xb0479a, 'icon_daily', 0.8, 'Desafio do dia', done ? 'Igual para todos' : 'Fim do tutorial', done, () => this.showDailyCard(), lockTip, false, done && save.dailyBest(today.key) === 0);
-    stop(m.expedition.x, m.expedition.y, 46, 0x2f9a8a, 'chest', 0.3, 'Expedição', done ? (run ? `Batalha ${run.leg + 1} de ${EXPEDITION.legs}` : 'NOVO! 3 batalhas seguidas') : 'Fim do tutorial', done, () => this.showExpeditionCard(), lockTip, false, done && save.data.expeditionWins === 0 && !run);
+    stop(m.expedition.x, m.expedition.y, 46, 0x2f9a8a, 'chest', 0.3, 'Expedição', done ? (run ? `Parada ${run.leg + 1} de ${EXPEDITION.legs}` : 'Trilha de 5 paradas') : 'Fim do tutorial', done, () => this.showExpeditionCard(), lockTip, false, done && save.data.expeditionWins === 0 && !run);
 
     this.navBar(false);
     this.cameras.main.fadeIn(250, 11, 7, 22);
@@ -291,8 +291,8 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   /**
-   * Expedição de Éter: 3 battles in a row. Lives and Bênçãos carry over, monsters get tougher,
-   * and before each battle the player picks 1 of 2 trails (a stage + a pact).
+   * Expedição de Éter: a trail of 5 stops (battle, rest stop, battle, rest stop, final boss).
+   * Lives and Bênçãos carry over; at each stop the player picks 1 of 2 ways.
    */
   private showExpeditionCard(animate = true): void {
     this.card?.destroy();
@@ -306,20 +306,47 @@ export class WorldMapScene extends Phaser.Scene {
     });
     const g = this.add.graphics();
     g.fillStyle(PAL.ink, 1);
-    g.fillRoundedRect(-330, -400, 660, 800, 30);
+    g.fillRoundedRect(-340, -430, 680, 860, 30);
     g.fillStyle(0x163a40, 1);
-    g.fillRoundedRect(-325, -395, 650, 790, 26);
-    c.add([shade, g]);
-    c.add(uiText(this, 0, -350, 'Expedição de Éter', 38, '#c8fff2', 8));
+    g.fillRoundedRect(-335, -425, 670, 850, 26);
+    // The card itself swallows taps (only the dark area around it closes).
+    const body = this.add.rectangle(0, 0, 680, 860, 0, 0).setInteractive();
+    c.add([shade, body, g]);
+    c.add(uiText(this, 0, -386, 'Expedição de Éter', 38, '#c8fff2', 8));
+
+    // The trail: 5 stops joined by a dashed line; done ones are green, the current one pulses.
+    const ICON: Record<string, string> = { battle: '⚔', rest: '⛺', boss: '👑' };
+    const at = run ? run.leg : -1;
+    const tg = this.add.graphics();
+    c.add(tg);
+    EXPEDITION.steps.forEach((kind, i) => {
+      const x = (i - 2) * 130;
+      const y = -312;
+      if (i > 0) {
+        tg.fillStyle(i <= at ? 0xfff1c9 : 0x5a7a80, 1);
+        for (let d = 0; d < 4; d++) tg.fillRoundedRect(x - 98 + d * 18, y - 3, 11, 6, 3);
+      }
+      const done = i < at;
+      const here = i === at;
+      tg.fillStyle(PAL.ink, 1);
+      tg.fillCircle(x, y + 3, 31);
+      tg.fillStyle(done ? 0x3aa655 : here ? 0xffd34d : kind === 'boss' ? 0x7a2f5a : 0x2a5a62, 1);
+      tg.fillCircle(x, y, 27);
+      const ic = uiText(this, x, y - 1, done ? '✔' : ICON[kind]!, 26, '#ffffff', 5);
+      c.add(ic);
+      if (here) this.tweens.add({ targets: ic, scale: 1.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      c.add(uiText(this, x, y + 46, kind === 'battle' ? 'Batalha' : kind === 'rest' ? 'Parada' : 'Chefe', 15, here ? PAL.goldCss : PAL.uiDim, 3));
+    });
+
+    const restart = () => this.showExpeditionCard(false);
     if (!run) {
-      c.add(uiText(this, 0, -272, '3 batalhas seguidas. As vidas e as Bênçãos que você ganhar seguem com você, e os monstros ficam mais fortes a cada batalha.', 20, PAL.uiText, 4).setWordWrapWidth(580));
-      c.add(uiText(this, 0, -184, 'Antes de cada batalha, escolha 1 de 2 trilhas: cada uma tem um prêmio e um preço.', 20, PAL.goldCss, 4).setWordWrapWidth(580));
-      c.add(uiText(this, 0, -118, 'Perdeu uma batalha? A expedição acaba.', 19, '#ffb38a', 4));
-      c.add(uiText(this, 0, -62, 'Quem vai?', 24, PAL.uiText, 5));
+      c.add(uiText(this, 0, -196, 'Uma trilha de 5 paradas: 2 batalhas, 2 descansos e um chefe final. As vidas e as Bênçãos seguem com você, e os monstros ficam mais fortes.', 19, PAL.uiText, 4).setWordWrapWidth(600));
+      c.add(uiText(this, 0, -112, 'Em cada parada você escolhe 1 de 2 caminhos. Perdeu uma batalha? A expedição acaba.', 19, PAL.goldCss, 4).setWordWrapWidth(600));
+      c.add(uiText(this, 0, -44, 'Quem vai?', 24, PAL.uiText, 5));
       HERO_ORDER.forEach((cls, i) => {
         const def = HEROES[cls];
         const selected = save.data.hero === cls;
-        const slot = this.add.container((i - 1.5) * 146, 46);
+        const slot = this.add.container((i - 1.5) * 146, 64);
         const bg = this.add.graphics();
         bg.fillStyle(selected ? 0xffd34d : PAL.ink, 1);
         bg.fillRoundedRect(-64, -78, 128, 160, 18);
@@ -330,67 +357,98 @@ export class WorldMapScene extends Phaser.Scene {
         slot.on('pointerdown', () => {
           playSfx('ui');
           save.selectHero(cls);
-          this.showExpeditionCard(false);
+          restart();
         });
         c.add(slot);
       });
-      c.add(uiText(this, 0, 168, `Moedas por batalha vencida: ${EXPEDITION.coins.join(' → ')}`, 20, '#d6c4ff', 4));
-      c.add(uiText(this, 0, 204, `Expedições completas: ${save.data.expeditionWins}`, 19, PAL.uiDim, 4));
+      c.add(uiText(this, 0, 184, `Moedas por batalha vencida: ${EXPEDITION.coins.filter((n) => n > 0).join(' → ')}`, 20, '#d6c4ff', 4));
+      c.add(uiText(this, 0, 220, `Completas: ${save.data.expeditionWins}   •   Sequência: ${save.data.expeditionStreak}   •   Melhor: ${save.data.expeditionBest}`, 18, PAL.uiDim, 4));
       c.add(
-        new Button(this, 0, 300, {
+        new Button(this, 0, 320, {
           width: 400,
           height: 90,
           label: 'PARTIR',
           fontSize: 42,
           color: 0x2f9a8a,
           onClick: () => {
-            save.setExpedition(newRun(Math.floor(Math.random() * 1e9), save.data.hero, save.expeditionPool()));
-            this.showExpeditionCard(false);
+            save.setExpedition(newRun(Math.floor(Math.random() * 1e9), save.data.hero, save.expeditionCtx()));
+            restart();
           },
         }),
       );
     } else {
-      c.add(uiText(this, 0, -300, `Batalha ${run.leg + 1} de ${EXPEDITION.legs}  •  ${HEROES[run.hero].name}`, 24, PAL.goldCss, 5));
-      c.add(uiText(this, 0, -262, `❤ ${run.lives} vidas   •   ${run.boons.length} Bênçãos   •   monstros ×${EXPEDITION.hpMult[run.leg]}`, 20, PAL.uiText, 4));
-      c.add(uiText(this, 0, -222, 'Escolha a trilha', 24, '#c8fff2', 5));
-      run.routes.forEach((route, i) => {
-        const pact = PACTS[route.pact];
-        const x = (i - 0.5) * 316;
-        const p = this.add.container(x, 40);
+      c.add(uiText(this, 0, -228, `❤ ${run.lives} vidas   •   ${run.boons.length} ${run.boons.length === 1 ? "Bênção" : "Bênçãos"}   •   ${HEROES[run.hero].name}   •   ${save.data.coins} moedas`, 19, PAL.uiText, 4));
+      const single = run.nodes.length === 1;
+      run.nodes.forEach((node, i) => {
+        const x = single ? 0 : (i - 0.5) * 326;
+        const p = this.add.container(x, 76);
         const pg = this.add.graphics();
-        pg.fillStyle(pact.color, 1);
-        pg.fillRoundedRect(-150, -236, 300, 472, 22);
+        const color = node.kind === 'battle' ? PACTS[node.pact].color : REST_INFO[node.kind].color;
+        const css = `#${color.toString(16).padStart(6, '0')}`;
+        const w = single ? 420 : 310;
+        pg.fillStyle(color, 1);
+        pg.fillRoundedRect(-w / 2, -270, w, 540, 22);
         pg.fillStyle(0x10262c, 1);
-        pg.fillRoundedRect(-144, -230, 288, 460, 18);
+        pg.fillRoundedRect(-w / 2 + 6, -264, w - 12, 528, 18);
         p.add(pg);
-        const css = `#${pact.color.toString(16).padStart(6, '0')}`;
-        p.add(uiText(this, 0, -196, pact.name, 22, css, 5).setWordWrapWidth(270));
-        p.add(uiText(this, 0, -150, STAGES[route.stage].name, 19, '#ffffff', 4).setWordWrapWidth(270));
-        p.add(uiText(this, 0, -122, REGIONS[regionOf(route.stage)]?.name ?? '', 15, PAL.uiDim, 3));
-        p.add(uiText(this, 0, -62, `▲ ${pact.good}`, 19, '#9be89b', 4).setWordWrapWidth(262));
-        p.add(uiText(this, 0, 14, `▼ ${pact.bad}`, 19, '#ff9a8a', 4).setWordWrapWidth(262));
-        if (route.towers) p.add(uiText(this, 0, 84, route.towers.map((t) => TOWERS[t].name).join(', '), 16, PAL.goldCss, 4).setWordWrapWidth(262));
-        p.add(
-          new Button(this, 0, 176, {
-            width: 240,
-            height: 76,
-            label: 'IR',
-            fontSize: 36,
-            color: 0x3aa655,
-            onClick: () => {
-              this.cameras.main.fadeOut(220, 11, 7, 22);
-              this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { expedition: i }));
-            },
-          }),
-        );
+        const wrap = w - 36;
+        if (node.kind === 'battle') {
+          const pact = PACTS[node.pact];
+          p.add(uiText(this, 0, -230, pact.name, 23, css, 5).setWordWrapWidth(wrap));
+          p.add(uiText(this, 0, -184, STAGES[node.stage].name, 19, '#ffffff', 4).setWordWrapWidth(wrap));
+          p.add(uiText(this, 0, -156, REGIONS[regionOf(node.stage)]?.name ?? '', 15, PAL.uiDim, 3));
+          p.add(uiText(this, 0, -90, `▲ ${pact.good}`, 19, '#9be89b', 4).setWordWrapWidth(wrap));
+          p.add(uiText(this, 0, -10, `▼ ${pact.bad}`, 19, '#ff9a8a', 4).setWordWrapWidth(wrap));
+          if (node.towers) p.add(uiText(this, 0, 64, node.towers.map((t) => TOWERS[t].name).join(', '), 16, PAL.goldCss, 4).setWordWrapWidth(wrap));
+          p.add(uiText(this, 0, 126, `Monstros ×${(EXPEDITION.hpMult[run.leg]! * (pact.hpMult ?? 1)).toFixed(2)}`, 16, PAL.uiDim, 3));
+          p.add(
+            new Button(this, 0, 208, {
+              width: 240,
+              height: 76,
+              label: node.pact === 'final' ? 'LUTAR' : 'IR',
+              fontSize: 36,
+              color: node.pact === 'final' ? 0xb0479a : 0x3aa655,
+              onClick: () => {
+                this.cameras.main.fadeOut(220, 11, 7, 22);
+                this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { expedition: i }));
+              },
+            }),
+          );
+        } else {
+          const info = REST_INFO[node.kind];
+          p.add(uiText(this, 0, -230, info.name, 25, css, 5));
+          p.add(uiText(this, 0, -192, info.desc, 17, PAL.uiText, 4).setWordWrapWidth(wrap));
+          const visit = (choice: number) => {
+            if (!save.visitExpedition(i, choice)) {
+              this.lockedMsg(node.kind === 'merchant' ? 'Moedas insuficientes' : 'Vidas insuficientes para a oferenda');
+              return;
+            }
+            playSfx(choice >= 0 || node.kind === 'camp' ? 'boon' : 'ui');
+            restart();
+          };
+          if (node.kind === 'camp') {
+            p.add(uiText(this, 0, -60, '⛺', 90, '#ffffff', 6));
+            p.add(uiText(this, 0, 60, `Vidas: ${run.lives} → ${Math.min(20, run.lives + EXPEDITION.camp.lives)}`, 20, '#9be89b', 4));
+            p.add(new Button(this, 0, 208, { width: 250, height: 76, label: 'DESCANSAR', fontSize: 28, color: 0x3aa655, onClick: () => visit(-1) }));
+          } else {
+            node.boons.forEach((id, k) => {
+              const boon = BOONS[id];
+              const y = -128 + k * (node.boons.length > 2 ? 104 : 130);
+              const ok = canVisit(run, node, k, save.data.coins);
+              p.add(new Button(this, 0, y, { width: w - 40, height: 52, label: boon.name, fontSize: 19, color: ok ? 0x5a3fb0 : 0x4a4560, onClick: () => visit(k) }));
+              p.add(uiText(this, 0, y + 46, boon.desc, 14, PAL.uiDim, 3).setWordWrapWidth(wrap));
+            });
+            p.add(new Button(this, 0, 222, { width: 220, height: 50, label: 'Passar direto', fontSize: 19, color: 0x6b6480, onClick: () => visit(-1) }));
+          }
+        }
         c.add(p);
       });
       let sure = false;
-      const quit = new Button(this, 0, 336, {
+      const quit = new Button(this, 0, 388, {
         width: 300,
-        height: 52,
+        height: 46,
         label: 'Desistir da expedição',
-        fontSize: 19,
+        fontSize: 18,
         color: 0x6b6480,
         onClick: () => {
           if (!sure) {
@@ -398,7 +456,7 @@ export class WorldMapScene extends Phaser.Scene {
             quit.setLabel('Toque de novo para desistir').setColor(0xb03a3a);
             return;
           }
-          save.setExpedition(null);
+          save.failExpedition();
           this.scene.restart({ region: -1 });
         },
       });
