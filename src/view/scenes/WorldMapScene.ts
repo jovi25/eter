@@ -12,7 +12,7 @@ import { COINS } from '../../data/relics';
 import { playMusic, setMusicIntensity } from '../audio/music';
 import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
-import { REGIONS, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
+import { regionOf, REGIONS, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
 import { ENEMIES } from '../../data/enemies';
 import { REACTIONS } from '../../data/reactions';
 import { getSave } from '../../meta/save';
@@ -22,6 +22,11 @@ import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
 import { HeroPanel } from '../ui/HeroPanel';
 import { TALENTS, WEAPONS } from '../../data/talents';
+import { EXPEDITION, newRun, PACTS } from '../../data/expedition';
+import type { Vec2 } from '../../data/maps';
+import { TOWERS } from '../../data/towers';
+import { Rng } from '../../sim/rng';
+import { MODE_SPOTS, paintWorldMap, REGION_AT, WORLD_TRAIL } from '../art/worldmap';
 
 const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> = {
   v1: { x: 192, y: 1008, enemy: 'slime' },
@@ -74,7 +79,7 @@ export class WorldMapScene extends Phaser.Scene {
 
 
 
-  create(data?: { region?: number; openStage?: CampaignStageId }): void {
+  create(data?: { region?: number; openStage?: CampaignStageId; expedition?: boolean }): void {
     fitCamera(this);
     frameCap(this, 'menu');
     const save = getSave();
@@ -83,7 +88,7 @@ export class WorldMapScene extends Phaser.Scene {
     if (region >= 0 && !save.isRegionOpen(region)) region = -1;
     lastRegion = region;
     if (region < 0) {
-      this.hub();
+      this.hub(!!data?.expedition);
       return;
     }
     const theme = REGION_LOOK[region]?.theme ?? 'meadow';
@@ -157,15 +162,32 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   /**
-   * Mapa de Éter: every region (each opens when the previous one has 3 stars everywhere),
-   * plus the game modes (Fenda Infinita, Desafio do dia and what comes next).
+   * Mapa de Éter: a painted world crossed by a dashed trail. Each stop is a region (a sub-map of 5 stages)
+   * that opens when the previous one has 3 stars everywhere; side paths lead to the game modes.
    */
-  private hub(): void {
+  private hub(openExpedition = false): void {
     const save = getSave();
     playMusic('map');
     setMusicIntensity(0);
-    paintMapBackground(this, [], 'world_bg', GAME_HEIGHT, 'meadow');
-    placeDecor(this, [], [{ x: 360, y: 640 }], 7, 18);
+    const done = save.tutorialDone();
+    const reached = REGIONS.filter((_, r) => save.isRegionOpen(r)).length;
+    paintWorldMap(this, reached, done);
+
+    // Trees of each land, away from the trail and the stops.
+    const stops: Vec2[] = [...WORLD_TRAIL, ...Object.values(MODE_SPOTS)];
+    // Keep the name plates and the side paths clear too.
+    for (const p of [...REGION_AT.map((i) => WORLD_TRAIL[i]!), ...Object.values(MODE_SPOTS)]) stops.push({ x: p.x, y: p.y + 95 });
+    for (const sp of Object.values(MODE_SPOTS)) stops.push({ x: (sp.x + WORLD_TRAIL[sp.from]!.x) / 2, y: (sp.y + WORLD_TRAIL[sp.from]!.y) / 2 - 15 });
+    const rng = new Rng(31);
+    for (let placed = 0, tries = 0; placed < 26 && tries < 500; tries++) {
+      const x = rng.int(30, GAME_WIDTH - 30);
+      const y = rng.int(390, GAME_HEIGHT - 190);
+      if (stops.some((p) => Math.hypot(p.x - x, p.y - y) < 105) || (y > 840 && y < 960)) continue;
+      const key = y > 870 ? 'tree' : y > 640 ? 'tree_amber' : 'tree_snow';
+      this.add.image(x, y, key).setScale(0.5 + rng.next() * 0.2).setDepth(10 + y / 100);
+      placed++;
+    }
+
     const head = this.add.graphics();
     head.fillStyle(PAL.panel, 0.9);
     head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
@@ -183,92 +205,210 @@ export class WorldMapScene extends Phaser.Scene {
     chip(360, 'icon_check', `${save.challengesDone()}/${TOTAL_CHALLENGES}`, '#9be89b', 0.7);
     chip(570, 'eter_coin', `${save.data.coins}`, '#d6c4ff', 0.75);
 
-    // Regions
-    REGIONS.forEach((reg, r) => {
-      const y = 236 + r * 178;
-      const open = save.isRegionOpen(r);
-      const look = REGION_LOOK[r] ?? REGION_LOOK[0]!;
-      const stars = save.regionStars(r);
-      const max = reg.stages.length * 3;
-      const c = this.add.container(GAME_WIDTH / 2, y).setDepth(40);
+    /** One stop on the map: a medallion with a picture, a name plate and one line under it. */
+    const stop = (x: number, y: number, r: number, color: number, icon: string, iconScale: number, title: string, sub: string, open: boolean, onTap: () => void, lockMsg: string, pulse = false, dot = false) => {
+      const c = this.add.container(x, y).setDepth(40);
       const g = this.add.graphics();
+      const col = open ? color : 0x4a4560;
       g.fillStyle(PAL.ink, 1);
-      g.fillRoundedRect(-320, -76, 640, 152, 26);
-      g.fillStyle(!open ? 0x3a3450 : look.theme === 'amber' ? 0x8a5a2a : look.theme === 'snow' ? 0x4a6a96 : 0x3f7a3a, 1);
-      g.fillRoundedRect(-315, -71, 630, 142, 22);
-      g.fillStyle(0xffffff, 0.12);
-      g.fillRoundedRect(-305, -64, 610, 46, 18);
+      g.fillCircle(0, 5, r + 6);
+      g.fillStyle(Phaser.Display.Color.ValueToColor(col).darken(35).color, 1);
+      g.fillCircle(0, 5, r);
+      g.fillStyle(col, 1);
+      g.fillCircle(0, 0, r - 2);
+      g.fillStyle(0xffffff, 0.2);
+      g.fillEllipse(-r * 0.15, -r * 0.45, r * 1.2, r * 0.5);
       c.add(g);
-      bakeInPlace(g, { x0: -324, y0: -80, w: 648, h: 160 }, `hub_region_${open ? look.theme : 'locked'}`);
-      const mon = this.add.image(-238, 6, `enemy_${look.enemy}`).setScale(0.82);
-      if (!open) mon.setTint(0x222222).setAlpha(0.7);
-      c.add(mon);
-      c.add(uiText(this, -150, -36, `${r + 1}. ${reg.name}`, 28, open ? '#ffffff' : PAL.uiDim, 6).setOrigin(0, 0.5));
-      c.add(uiText(this, -150, 2, look.tag, 18, open ? '#f3e9ff' : PAL.uiDim, 4).setOrigin(0, 0.5));
-      if (open) {
-        c.add(this.add.image(-136, 42, 'star').setScale(0.4));
-        c.add(uiText(this, -112, 42, `${stars}/${max}`, 22, PAL.goldCss, 5).setOrigin(0, 0.5));
-        if (stars < max && r < REGIONS.length - 1) c.add(uiText(this, 290, 42, '3★ em tudo abre a próxima', 15, '#ffe9a8', 4).setOrigin(1, 0.5));
-        if (r === 0 && !save.tutorialDone()) {
-          const tag = uiText(this, 290, -36, 'COMECE AQUI', 18, PAL.goldCss, 5).setOrigin(1, 0.5);
-          c.add(tag);
-          this.tweens.add({ targets: tag, alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
-        }
-      } else {
-        const prev = REGIONS[r - 1]!;
-        c.add(uiText(this, -150, 42, `🔒 3 estrelas em todas as fases de ${prev.name}`, 17, PAL.uiDim, 4).setOrigin(0, 0.5));
-      }
-      c.setSize(640, 152).setInteractive({ useHandCursor: true });
-      c.on('pointerdown', () => {
-        if (!open) {
-          this.lockedMsg(`Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]!.name}`);
-          return;
-        }
-        playSfx('ui');
-        this.tweens.add({ targets: c, scale: 0.96, duration: 70, yoyo: true });
-        this.go('WorldMap', { region: r });
-      });
-    });
-
-    // Game modes
-    const done = save.tutorialDone();
-    const my = 236 + REGIONS.length * 178 + 10;
-    uiText(this, GAME_WIDTH / 2, my, 'Modos de jogo', 28, PAL.goldCss, 6).setDepth(40);
-    const tile = (x: number, icon: string, scale: number, title: string, sub: string, open: boolean, onTap: () => void, dot = false) => {
-      const c = this.add.container(x, my + 112).setDepth(40);
-      const g = this.add.graphics();
-      g.fillStyle(PAL.ink, 1);
-      g.fillRoundedRect(-104, -84, 208, 168, 22);
-      g.fillStyle(open ? 0x3d2a6a : 0x2a2438, 1);
-      g.fillRoundedRect(-99, -79, 198, 158, 18);
-      c.add(g);
-      bakeInPlace(g, { x0: -108, y0: -88, w: 216, h: 176 }, `hub_tile_${open}`);
-      const img = this.add.image(0, -28, icon).setScale(scale);
-      if (!open) img.setTint(0x333333).setAlpha(0.7);
-      c.add([img, uiText(this, 0, 34, title, 19, open ? '#ffffff' : PAL.uiDim, 4), uiText(this, 0, 60, sub, 14, open ? PAL.goldCss : PAL.uiDim, 3).setWordWrapWidth(190)]);
+      bakeInPlace(g, { x0: -r - 8, y0: -r - 8, w: 2 * r + 16, h: 2 * r + 22 }, `hub_stop_${r}_${col}`);
+      const img = this.add.image(0, -2, icon).setScale(iconScale);
+      if (!open) img.setTint(0x1a1626).setAlpha(0.75);
+      c.add(img);
+      if (!open) c.add(uiText(this, 0, 0, '🔒', Math.round(r * 0.6), '#ffffff', 5));
       if (dot) {
-        const d = this.add.circle(76, -62, 13, 0xff4d5e).setStrokeStyle(3, PAL.ink);
-        c.add([d, uiText(this, 76, -63, '!', 20, '#ffffff', 3)]);
+        const d = this.add.circle(r * 0.72, -r * 0.72, 13, 0xff4d5e).setStrokeStyle(3, PAL.ink);
+        c.add([d, uiText(this, r * 0.72, -r * 0.72 - 1, '!', 20, '#ffffff', 3)]);
       }
-      c.setSize(208, 168).setInteractive({ useHandCursor: true });
+      // Name plate.
+      const plate = this.add.container(x, y + r + 34).setDepth(41);
+      const t = uiText(this, 0, -9, title, r > 56 ? 21 : 18, open ? '#ffffff' : PAL.uiDim, 5);
+      const s = uiText(this, 0, 14, sub, 15, open ? PAL.goldCss : PAL.uiDim, 4);
+      const w = Math.max(t.width, s.width) + 28;
+      const pg = this.add.graphics();
+      pg.fillStyle(PAL.ink, 0.82);
+      pg.fillRoundedRect(-w / 2, -26, w, 54, 14);
+      plate.add([pg, t, s]);
+      c.setSize(r * 2 + 20, r * 2 + 20).setInteractive({ useHandCursor: true });
       c.on('pointerdown', () => {
         if (!open) {
-          this.lockedMsg(done ? 'Em breve!' : 'Termine o tutorial (Campos de Vellmora) para abrir');
+          this.lockedMsg(lockMsg);
           return;
         }
         playSfx('ui');
-        this.tweens.add({ targets: c, scale: 0.94, duration: 70, yoyo: true });
+        this.tweens.add({ targets: c, scale: 0.92, duration: 70, yoyo: true });
         onTap();
       });
+      if (open && pulse) this.tweens.add({ targets: c, scale: 1.07, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      return c;
     };
+
+    // Regions: the stops of the main trail.
+    const COLORS = { meadow: 0x4fa84a, amber: 0xd9903a, snow: 0x6fa3d9 } as const;
+    // The frontier: the last open region that still has stars to earn (the hero waits there).
+    let frontier = 0;
+    REGIONS.forEach((reg, r) => {
+      if (save.isRegionOpen(r) && (save.regionStars(r) < reg.stages.length * 3 || r === reached - 1)) frontier = r;
+    });
+    REGIONS.forEach((reg, r) => {
+      const at = WORLD_TRAIL[REGION_AT[r]!]!;
+      const open = save.isRegionOpen(r);
+      const look = REGION_LOOK[r] ?? REGION_LOOK[0]!;
+      const max = reg.stages.length * 3;
+      const sub = open ? `★ ${save.regionStars(r)}/${max}${r === 0 && !done ? '  •  COMECE AQUI' : ''}` : `3★ em tudo em ${REGIONS[r - 1]!.name}`;
+      stop(at.x, at.y, 64, COLORS[look.theme], `enemy_${look.enemy}`, 0.6, `${r + 1}. ${reg.name}`, sub, open, () => this.go('WorldMap', { region: r }), `Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]?.name ?? ''}`, r === frontier);
+    });
+    // What comes after the last region.
+    const far = WORLD_TRAIL[REGION_AT[REGIONS.length]!];
+    if (far) stop(far.x, far.y, 50, 0x6a4fc0, 'portal', 0.5, '???', 'Terras por descobrir', false, () => undefined, 'Uma nova região está a caminho!');
+
+    // The hero waits at the frontier.
+    const fa = WORLD_TRAIL[REGION_AT[frontier]!]!;
+    const hero = this.add.image(fa.x + (fa.x < GAME_WIDTH / 2 ? 96 : -96), fa.y + 14, HEROES[done ? save.data.hero : 'mage'].texture).setScale(0.5).setDepth(42);
+    hero.setFlipX(fa.x < GAME_WIDTH / 2);
+    this.tweens.add({ targets: hero, scaleY: 0.52, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // Game modes: the side paths.
     const today = dailySetup(new Date());
-    const rift = save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : '40 ondas sem fim';
-    tile(130, 'portal', 0.7, 'Fenda Infinita', done ? rift : '🔒 Fim do tutorial', done, () => this.showStageCard('rift'));
-    tile(360, 'icon_daily', 0.8, 'Desafio do dia', done ? 'Igual para todos' : '🔒 Fim do tutorial', done, () => this.showDailyCard(), done && save.dailyBest(today.key) === 0);
-    tile(590, 'icon_codex', 0.7, 'Novo modo', 'Em breve', false, () => undefined);
+    const lockTip = 'Termine o tutorial (Campos de Vellmora) para abrir';
+    const run = save.data.expedition;
+    const m = MODE_SPOTS;
+    stop(m.rift.x, m.rift.y, 46, 0x7a4fd0, 'portal', 0.5, 'Fenda Infinita', done ? (save.data.riftBest > 0 ? `Recorde: onda ${save.data.riftBest}` : '40 ondas sem fim') : 'Fim do tutorial', done, () => this.showStageCard('rift'), lockTip);
+    stop(m.daily.x, m.daily.y, 46, 0xb0479a, 'icon_daily', 0.8, 'Desafio do dia', done ? 'Igual para todos' : 'Fim do tutorial', done, () => this.showDailyCard(), lockTip, false, done && save.dailyBest(today.key) === 0);
+    stop(m.expedition.x, m.expedition.y, 46, 0x2f9a8a, 'chest', 0.3, 'Expedição', done ? (run ? `Batalha ${run.leg + 1} de ${EXPEDITION.legs}` : 'NOVO! 3 batalhas seguidas') : 'Fim do tutorial', done, () => this.showExpeditionCard(), lockTip, false, done && save.data.expeditionWins === 0 && !run);
 
     this.navBar(false);
     this.cameras.main.fadeIn(250, 11, 7, 22);
+    if (openExpedition && done) this.showExpeditionCard();
+  }
+
+  /**
+   * Expedição de Éter: 3 battles in a row. Lives and Bênçãos carry over, monsters get tougher,
+   * and before each battle the player picks 1 of 2 trails (a stage + a pact).
+   */
+  private showExpeditionCard(animate = true): void {
+    this.card?.destroy();
+    const save = getSave();
+    const run = save.data.expedition;
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(50);
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.6).setInteractive();
+    shade.on('pointerdown', () => {
+      c.destroy();
+      this.card = null;
+    });
+    const g = this.add.graphics();
+    g.fillStyle(PAL.ink, 1);
+    g.fillRoundedRect(-330, -400, 660, 800, 30);
+    g.fillStyle(0x163a40, 1);
+    g.fillRoundedRect(-325, -395, 650, 790, 26);
+    c.add([shade, g]);
+    c.add(uiText(this, 0, -350, 'Expedição de Éter', 38, '#c8fff2', 8));
+    if (!run) {
+      c.add(uiText(this, 0, -272, '3 batalhas seguidas. As vidas e as Bênçãos que você ganhar seguem com você, e os monstros ficam mais fortes a cada batalha.', 20, PAL.uiText, 4).setWordWrapWidth(580));
+      c.add(uiText(this, 0, -184, 'Antes de cada batalha, escolha 1 de 2 trilhas: cada uma tem um prêmio e um preço.', 20, PAL.goldCss, 4).setWordWrapWidth(580));
+      c.add(uiText(this, 0, -118, 'Perdeu uma batalha? A expedição acaba.', 19, '#ffb38a', 4));
+      c.add(uiText(this, 0, -62, 'Quem vai?', 24, PAL.uiText, 5));
+      HERO_ORDER.forEach((cls, i) => {
+        const def = HEROES[cls];
+        const selected = save.data.hero === cls;
+        const slot = this.add.container((i - 1.5) * 146, 46);
+        const bg = this.add.graphics();
+        bg.fillStyle(selected ? 0xffd34d : PAL.ink, 1);
+        bg.fillRoundedRect(-64, -78, 128, 160, 18);
+        bg.fillStyle(0x1f5560, 1);
+        bg.fillRoundedRect(-59, -73, 118, 150, 15);
+        slot.add([bg, this.add.image(0, -6, def.texture).setScale(0.62), uiText(this, 0, 62, def.name, 16, PAL.uiText, 4)]);
+        slot.setSize(128, 160).setInteractive({ useHandCursor: true });
+        slot.on('pointerdown', () => {
+          playSfx('ui');
+          save.selectHero(cls);
+          this.showExpeditionCard(false);
+        });
+        c.add(slot);
+      });
+      c.add(uiText(this, 0, 168, `Moedas por batalha vencida: ${EXPEDITION.coins.join(' → ')}`, 20, '#d6c4ff', 4));
+      c.add(uiText(this, 0, 204, `Expedições completas: ${save.data.expeditionWins}`, 19, PAL.uiDim, 4));
+      c.add(
+        new Button(this, 0, 300, {
+          width: 400,
+          height: 90,
+          label: 'PARTIR',
+          fontSize: 42,
+          color: 0x2f9a8a,
+          onClick: () => {
+            save.setExpedition(newRun(Math.floor(Math.random() * 1e9), save.data.hero, save.expeditionPool()));
+            this.showExpeditionCard(false);
+          },
+        }),
+      );
+    } else {
+      c.add(uiText(this, 0, -300, `Batalha ${run.leg + 1} de ${EXPEDITION.legs}  •  ${HEROES[run.hero].name}`, 24, PAL.goldCss, 5));
+      c.add(uiText(this, 0, -262, `❤ ${run.lives} vidas   •   ${run.boons.length} Bênçãos   •   monstros ×${EXPEDITION.hpMult[run.leg]}`, 20, PAL.uiText, 4));
+      c.add(uiText(this, 0, -222, 'Escolha a trilha', 24, '#c8fff2', 5));
+      run.routes.forEach((route, i) => {
+        const pact = PACTS[route.pact];
+        const x = (i - 0.5) * 316;
+        const p = this.add.container(x, 40);
+        const pg = this.add.graphics();
+        pg.fillStyle(pact.color, 1);
+        pg.fillRoundedRect(-150, -236, 300, 472, 22);
+        pg.fillStyle(0x10262c, 1);
+        pg.fillRoundedRect(-144, -230, 288, 460, 18);
+        p.add(pg);
+        const css = `#${pact.color.toString(16).padStart(6, '0')}`;
+        p.add(uiText(this, 0, -196, pact.name, 22, css, 5).setWordWrapWidth(270));
+        p.add(uiText(this, 0, -150, STAGES[route.stage].name, 19, '#ffffff', 4).setWordWrapWidth(270));
+        p.add(uiText(this, 0, -122, REGIONS[regionOf(route.stage)]?.name ?? '', 15, PAL.uiDim, 3));
+        p.add(uiText(this, 0, -62, `▲ ${pact.good}`, 19, '#9be89b', 4).setWordWrapWidth(262));
+        p.add(uiText(this, 0, 14, `▼ ${pact.bad}`, 19, '#ff9a8a', 4).setWordWrapWidth(262));
+        if (route.towers) p.add(uiText(this, 0, 84, route.towers.map((t) => TOWERS[t].name).join(', '), 16, PAL.goldCss, 4).setWordWrapWidth(262));
+        p.add(
+          new Button(this, 0, 176, {
+            width: 240,
+            height: 76,
+            label: 'IR',
+            fontSize: 36,
+            color: 0x3aa655,
+            onClick: () => {
+              this.cameras.main.fadeOut(220, 11, 7, 22);
+              this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { expedition: i }));
+            },
+          }),
+        );
+        c.add(p);
+      });
+      let sure = false;
+      const quit = new Button(this, 0, 336, {
+        width: 300,
+        height: 52,
+        label: 'Desistir da expedição',
+        fontSize: 19,
+        color: 0x6b6480,
+        onClick: () => {
+          if (!sure) {
+            sure = true;
+            quit.setLabel('Toque de novo para desistir').setColor(0xb03a3a);
+            return;
+          }
+          save.setExpedition(null);
+          this.scene.restart({ region: -1 });
+        },
+      });
+      c.add(quit);
+    }
+    if (animate) {
+      c.setScale(0.7).setAlpha(0);
+      this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
+    }
+    this.card = c;
   }
 
   /** Header arrow to the other region; locked until the previous region's last stage is won. */

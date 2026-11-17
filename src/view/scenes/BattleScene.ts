@@ -13,7 +13,9 @@ import { ENEMIES, type EnemyId } from '../../data/enemies';
 import { ELEMENTS, type Element } from '../../data/elements';
 import { REACTION_IDS, REACTIONS } from '../../data/reactions';
 import { regionOf, STAGE_ORDER, type CampaignStageId, type StageId } from '../../data/stages';
-import { matchCoins } from '../../data/relics';
+import { COINS, matchCoins } from '../../data/relics';
+import { advanceRun, EXPEDITION, legSetup, PACTS, type ExpeditionRun, type Route } from '../../data/expedition';
+import { defaultModifiers } from '../../data/modifiers';
 import { getSave } from '../../meta/save';
 import { MAX_LEVEL, TOWER_IDS, TOWERS } from '../../data/towers';
 import { FixedClock } from '../../sim/clock';
@@ -56,6 +58,7 @@ export interface BattleData {
   seed?: number;
   hero?: HeroClass;
   daily?: boolean; // desafio do dia: stage, hero, seed and starting boon come from the date
+  expedition?: number; // Expedição de Éter: which of the 2 trails of the saved run to play
 }
 
 /** One match: owns the simulation, steps it at a fixed rate and turns its events into visuals and sound. */
@@ -102,9 +105,12 @@ export class BattleScene extends Phaser.Scene {
   private dotAcc = new Map<number, { sum: number; shownAt: number }>();
   private stageId: StageId = 'v1';
   private daily: DailySetup | null = null;
+  /** Expedição de Éter: the run and the trail being played (null in every other mode). */
+  private trip: { run: ExpeditionRun; route: Route; index: number } | null = null;
   private altarOffer = false;
 
   private again(stage: StageId = this.stageId): BattleData {
+    if (this.trip) return { expedition: this.trip.index };
     return this.daily ? { daily: true } : { stage, hero: this.heroClass };
   }
   private heroClass: HeroClass = 'mage';
@@ -218,7 +224,8 @@ export class BattleScene extends Phaser.Scene {
   private toMap(openStage?: CampaignStageId): void {
     this.cameras.main.fadeOut(220, 11, 7, 22);
     const region = Math.max(0, regionOf(openStage ?? this.stageId));
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', { region, openStage }));
+    const trip = !!this.trip;
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMap', trip ? { region: -1, expedition: true } : { region, openStage }));
   }
 
   /** First time a specialist enemy shows up in a match: a short card with its weaknesses. */
@@ -251,20 +258,27 @@ export class BattleScene extends Phaser.Scene {
     quality.low = economyOn();
     this.daily = data.daily ? dailySetup(new Date()) : null;
     const seed = this.daily?.seed ?? data.seed ?? Math.floor(Math.random() * 1e9);
-    this.stageId = this.daily?.stage ?? data.stage ?? 'v1';
-    this.heroClass = this.daily?.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
+    const run = data.expedition !== undefined && !this.daily ? getSave().data.expedition : null;
+    const route = run?.routes[data.expedition ?? 0];
+    this.trip = run && route ? { run, route, index: data.expedition ?? 0 } : null;
+    this.stageId = this.daily?.stage ?? this.trip?.route.stage ?? data.stage ?? 'v1';
+    this.heroClass = this.daily?.hero ?? this.trip?.run.hero ?? data.hero ?? getSave().data.hero ?? 'mage';
     // During the tutorial only the Arcanista, and no relics or talents (nothing that the tutorial has not taught).
     const learning = !this.daily && !getSave().tutorialDone();
     if (learning) this.heroClass = 'mage';
     // Relíquias and revealed Bênçãos count everywhere except the daily challenge (same for everyone).
     const save = getSave();
+    // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
+    const mods = { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily || learning ? {} : save.heroMods(this.heroClass)) };
+    // Expedição: the trail's pact, tougher monsters, and the lives and Bênçãos carried from the last battle.
+    const leg = this.trip ? legSetup(this.trip.run, this.trip.route, { ...defaultModifiers(), ...mods }) : null;
     this.sim = new Simulation({
       stage: this.stageId,
       seed,
-      // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
-      modifiers: { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily || learning ? {} : save.heroMods(this.heroClass)) },
+      modifiers: { ...mods, ...leg?.modifiers },
       relics: this.daily || learning ? [] : save.loadout(),
-      limits: true,
+      limits: !this.trip,
+      run: leg ?? undefined,
     });
     if (this.daily) {
       // The daily run starts with one boon already in hand.
@@ -293,6 +307,11 @@ export class BattleScene extends Phaser.Scene {
     this.projectiles = new ProjectileLayer(this);
     this.hero = new HeroView(this, this.sim.state.hero, this.sim.mods.heroAffinity);
     this.fx = new FxLayer(this);
+    if (this.trip) {
+      // Expedição: remind which trail (pact) is in force.
+      const pact = PACTS[this.trip.route.pact];
+      this.time.delayedCall(500, () => this.fx.bigBanner(pact.name, "#c8fff2", 46, 1600));
+    }
     // Região 2: Comporta and boss shields.
     this.shields = new ShieldLayer(this, this.enemies);
     this.bridge = this.sim.bridgeDef ? new BridgeView(this, this.sim, this.fx, () => !this.paused && !this.ended && !this.picker && !this.dragging) : null;
@@ -859,7 +878,18 @@ export class BattleScene extends Phaser.Scene {
       let firstDailyToday = false;
       let challenges: { text: string; done: boolean; fresh: boolean }[] | undefined;
       let daily: { score: number; best: number; record: boolean } | undefined;
-      if (this.daily) {
+      let trip: { leg: number; legs: number; finished: boolean; pact: string } | undefined;
+      let tripCoins = 0;
+      if (this.trip) {
+        // Expedição: a win carries lives and Bênçãos to the next battle; a defeat ends the run.
+        const { run, route } = this.trip;
+        const after = advanceRun(run, this.sim.state.lives, this.sim.state.boons, save.expeditionPool());
+        const finished = g.won && after.leg >= EXPEDITION.legs;
+        trip = { leg: run.leg + 1, legs: EXPEDITION.legs, finished, pact: PACTS[route.pact].name };
+        tripCoins = g.won ? (EXPEDITION.coins[run.leg] ?? 0) : COINS.loss;
+        if (finished) save.finishExpedition();
+        else save.setExpedition(g.won ? after : null);
+      } else if (this.daily) {
         const score = dailyScore(this.sim.state);
         firstDailyToday = save.data.daily.key !== this.daily.key || save.data.daily.plays === 0;
         const record = save.recordDaily(this.daily.key, score);
@@ -881,7 +911,7 @@ export class BattleScene extends Phaser.Scene {
       const lv = save.addHeroXp(this.heroClass, xp);
       const unlocked = lv.after > lv.before ? unlockAt(this.heroClass, lv.after) : undefined;
       const heroXp = { name: HEROES[this.heroClass].name, gained: xp, level: lv.after, levelUp: lv.after > lv.before, unlock: unlocked };
-      const coins = matchCoins({
+      const coins = this.trip ? tripCoins : matchCoins({
         mode: this.daily ? 'daily' : isRift ? 'rift' : 'stage',
         won: g.won,
         stars: g.stars,
@@ -891,9 +921,9 @@ export class BattleScene extends Phaser.Scene {
         firstDailyToday,
       });
       save.addCoins(coins);
-      const next = this.stageId === 'rift' || this.daily ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
+      const next = this.stageId === 'rift' || this.daily || this.trip ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId) + 1];
       // Next stage: back to the map with its card open (missions, hero and strategy can change first).
-      const onNext = g.won && next ? () => this.toMap(next) : undefined;
+      const onNext = trip ? (g.won && !trip.finished ? () => this.toMap() : undefined) : g.won && next ? () => this.toMap(next) : undefined;
       this.time.delayedCall(g.won ? 1400 : 700, () => {
         playSfx(g.won ? 'victory' : 'defeat');
         asUi(this, () => new EndPanel(
@@ -914,10 +944,11 @@ export class BattleScene extends Phaser.Scene {
             rift,
             challenges,
             daily,
+            trip,
             coins,
             heroXp,
           },
-          { onStats: () => asUi(this, () => new StatsPanel(this, this.matchReport())), onReplay: () => this.scene.restart(this.again()), onMap: () => this.toMap(), onNext },
+          { onStats: () => asUi(this, () => new StatsPanel(this, this.matchReport())), onReplay: () => (trip ? this.toMap() : this.scene.restart(this.again())), onMap: () => this.toMap(), onNext },
         ));
       });
     });

@@ -109,9 +109,66 @@ Regras de trabalho continuam: uma etapa por vez, testes + build + commit, instru
 - [x] Inimigos novos: **Monge do Gelo** (cura quem está perto; nunca o chefe) e **Gárgula de Pedra** (voa, resiste a físico/fogo, fraca a raio)
 - [x] Chefe final **Titã de Obsidiana**: escudos SUPERCONDUÇÃO → GEADA ESPINHOSA → SOBRECARGA → ESTILHAÇO
 
-### Próximas ideias
-- [ ] Novo modo de jogo (vaga no Mapa de Éter)
-- [ ] Região 4
+### Fase 13 — Mapa de verdade e Expedição de Éter ✔
+- [x] **Mapa de Éter pintado**: um mundo só (campina, rio, planície de âmbar, picos nevados, terras desconhecidas) cortado por uma
+      **trilha tracejada**; cada parada da trilha é uma região (sub-mapa de 5 fases). Trilha clara até onde o jogador chegou, apagada depois
+- [x] Modos de jogo viram paradas em caminhos laterais pontilhados: Fenda Infinita, Desafio do dia e Expedição
+- [x] O herói escolhido espera na região da vez; árvores de cada terra; bússola; ponte sobre o rio
+- [x] **Expedição de Éter** (modo novo, depois do tutorial): 3 batalhas seguidas; vidas e Bênçãos seguem de uma para a outra;
+      monstros ×1 / ×1,2 / ×1,45; antes de cada batalha, 1 de 2 **trilhas** (fase + pacto com prêmio e preço)
+- [x] 5 pactos: Tranquila (+3 vidas), Horda (+25% vida dos monstros, 1 Bênção extra), Mercador (+200 ouro, −4 vidas),
+      Voto (só 3 tipos de torre, +35% de dano), Tesouro (+40% ouro, +15% vida dos monstros)
+- [x] Moedas 40 → 70 → 140; perder uma batalha encerra a expedição; a expedição fica salva entre as batalhas
+- *Aceite:* depois da campanha, existe um motivo novo para "só mais uma" que muda a cada vez.
+
+---
+
+# Roadmap 3.0 — o que vem (proposto em nov/2026)
+
+> Ideia central: o jogo já tem bastante **conteúdo**; o que falta é **cada partida contar uma história diferente** e o
+> **lugar das torres importar mais**. As fases abaixo estão em ordem de impacto por esforço.
+
+### Fase 14 — Vínculos de Éter (o lugar das torres importa) ★ recomendada a seguir
+- [ ] Torres vizinhas (a até ~150 px) criam um **vínculo visível** (um fio de luz entre elas) com efeito próprio por par:
+      Braseiro+Trovão = faísca que salta; Gelo+Vinha = raiz que congela; Arqueira+qualquer = flecha com o elemento da vizinha
+- [ ] O menu de construir mostra **antes** quais vínculos o espaço escolhido vai criar
+- [ ] Um desafio por fase ligado a vínculos
+- *Por quê:* o jogador pediu foco em "estratégia de locais e torres". Hoje o lugar só importa pelo alcance.
+
+### Fase 15 — Expedição 2.0 (a aventura de verdade)
+- [ ] Mapa da expedição com **bifurcações desenhadas** (escolher o caminho num mini-mapa de trilha tracejada)
+- [ ] Paradas que não são batalha: **Acampamento** (cura), **Mercador** (troca moedas da expedição por Bênção),
+      **Santuário** (troca uma Bênção por outra melhor), **Enigma** (aposta de vidas)
+- [ ] 5 paradas e um **chefe final sorteado**; relíquias temporárias que só valem naquela expedição
+- [ ] Recorde: expedições seguidas sem perder ("sequência")
+
+### Fase 16 — Região 4: Ilhas do Vazio (as "Terras por descobrir" do mapa)
+- [ ] **Clima que muda no meio da partida**: chuva (fogo −, raio +, apaga Queimando), ventania (voadores mais rápidos),
+      eclipse (reações em dobro por 10 s). O aviso chega uma onda antes, para dar tempo de reagir
+- [ ] Chefe que **troca de elemento** a cada fase e obriga a remontar a defesa
+- [ ] Inimigo que **rouba ouro** e foge (se abatido, devolve em dobro)
+
+### Fase 17 — Sexta torre: Vento
+- [ ] Torre de Vento: empurra monstros para trás e **espalha o estado** de um monstro para os vizinhos
+- [ ] 3 reações novas (Vento com Fogo, Gelo e Raio) e 2 evoluções; entra no tutorial como fase bônus
+- *Risco:* mexe no equilíbrio inteiro; só depois de a Fase 14 assentar.
+
+### Fase 18 — Caçada de Chefes e Semana Mutante
+- [ ] **Caçada**: todos os chefes em fila, com uma loja curta entre eles; recorde de tempo
+- [ ] **Semana Mutante**: toda semana uma regra maluca igual para todos (torres custam metade mas não se vendem;
+      só reações causam dano; monstros gigantes e lentos...)
+
+### Fase 19 — O mundo ganha voz
+- [ ] Cenas curtas pintadas ao abrir cada região; falas dos chefes ao entrar e ao cair; diário do herói no Códice
+- [ ] O herói **caminha pela trilha** do Mapa de Éter até a região tocada; pequenos eventos no mapa (gosma dourada passeando)
+
+### Fase 20 — Maestria e vitrine
+- [ ] Maestria por torre e por herói: **aparências** ganhas jogando (nunca poder, nunca compradas com sorte)
+- [ ] Álbum de conquistas com metas longas; "foto da vitória" para compartilhar a build
+
+### Qualidade contínua (entre as fases)
+- [ ] Robôs de teste que usam Comporta, Ponte e Expedição
+- [ ] Revisão de dificuldade por região a cada entrega; conferir no celular fraco (Modo econômico)
 
 ## No radar (não agora)
 Co-op, nuvem, Passe de Missões e loja de gems (gems nunca compram nada aleatório), guildas, Capacitor para lojas,

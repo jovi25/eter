@@ -7,7 +7,8 @@ import type { BoonId } from '../data/boons';
 import { COINS, LOCKED_BOONS, MAX_RELIC_LEVEL, RELIC_IDS, RELIC_SLOTS, isHighRarity, nextChestSeed, rollChest, type ChestReward, type RelicId } from '../data/relics';
 import { ENEMIES } from '../data/enemies';
 import { REACTIONS } from '../data/reactions';
-import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, type CampaignStageId, type StageId } from '../data/stages';
+import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, regionOf, type CampaignStageId, type StageId } from '../data/stages';
+import { EXPEDITION, PACTS, type ExpeditionRun } from '../data/expedition';
 
 export const SAVE_VERSION = 7;
 const KEY = 'eter.save';
@@ -23,6 +24,9 @@ export interface SaveData {
   stages: Partial<Record<StageId, StageProgress>>;
   hero: HeroClass; // last picked hero class (v2+)
   riftBest: number; // best wave reached in the Fenda Infinita (v3+)
+  /** Expedição de Éter: the run in progress (null = none) and how many were finished. */
+  expedition: ExpeditionRun | null;
+  expeditionWins: number;
   challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
   daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
   codex: { enemies: string[]; reactions: string[] }; // Códice discoveries (v5+)
@@ -49,7 +53,7 @@ function freshHeroes(xp = 0): Record<HeroClass, HeroProgress> {
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember' };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0 };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -60,7 +64,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember' };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0 };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -128,6 +132,13 @@ export function migrate(raw: unknown): SaveData {
   const dl = out.daily;
   out.daily = dl && typeof dl.key === 'string' ? { key: dl.key, best: clampInt(dl.best, 0, 1e9), plays: clampInt(dl.plays, 0, 1e9) } : { key: '', best: 0, plays: 0 };
   out.riftBest = clampInt(out.riftBest, 0, 999);
+  out.expeditionWins = clampInt(out.expeditionWins, 0, 1e9);
+  const ex = out.expedition;
+  const okRoute = (r: unknown): boolean => !!r && typeof r === 'object' && STAGE_ORDER.includes((r as { stage: never }).stage) && (r as { pact: string }).pact in PACTS;
+  out.expedition =
+    ex && typeof ex === 'object' && Array.isArray(ex.boons) && Array.isArray(ex.routes) && ex.routes.every(okRoute) && ex.hero in HEROES
+      ? { seed: clampInt(ex.seed, 0, 4294967295), leg: clampInt(ex.leg, 0, EXPEDITION.legs), lives: clampInt(ex.lives, 1, 99), boons: ex.boons.filter((b) => typeof b === 'string'), hero: ex.hero, routes: ex.routes }
+      : null;
   // Sanitize
   const stages: SaveData['stages'] = {};
   for (const id of STAGE_ORDER) {
@@ -296,6 +307,22 @@ export class SaveStore {
   }
 
   /** Record how far a Fenda run got. Returns true on a new record. */
+  /** Stages an Expedição can visit: the open ones (the first tutorial stages are left out). */
+  expeditionPool(): CampaignStageId[] {
+    return STAGE_ORDER.filter((id) => (regionOf(id) > 0 || EXPEDITION.basePool.includes(id)) && this.isUnlocked(id));
+  }
+
+  setExpedition(run: ExpeditionRun | null): void {
+    this.data.expedition = run;
+    this.persist();
+  }
+
+  finishExpedition(): void {
+    this.data.expedition = null;
+    this.data.expeditionWins++;
+    this.persist();
+  }
+
   recordRift(wave: number): boolean {
     if (wave <= this.data.riftBest) return false;
     this.data.riftBest = wave;

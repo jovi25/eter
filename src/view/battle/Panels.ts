@@ -107,6 +107,8 @@ export interface EndStats {
   rift?: { wave: number; best: number; record: boolean };
   challenges?: { text: string; done: boolean; fresh: boolean }[];
   daily?: { score: number; best: number; record: boolean };
+  /** Expedição de Éter: which battle of the run this was. */
+  trip?: { leg: number; legs: number; finished: boolean; pact: string };
   coins?: number;
   heroXp?: { name: string; gained: number; level: number; levelUp: boolean; unlock?: string };
 }
@@ -115,7 +117,7 @@ export class EndPanel {
   constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void; onStats?: () => void }) {
     backdrop(scene);
     const p = panel(scene, 600, 880);
-    const title = uiText(scene, 0, -340, s.rift ? 'FIM DA FENDA' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
+    const title = uiText(scene, 0, -340, s.rift ? 'FIM DA FENDA' : s.trip?.finished ? 'EXPEDIÇÃO COMPLETA!' : s.trip && !s.won ? 'FIM DA EXPEDIÇÃO' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : s.trip && (s.trip.finished || !s.won) ? 46 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
     p.add(title);
     scene.tweens.add({ targets: title, scale: { from: 1.08, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -164,7 +166,12 @@ export class EndPanel {
         scene.tweens.add({ targets: o, alpha: 1, delay: 1500, duration: 300, onStart: () => playSfx('star', 1.3) });
       }
     }
-    if (s.daily) {
+    if (s.trip) {
+      p.add(uiText(scene, 0, 66, 'EXPEDIÇÃO DE ÉTER', 22, PAL.uiDim, 5));
+      p.add(uiText(scene, 0, 106, 'Batalha ' + s.trip.leg + ' de ' + s.trip.legs + ' • ' + s.trip.pact, 24, '#ffffff', 6));
+      const msg = s.trip.finished ? '★ Você venceu as 3 batalhas! ★' : s.won ? 'Vidas e Bênçãos seguem com você' : 'A expedição acabou. Comece outra no mapa!';
+      p.add(uiText(scene, 0, 148, msg, 21, s.won ? PAL.goldCss : PAL.uiDim, 5).setWordWrapWidth(540));
+    } else if (s.daily) {
       p.add(uiText(scene, 0, 66, 'PONTUAÇÃO DO DIA', 22, PAL.uiDim, 5));
       p.add(uiText(scene, 0, 108, `${s.daily.score}`, 54, '#ffffff', 9));
       p.add(uiText(scene, 0, 154, s.daily.record ? '★ MELHOR DE HOJE! ★' : `Melhor de hoje: ${s.daily.best}`, 22, s.daily.record ? PAL.goldCss : PAL.uiDim, 5));
@@ -190,11 +197,11 @@ export class EndPanel {
     }
     if (cb.onStats) p.add(new Button(scene, 0, 214, { width: 300, height: 52, label: 'Ver estatísticas', fontSize: 22, color: 0x5a3fb0, onClick: cb.onStats }));
     if (cb.onNext) {
-      p.add(new Button(scene, 0, 284, { width: 440, height: 80, label: 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
-      p.add(new Button(scene, -112, 374, { width: 216, height: 64, label: 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));
+      p.add(new Button(scene, 0, 284, { width: 440, height: 80, label: s.trip ? 'ESCOLHER TRILHA ▶' : 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
+      p.add(new Button(scene, -112, 374, { width: 216, height: 64, label: s.trip ? 'Expedição' : 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));
       p.add(new Button(scene, 112, 374, { width: 216, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
     } else {
-      p.add(new Button(scene, 0, 284, { width: 440, height: 80, label: s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 32, color: 0x3aa655, onClick: cb.onReplay }));
+      p.add(new Button(scene, 0, 284, { width: 440, height: 80, label: s.trip ? 'NOVA EXPEDIÇÃO' : s.won ? 'JOGAR DE NOVO' : 'TENTAR DE NOVO', fontSize: 32, color: 0x3aa655, onClick: cb.onReplay }));
       p.add(new Button(scene, 0, 374, { width: 300, height: 64, label: 'Mapa', fontSize: 24, color: 0x6b6480, onClick: cb.onMap }));
     }
   }

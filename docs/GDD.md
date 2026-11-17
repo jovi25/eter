@@ -468,3 +468,19 @@ Abre com 3 estrelas em todas as fases dos Ermos de Âmbar. Mapas: Encosta, Passa
 - **Monge do Gelo**: a cada 3 s cura 6% da vida de quem estiver a até 100 px (nunca chefes). Prioridade de alvo.
 - **Gárgula de Pedra**: voa; resiste a físico (40%) e fogo (30%); fraca a raio.
 - **Titã de Obsidiana** (3000 de vida, resiste a fogo): escudos SUPERCONDUÇÃO → GEADA ESPINHOSA → SOBRECARGA → ESTILHAÇO; chama gárgulas.
+
+## Fase 13 — Mapa de Éter pintado e Expedição de Éter
+
+**Mapa de Éter.** Um único mundo pintado por código (src/view/art/worldmap.ts): campina embaixo, rio, planície de âmbar,
+picos nevados e, no alto, as terras ainda por descobrir. Uma trilha tracejada sobe o mapa; cada parada é uma região
+(sub-mapa de 5 fases). A trilha é clara até a última região aberta e apagada depois. Caminhos laterais pontilhados levam
+aos modos de jogo (Fenda Infinita, Desafio do dia, Expedição). O herói escolhido espera na região da vez.
+
+**Expedição de Éter** (números em src/data/expedition.ts). Abre ao fim do tutorial.
+- 3 batalhas seguidas. Vidas e Bênçãos passam de uma batalha para a outra (os presentes imediatos das Bênçãos valem de novo).
+- Vida dos monstros por batalha: ×1, ×1,2, ×1,45 (vezes o ajuste da própria fase).
+- Antes de cada batalha, 2 trilhas sorteadas (fase aberta + pacto, sempre diferentes entre si).
+- Pactos: Tranquila, Horda, Mercador, Voto, Tesouro (cada um com um prêmio e um preço escritos no cartão).
+- Fases possíveis: as abertas, menos as 2 primeiras do tutorial. Sem limites de tutorial; relíquias e talentos valem.
+- Moedas por batalha vencida: 40, 70, 140. Derrota encerra a expedição (10 moedas). Não conta estrelas nem desafios.
+- A expedição fica no save; sair no meio de uma batalha recomeça aquela batalha.

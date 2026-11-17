@@ -30,6 +30,8 @@ export interface SimOptions {
   relics?: { id: RelicId; level: number }[];
   /** Apply the stage's teaching limits (tutorial towers, no boons/evolutions yet). The game and the robots turn it on. */
   limits?: boolean;
+  /** Expedição de Éter: tougher monsters, carried lives and Bênçãos, a pact's gold. */
+  run?: { hpMult?: number; gold?: number; lives?: number; boons?: string[]; extraBoon?: boolean };
 }
 
 export interface SpawnOptions {
@@ -84,7 +86,7 @@ export class Simulation {
 
   constructor(opts: SimOptions) {
     this.stageId = opts.stage;
-    this.stage = STAGES[opts.stage];
+    this.stage = opts.run?.hpMult ? { ...STAGES[opts.stage], hpMult: STAGES[opts.stage].hpMult * opts.run.hpMult } : STAGES[opts.stage];
     const map = MAPS[this.stage.map];
     this.paths = map.paths.map((pts) => new Path(pts));
     this.path = this.paths[0]!;
@@ -189,6 +191,17 @@ export class Simulation {
         },
         r.level,
       );
+    }
+    if (opts.run) {
+      // Carried Bênçãos count again from the first second (their one-time gifts too).
+      for (const id of opts.run.boons ?? []) {
+        if (!(id in BOONS)) continue;
+        this.state.boons.push(id as BoonId);
+        (BOONS[id as BoonId] as BoonDef).apply({ mods: this.mods, state: this.state, addGold: (n) => (this.state.gold = Math.max(0, this.state.gold + n)) });
+      }
+      this.state.gold += opts.run.gold ?? 0;
+      if (opts.run.lives !== undefined) this.state.lives = opts.run.lives;
+      if (opts.run.extraBoon) this.state.boonOffers.push(this.rollBoons());
     }
     if (this.mods.heroClass === 'druid') {
       this.state.summons.push({
