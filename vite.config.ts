@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // BASE_PATH lets GitHub Pages serve the game from /<repo-name>/ later.
@@ -18,6 +19,10 @@ export default defineConfig({
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 2000, // Phaser is a large single chunk; that's expected
+    rollupOptions: {
+      // lab.html: Laboratório de criaturas (art options to approve before they go into the game)
+      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), lab: fileURLToPath(new URL('./lab.html', import.meta.url)) },
+    },
   },
   plugins: [
     VitePWA({
@@ -44,6 +49,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        navigateFallbackDenylist: [/lab\.html/],
       },
     }),
   ],
