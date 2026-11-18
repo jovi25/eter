@@ -189,11 +189,26 @@ O jogador venceu a Expedição com 3 torres (Nevasca + Senhor do Trovão + 1), 2
 - *Calibragem:* Caçada — robô com 8 torres em combo vence (2 chefes ≈ 1:40, 5 chefes ≈ 5 min); 3 torres perdem.
   Mutações: Liquidação/Pressa mais fáceis, Gigantes/Céu Louco mais difíceis
 
-### Fase 19 — O mundo ganha voz
+## Plano 3.0 (após a análise de nov/2026 — ver docs/ANALISE.md)
+O jogador venceu tudo sem dificuldade: as Relíquias somam ~+60% de dano e a calibragem era feita sem elas.
+
+### Fase 18b — Ajustes e análise ✔
+- [x] Tela inicial só com o Éter; Códice cabe na tela (4 por linha, reações compactas, rodapé fixo)
+- [x] Códice: TORMENTA mostrava "gusted"; análise crítica em docs/ANALISE.md
+
+### Fase 19 — Ameaça (dificuldade escolhida pelo jogador)
+- [ ] Ameaça 1–5 em cada fase com 3★; cada nível soma uma regra dura; coroas e moedas por nível
+- [ ] Caçada e Fenda com Ameaça; robôs calibrados COM as melhores Relíquias
+
+### Fase 20 — Relicário 2.0 (formato a combinar)
+### Fase 21 — Região 5 (monstros com mecânicas novas, chefe novo)
+### Fase 22 — Salão dos Desafios (juntar os modos, metas longas por modo)
+
+### Fase 23 — O mundo ganha voz
 - [ ] Cenas curtas pintadas ao abrir cada região; falas dos chefes ao entrar e ao cair; diário do herói no Códice
 - [ ] O herói **caminha pela trilha** do Mapa de Éter até a região tocada; pequenos eventos no mapa (gosma dourada passeando)
 
-### Fase 20 — Maestria e vitrine
+### Fase 24 — Maestria e vitrine
 - [ ] Maestria por torre e por herói: **aparências** ganhas jogando (nunca poder, nunca compradas com sorte)
 - [ ] Álbum de conquistas com metas longas; "foto da vitória" para compartilhar a build
 

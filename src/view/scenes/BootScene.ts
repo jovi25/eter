@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { fitCamera, frameCap } from '../perf';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
-import type { EnemyId } from '../../data/enemies';
 import { unlockAudio } from '../audio/sfx';
 import { refreshMusic } from '../audio/music';
 import { PAL } from '../art/palette';
@@ -37,21 +36,18 @@ export class BootScene extends Phaser.Scene {
       bg.fillRect(0, (GAME_HEIGHT / 32) * i, GAME_WIDTH, GAME_HEIGHT / 32 + 1);
     }
 
-    const glow = this.add.image(cx, 440, 'spark').setScale(14).setTint(0xa77bff).setAlpha(0.4).setBlendMode(Phaser.BlendModes.ADD);
-    this.tweens.add({ targets: glow, scale: 16, alpha: 0.6, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    const crystal = this.add.image(cx, 440, 'crystal').setScale(1.8);
-    this.tweens.add({ targets: crystal, y: 415, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    // Only the Éter: a big floating crystal, its glow and a few motes of light drifting up.
+    const glow = this.add.image(cx, 520, 'spark').setScale(18).setTint(0xa77bff).setAlpha(0.4).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: glow, scale: 21, alpha: 0.6, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    for (let i = 0; i < 14; i++) {
+      const mote = this.add.image(cx - 260 + Math.random() * 520, 900, 'spark').setScale(0.6 + Math.random()).setTint(0xd8c4ff).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: mote, y: 180 + Math.random() * 200, alpha: { from: 0.8, to: 0 }, duration: 4000 + Math.random() * 3000, delay: i * 450, repeat: -1 });
+    }
+    const crystal = this.add.image(cx, 520, 'crystal').setScale(2.6);
+    this.tweens.add({ targets: crystal, y: 490, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    uiText(this, cx, 680, 'ÉTER', 140, '#f3e9ff', 14);
-    uiText(this, cx, 770, 'Defenda o Cristal com combos elementais', 28, PAL.uiDim, 5);
-
-    // The hero facing a little parade of monsters.
-    const hero = this.add.image(120, 1050, 'hero_arcanist').setOrigin(0.5, 136 / 144).setScale(1.15);
-    this.tweens.add({ targets: hero, scaleY: 1.18, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    (['slime', 'wolf', 'skeleton', 'salamander'] as EnemyId[]).forEach((id, i) => {
-      const m = this.add.image(290 + i * 120, 1020, `enemy_${id}`).setOrigin(0.5, 0.85).setScale(1.25).setFlipX(true);
-      this.tweens.add({ targets: m, y: 1008, scaleY: 1.18, duration: 380 + i * 60, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    });
+    uiText(this, cx, 830, 'ÉTER', 140, '#f3e9ff', 14);
+    uiText(this, cx, 920, 'Defenda o Cristal com combos elementais', 28, PAL.uiDim, 5);
 
     const play = new Button(this, cx, 1160, {
       width: 420,

@@ -42,14 +42,19 @@ export class CodexScene extends Phaser.Scene {
       enemies: new Button(this, 190, 176, { width: 300, height: 64, label: 'Inimigos', fontSize: 26, onClick: () => this.show('enemies') }),
       reactions: new Button(this, 530, 176, { width: 300, height: 64, label: 'Reações', fontSize: 26, onClick: () => this.show('reactions') }),
     };
-    new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 60, {
-      width: 320,
-      height: 76,
-      label: 'Voltar ao mapa',
+    // Footer: always on top of the pages, with its own solid bar.
+    const foot = this.add.graphics().setDepth(20);
+    foot.fillStyle(PAL.panel, 0.96);
+    foot.fillRoundedRect(-20, GAME_HEIGHT - 116, GAME_WIDTH + 40, 140, 24);
+    foot.setInteractive(new Phaser.Geom.Rectangle(0, GAME_HEIGHT - 116, GAME_WIDTH, 116), Phaser.Geom.Rectangle.Contains);
+    new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 58, {
+      width: 360,
+      height: 80,
+      label: '◀ Voltar ao mapa',
       fontSize: 28,
       color: 0x6b6480,
       onClick: () => this.scene.start('WorldMap'),
-    });
+    }).setDepth(21);
     this.show('enemies');
     this.cameras.main.fadeIn(200, 11, 7, 22);
   }
@@ -67,21 +72,22 @@ export class CodexScene extends Phaser.Scene {
   private enemyGrid(): void {
     const known = new Set(getSave().data.codex.enemies);
     CODEX_ENEMIES.forEach((id, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      const x = 130 + col * 230;
-      const y = 330 + row * 205;
+      // 4 per row so every monster fits above the footer.
+      const col = i % 4;
+      const row = Math.floor(i / 4);
+      const x = 99 + col * 174;
+      const y = 316 + row * 172;
       const seen = known.has(id);
       const c = this.add.container(x, y);
       const g = this.add.graphics();
       g.fillStyle(PAL.ink, 1);
-      g.fillRoundedRect(-104, -92, 208, 190, 20);
+      g.fillRoundedRect(-82, -80, 164, 162, 18);
       g.fillStyle(seen ? 0x3d2a6a : 0x241a3a, 1);
-      g.fillRoundedRect(-99, -87, 198, 180, 17);
-      const img = this.add.image(0, -16, `enemy_${id}`).setScale(ENEMIES[id].boss ? 0.75 : 1.15);
+      g.fillRoundedRect(-78, -76, 156, 154, 15);
+      const img = this.add.image(0, -14, `enemy_${id}`).setScale(ENEMIES[id].boss ? 0.55 : 0.9);
       if (!seen) img.setTint(0x0d0a16).setAlpha(0.85);
-      c.add([g, img, uiText(this, 0, 66, seen ? ENEMIES[id].name : '???', 19, seen ? PAL.uiText : PAL.uiDim, 4)]);
-      c.setSize(208, 190).setInteractive({ useHandCursor: true });
+      c.add([g, img, uiText(this, 0, 58, seen ? ENEMIES[id].name : '???', 16, seen ? PAL.uiText : PAL.uiDim, 4).setWordWrapWidth(150)]);
+      c.setSize(164, 162).setInteractive({ useHandCursor: true });
       c.on('pointerdown', () => {
         playSfx(seen ? 'ui' : 'error');
         if (seen) this.enemyDetail(id);
@@ -116,26 +122,26 @@ export class CodexScene extends Phaser.Scene {
   private reactionList(): void {
     const known = new Set(getSave().data.codex.reactions);
     REACTION_IDS.forEach((id, i) => {
-      const y = 300 + i * 140;
+      const y = 280 + i * 100; // compact rows: all reactions fit above the footer
       const seen = known.has(id);
       const color = REACTIONS[id].color;
       const g = this.add.graphics();
       g.fillStyle(PAL.ink, 1);
-      g.fillRoundedRect(30, y - 64, GAME_WIDTH - 60, 128, 20);
+      g.fillRoundedRect(30, y - 46, GAME_WIDTH - 60, 92, 18);
       g.fillStyle(seen ? 0x3d2a6a : 0x241a3a, 1);
-      g.fillRoundedRect(35, y - 59, GAME_WIDTH - 70, 118, 17);
+      g.fillRoundedRect(35, y - 41, GAME_WIDTH - 70, 82, 15);
       g.fillStyle(seen ? color : 0x3a3350, 1);
-      g.fillRoundedRect(35, y - 59, 14, 118, { tl: 17, bl: 17, tr: 0, br: 0 });
+      g.fillRoundedRect(35, y - 41, 14, 82, { tl: 15, bl: 15, tr: 0, br: 0 });
       const css = `#${color.toString(16).padStart(6, '0')}`;
       this.page!.add(g);
-      this.page!.add(uiText(this, 70, y - 36, seen ? reactionName(id) : '???', 28, seen ? css : PAL.uiDim, 6).setOrigin(0, 0.5));
+      this.page!.add(uiText(this, 70, y - 22, seen ? reactionName(id) : '???', 24, seen ? css : PAL.uiDim, 6).setOrigin(0, 0.5));
       this.page!.add(
-        uiText(this, 70, y - 16, seen ? reactionRecipe(id) : 'Combine elementos para descobrir', 18, seen ? PAL.uiText : PAL.uiDim, 4)
-          .setOrigin(0, 0)
+        uiText(this, 70, y + 2, seen ? reactionRecipe(id) : 'Combine elementos para descobrir', 16, seen ? PAL.uiText : PAL.uiDim, 4)
+          .setOrigin(0, 0.5)
           .setAlign('left')
-          .setWordWrapWidth(600),
+          .setWordWrapWidth(610),
       );
-      if (seen) this.page!.add(uiText(this, 70, y + 46, REACTION_EFFECT[id], 18, '#ffe34d', 4).setOrigin(0, 0.5).setAlign('left'));
+      if (seen) this.page!.add(uiText(this, 70, y + 24, REACTION_EFFECT[id], 16, '#ffe34d', 4).setOrigin(0, 0.5).setAlign('left'));
     });
   }
 }

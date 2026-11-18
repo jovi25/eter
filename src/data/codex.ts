@@ -17,7 +17,7 @@ export const REACTION_EFFECT: Record<ReactionId, string> = {
   tempest: '×1,75 de dano e arremessa o monstro para trás',
 };
 
-const AURA_NAME: Record<string, string> = { burning: 'Queimando', chilled: 'Resfriado', frozen: 'Congelado', rooted: 'Enraizado' };
+const AURA_NAME: Record<string, string> = { burning: 'Queimando', chilled: 'Resfriado', frozen: 'Congelado', rooted: 'Enraizado', gusted: 'Soprado' };
 
 /** "Queimando + Natureza  ou  Enraizado + Fogo" */
 export function reactionRecipe(id: ReactionId): string {
