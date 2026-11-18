@@ -7,10 +7,11 @@ export interface Settings {
   shake: boolean;
   economy: 'auto' | 'on' | 'off'; // Modo econômico (src/view/perf.ts)
   bigText: boolean; // Acessibilidade: textos 15% maiores
+  creatures: boolean; // Amostra: o Braseiro vira uma criatura que cresce e evolui
 }
 
 const KEY = 'eter.settings.v1';
-const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true, economy: 'auto', bigText: false };
+const DEFAULTS: Settings = { sound: true, music: true, vibration: true, shake: true, economy: 'auto', bigText: false, creatures: true };
 
 let current: Settings = load();
 

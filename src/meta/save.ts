@@ -3,17 +3,17 @@
 
 import { HERO_ORDER, HEROES, type HeroClass } from '../data/heroes';
 import { HERO_LEVELS, MAX_HERO_LEVEL, SKILL2, TALENTS, WEAPONS, heroLevel, type TalentId, type WeaponElement, type WeaponId } from '../data/talents';
-import type { BoonId } from '../data/boons';
-import { COINS, LOCKED_BOONS, MAX_RELIC_LEVEL, RELIC_IDS, RELIC_SLOTS, isHighRarity, nextChestSeed, rollChest, type ChestReward, type RelicId } from '../data/relics';
+import { RELICS } from '../data/relics';
+import { DUST, FEATS, PACK, STARTER, craftCost, deckProblem, rollPack, type FeatState } from '../data/grimoire';
 import { ENEMIES } from '../data/enemies';
 import { REACTIONS } from '../data/reactions';
 import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, regionOf, type CampaignStageId, type StageId } from '../data/stages';
 import { EXPEDITION, PACTS, visitRest, type ExpeditionRun, type TrailCtx } from '../data/expedition';
-import { BOONS } from '../data/boons';
+import { BOON_RULES, BOONS, type BoonDef, type BoonId } from '../data/boons';
 import { HUNT } from '../data/hunt';
 import { MUTANT, weekIndex, weekMutation, weekStages, type MutationId } from '../data/mutations';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -40,12 +40,13 @@ export interface SaveData {
   challenges: Partial<Record<CampaignStageId, boolean[]>>; // completed stage challenges (v4+)
   daily: { key: string; best: number; plays: number }; // today's daily challenge (v4+)
   codex: { enemies: string[]; reactions: string[] }; // Códice discoveries (v5+)
-  // ── v6: Relicários ──
   coins: number;
-  relics: Partial<Record<RelicId, number>>; // owned level 1..3
-  equipped: RelicId[]; // up to RELIC_SLOTS
-  unlockedBoons: BoonId[];
-  chest: { seed: number; pending: ChestReward | null; opened: number; sinceEpic: number };
+  // ── v8: Grimório (replaced the Relicário) ──
+  cards: BoonId[]; // owned cards
+  deck: BoonId[]; // up to DECK.size, within the rarity limits
+  dust: number; // Pó de Éter
+  packs: { seed: number; opened: number; sinceEpic: number; pending: BoonId[] | null };
+  feats: BoonId[]; // Lendárias already granted by feats
   // ── v7: hero levels, talents, Arcanista weapon ──
   heroes: Record<HeroClass, HeroProgress>;
   weapon: WeaponId;
@@ -63,7 +64,7 @@ function freshHeroes(xp = 0): Record<HeroClass, HeroProgress> {
 }
 
 export function newSave(now = Date.now()): SaveData {
-  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (now % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false, hunt: { bosses: 0, best: 0 }, mutant: { week: -1, stages: [], won: [] } };
+  return { version: SAVE_VERSION, createdAt: now, stages: {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: PACK.price, cards: [...STARTER], deck: [...STARTER], dust: 0, packs: { seed: (now % 2147483647) >>> 0, opened: 0, sinceEpic: 0, pending: null }, feats: [], heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false, hunt: { bosses: 0, best: 0 }, mutant: { week: -1, stages: [], won: [] } };
 }
 
 /** Upgrade any older save shape to the current version. Add one step per future version. */
@@ -74,7 +75,7 @@ export function migrate(raw: unknown): SaveData {
   if (v > SAVE_VERSION) throw new Error('Save de uma versão mais nova do jogo.');
   let out: SaveData = { ...newSave(data.createdAt), ...data, version: v } as SaveData;
   if (out.version < 1) {
-    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 }, heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false, hunt: { bosses: 0, best: 0 }, mutant: { week: -1, stages: [], won: [] } };
+    out = { version: 1, createdAt: out.createdAt ?? Date.now(), stages: out.stages ?? {}, hero: 'mage', riftBest: 0, challenges: {}, daily: { key: '', best: 0, plays: 0 }, codex: { enemies: [], reactions: [] }, coins: PACK.price, cards: [...STARTER], deck: [...STARTER], dust: 0, packs: { seed: (Date.now() % 2147483647) >>> 0, opened: 0, sinceEpic: 0, pending: null }, feats: [], heroes: freshHeroes(), weapon: 'ember', expedition: null, expeditionWins: 0, expeditionStreak: 0, expeditionBest: 0, galeWon: false, hunt: { bosses: 0, best: 0 }, mutant: { week: -1, stages: [], won: [] } };
   }
   if (out.version < 2) {
     // v2: hero classes. Everyone starts as the Arcanista.
@@ -94,12 +95,24 @@ export function migrate(raw: unknown): SaveData {
   }
   if (out.version < 6) {
     // v6: Relicários. Everyone gets enough coins for a first chest.
-    out = { ...out, version: 6, coins: COINS.chestPrice, relics: {}, equipped: [], unlockedBoons: [], chest: { seed: (Date.now() % 2147483647) >>> 0, pending: null, opened: 0, sinceEpic: 0 } };
+    out = { ...out, version: 6, coins: PACK.price };
   }
   if (out.version < 7) {
     // v7: hero levels. Veterans start where their campaign progress says (7 XP per star earned).
     const stars = STAGE_ORDER.reduce((s, id) => s + clampInt(out.stages?.[id]?.stars, 0, 3), 0);
     out = { ...out, version: 7, heroes: freshHeroes(Math.min(HERO_LEVELS.xp[MAX_HERO_LEVEL - 1]!, stars * 7)), weapon: 'ember' };
+  }
+  if (out.version < 8) {
+    // v8: the Relicário closes and becomes the Grimório. Relíquias turn into Pó de Éter; Bênçãos revealed by
+    // chests become owned cards; an unopened chest is paid back as one pack.
+    const old = data as { relics?: Record<string, unknown>; chest?: { pending?: unknown }; unlockedBoons?: unknown };
+    let dust = 0;
+    for (const [id, lv] of Object.entries(old.relics ?? {})) {
+      const r = (RELICS as Record<string, { rarity: string }>)[id];
+      if (r) dust += (DUST.fromRelic[r.rarity as keyof typeof DUST.fromRelic] ?? 0) * clampInt(lv, 1, 3);
+    }
+    const revealed = Array.isArray(old.unlockedBoons) ? old.unlockedBoons.filter((id): id is BoonId => typeof id === 'string' && id in BOONS) : [];
+    out = { ...out, version: 8, cards: [...new Set([...STARTER, ...revealed])], deck: [...STARTER], dust, packs: { seed: (Date.now() % 2147483647) >>> 0, opened: 0, sinceEpic: 0, pending: null }, feats: [], coins: clampInt(out.coins, 0, 1e9) + (old.chest?.pending ? PACK.price : 0) };
   }
   if (!(out.hero in HEROES)) out.hero = 'mage';
   const hs = freshHeroes();
@@ -113,21 +126,22 @@ export function migrate(raw: unknown): SaveData {
   out.heroes = hs;
   if (!(typeof out.weapon === 'string' && out.weapon in WEAPONS && WEAPONS[out.weapon].level <= heroLevel(hs.mage.xp))) out.weapon = 'ember';
   out.coins = clampInt(out.coins, 0, 1e9);
-  const rel: SaveData['relics'] = {};
-  for (const id of RELIC_IDS) {
-    const lv = out.relics?.[id];
-    if (typeof lv === 'number' && lv >= 1) rel[id] = clampInt(lv, 1, MAX_RELIC_LEVEL);
-  }
-  out.relics = rel;
-  out.equipped = Array.isArray(out.equipped) ? [...new Set(out.equipped)].filter((id) => !!rel[id]).slice(0, RELIC_SLOTS) : [];
-  out.unlockedBoons = Array.isArray(out.unlockedBoons) ? [...new Set(out.unlockedBoons)].filter((id) => LOCKED_BOONS.includes(id)) : [];
-  const chs = out.chest;
-  out.chest = {
-    seed: typeof chs?.seed === 'number' ? chs.seed >>> 0 : 12345,
-    pending: chs?.pending && typeof chs.pending === 'object' && 'kind' in chs.pending ? chs.pending : null,
-    opened: clampInt(chs?.opened, 0, 1e9),
-    sinceEpic: clampInt(chs?.sinceEpic, 0, 1e9),
+  // Grimório (v8)
+  const owned = new Set<BoonId>(STARTER);
+  if (Array.isArray(out.cards)) for (const id of out.cards) if (typeof id === 'string' && id in BOONS) owned.add(id as BoonId);
+  out.cards = [...owned];
+  const deck = Array.isArray(out.deck) ? out.deck.filter((id): id is BoonId => typeof id === 'string' && id in BOONS) : [];
+  out.deck = deckProblem(deck, out.cards) || deck.length === 0 ? [...STARTER] : deck;
+  out.dust = clampInt(out.dust, 0, 1e9);
+  const pk = out.packs;
+  out.packs = {
+    seed: typeof pk?.seed === 'number' ? pk.seed >>> 0 : (Date.now() % 2147483647) >>> 0,
+    opened: clampInt(pk?.opened, 0, 1e9),
+    sinceEpic: clampInt(pk?.sinceEpic, 0, 1e9),
+    pending: Array.isArray(pk?.pending) && pk.pending.every((id) => typeof id === 'string' && id in BOONS) ? pk.pending : null,
   };
+  out.feats = Array.isArray(out.feats) ? [...new Set(out.feats.filter((id) => FEATS.some((f) => f.card === id)))] : [];
+  for (const k of ['relics', 'equipped', 'unlockedBoons', 'chest']) delete (out as unknown as Record<string, unknown>)[k];
   const cx = out.codex;
   out.codex = {
     enemies: Array.isArray(cx?.enemies) ? [...new Set(cx.enemies.filter((e) => typeof e === 'string' && e in ENEMIES))] : [],
@@ -268,7 +282,7 @@ export class SaveStore {
     return this.data.daily.key === key ? this.data.daily.best : 0;
   }
 
-  // ───────────── Relicários (v6) ─────────────
+  // ───────────── Moedas ─────────────
 
   addCoins(n: number): void {
     if (n <= 0) return;
@@ -276,51 +290,82 @@ export class SaveStore {
     this.persist();
   }
 
-  /** Pay for a chest and pre-roll its content (saved, so closing the game can't re-roll it). */
-  buyChest(): ChestReward | null {
-    const d = this.data;
-    if (d.chest.pending) return d.chest.pending;
-    if (d.coins < COINS.chestPrice) return null;
-    d.coins -= COINS.chestPrice;
-    d.chest.pending = rollChest(d.chest.seed, { relics: d.relics, unlockedBoons: d.unlockedBoons, sinceEpic: d.chest.sinceEpic });
-    d.chest.seed = nextChestSeed(d.chest.seed);
+  // ───────────── Grimório (v8) ─────────────
+
+  /** Pay for a pack and pre-roll its cards (saved: closing the game can't re-roll it). */
+  buyPack(): BoonId[] | null {
+    const p = this.data.packs;
+    if (p.pending) return p.pending;
+    if (this.data.coins < PACK.price) return null;
+    this.data.coins -= PACK.price;
+    const roll = rollPack(p.seed, p.sinceEpic);
+    p.pending = roll.cards;
+    p.seed = roll.seed;
+    p.sinceEpic = roll.sinceEpic;
     this.persist();
-    return d.chest.pending;
+    return p.pending;
   }
 
-  /** Put the opened chest's content into the collection. */
-  claimChest(): ChestReward | null {
-    const d = this.data;
-    const r = d.chest.pending;
-    if (!r) return null;
-    if (r.kind === 'relic') {
-      d.relics[r.id] = Math.min(MAX_RELIC_LEVEL, (d.relics[r.id] ?? 0) + 1);
-      if (r.isNew && d.equipped.length < RELIC_SLOTS) d.equipped.push(r.id);
-    } else if (r.kind === 'boon') {
-      if (!d.unlockedBoons.includes(r.id)) d.unlockedBoons.push(r.id);
-    } else d.coins += r.amount;
-    d.chest.opened++;
-    d.chest.sinceEpic = isHighRarity(r.rarity) ? 0 : d.chest.sinceEpic + 1;
-    d.chest.pending = null;
+  /** Put the opened pack into the collection; repeated cards become Pó de Éter. */
+  claimPack(): { id: BoonId; fresh: boolean; dust: number }[] {
+    const p = this.data.packs;
+    if (!p.pending) return [];
+    const out = p.pending.map((id) => this.grantCard(id));
+    p.pending = null;
+    p.opened++;
     this.persist();
-    return r;
+    return out;
   }
 
-  /** Equip / unequip a relic. Returns false when all slots are full. */
-  toggleEquip(id: RelicId): boolean {
-    const d = this.data;
-    if (!d.relics[id]) return false;
-    const i = d.equipped.indexOf(id);
-    if (i >= 0) d.equipped.splice(i, 1);
-    else if (d.equipped.length >= RELIC_SLOTS) return false;
-    else d.equipped.push(id);
+  private grantCard(id: BoonId): { id: BoonId; fresh: boolean; dust: number } {
+    if (!this.data.cards.includes(id)) {
+      this.data.cards.push(id);
+      return { id, fresh: true, dust: 0 };
+    }
+    const dust = DUST.fromDuplicate[(BOONS[id] as BoonDef).rarity];
+    this.data.dust += dust;
+    return { id, fresh: false, dust };
+  }
+
+  /** Make a card with Pó de Éter (never Lendárias). */
+  craft(id: BoonId): boolean {
+    const cost = craftCost(id);
+    if (cost <= 0 || this.data.cards.includes(id) || this.data.dust < cost) return false;
+    this.data.dust -= cost;
+    this.data.cards.push(id);
     this.persist();
     return true;
   }
 
-  /** What the match receives. */
-  loadout(): { id: RelicId; level: number }[] {
-    return this.data.equipped.map((id) => ({ id, level: this.data.relics[id] ?? 1 }));
+  /** Put a card in / take it out of the deck. Returns null when it worked, or why not. */
+  toggleDeck(id: BoonId): string | null {
+    const deck = this.data.deck;
+    const next = deck.includes(id) ? deck.filter((c) => c !== id) : [...deck, id];
+    if (next.length < BOON_RULES.choices) return `O baralho precisa de pelo menos ${BOON_RULES.choices} cartas`;
+    const why = deckProblem(next, this.data.cards);
+    if (why) return why;
+    this.data.deck = next;
+    this.persist();
+    return null;
+  }
+
+  featState(): FeatState {
+    const m = this.data.mutant;
+    return { riftBest: this.data.riftBest, hunt: this.data.hunt, expeditionBest: this.data.expeditionBest, mutantWeekDone: m.stages.length >= 3 && m.won.length >= m.stages.length };
+  }
+
+  /** Lendárias won by feats: grants the new ones (dust if the card came from a pack before). */
+  checkFeats(): BoonId[] {
+    const st = this.featState();
+    const fresh: BoonId[] = [];
+    for (const f of FEATS) {
+      if (this.data.feats.includes(f.card) || !f.done(st)) continue;
+      this.data.feats.push(f.card);
+      this.grantCard(f.card);
+      fresh.push(f.card);
+    }
+    if (fresh.length) this.persist();
+    return fresh;
   }
 
   /** Códice: mark an enemy or reaction as seen. Returns true the first time. */
@@ -345,7 +390,7 @@ export class SaveStore {
 
   /** What the trail can offer: open stages, open boss stages, revealed Bênçãos. */
   expeditionCtx(): TrailCtx {
-    return { pool: this.expeditionPool(), bosses: EXPEDITION.bossPool.filter((id) => this.isUnlocked(id)), unlockedBoons: this.data.unlockedBoons };
+    return { pool: this.expeditionPool(), bosses: EXPEDITION.bossPool.filter((id) => this.isUnlocked(id)), deck: this.data.deck };
   }
 
   /** Use a rest stop of the trail (choice = which Bênção, -1 = walk past). False if it cannot be paid. */

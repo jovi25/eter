@@ -1,10 +1,8 @@
-// Fase 7 — Relicários: coins earned by playing buy chests; chests give Relíquias (equip up to 3)
-// or unlock new Bênçãos for the in-match deck. Every relic trades power for a choice: most have an upside AND a cost.
-// Pure data + pure functions (no Phaser), so the rolls are unit-tested.
+// Moedas (coins earned by playing) and the old Relíquias.
+// The Relicário closed in Fase 19 (Grimório): Relíquias are no longer won or equipped — owned ones became Pó de Éter.
+// RELICS stays because the simulation can still apply them (tests, and the save migration reads their rarity).
 
-import { Rng } from '../sim/rng';
 import type { SimState } from '../sim/types';
-import { BOONS, BOON_IDS, type BoonDef, type BoonId } from './boons';
 import type { SimModifiers } from './modifiers';
 
 export type RelicRarity = 'common' | 'rare' | 'epic' | 'legendary';
@@ -121,14 +119,11 @@ export const RELICS = {
 export type RelicId = keyof typeof RELICS;
 export const RELIC_IDS = Object.keys(RELICS) as RelicId[];
 
-/** Bênçãos that only enter the deck after a Relicário reveals them. */
-export const LOCKED_BOONS: BoonId[] = BOON_IDS.filter((id) => (BOONS[id] as BoonDef).locked);
 
 // ───────────────────────────── coins ─────────────────────────────
 
-/** All coin numbers. A chest costs ~2–3 matches. */
+/** All coin numbers. A pack of the Grimório costs ~2–3 matches. */
 export const COINS = {
-  chestPrice: 150,
   win: 30,
   loss: 10,
   perStar: 10,
@@ -138,7 +133,6 @@ export const COINS = {
   riftMilestone: 40, // every 10 waves reached
   riftClear: 150, // all 40 waves
   dailyFirstPlay: 50, // first daily challenge of the day
-  duplicateRefund: 60, // max-level relic or already-unlocked boon
 };
 
 export interface MatchCoinInput {
@@ -157,66 +151,4 @@ export function matchCoins(m: MatchCoinInput): number {
   if (m.mode === 'daily') return c + (m.firstDailyToday ? COINS.dailyFirstPlay : 0);
   if (m.firstWin) c += COINS.firstWinBonus;
   return c + m.newChallenges * COINS.perChallenge;
-}
-
-// ───────────────────────────── chest roll ─────────────────────────────
-
-/** Chances shown to the player ("Ver chances"). */
-export const CHEST_ODDS: Record<RelicRarity, number> = { common: 0.55, rare: 0.3, epic: 0.12, legendary: 0.03 };
-/** Pity: at most this many chests in a row without Épica or better. */
-export const CHEST_PITY = 10;
-
-export type ChestReward =
-  | { kind: 'relic'; id: RelicId; rarity: RelicRarity; level: number; isNew: boolean }
-  | { kind: 'boon'; id: BoonId; rarity: RelicRarity }
-  | { kind: 'coins'; amount: number; rarity: RelicRarity };
-
-export interface Collection {
-  relics: Partial<Record<RelicId, number>>; // owned level
-  unlockedBoons: BoonId[];
-  sinceEpic: number; // chests opened since the last Épica+
-}
-
-function boonRarity(id: BoonId): RelicRarity {
-  return (BOONS[id] as BoonDef).rarity;
-}
-
-/**
- * Decide the content of one chest. Pure: same seed + same collection → same reward.
- * Rarity first (with pity), then an item of that rarity that still has room to grow.
- */
-export function rollChest(seed: number, col: Collection): ChestReward {
-  const rng = new Rng(seed);
-  let rarity: RelicRarity;
-  if (col.sinceEpic >= CHEST_PITY - 1) rarity = rng.next() < 0.8 ? 'epic' : 'legendary';
-  else {
-    let roll = rng.next();
-    rarity = 'common';
-    for (const r of RELIC_RARITIES) {
-      roll -= CHEST_ODDS[r];
-      if (roll < 0) {
-        rarity = r;
-        break;
-      }
-    }
-  }
-  const relics = RELIC_IDS.filter((id) => RELICS[id].rarity === rarity && (col.relics[id] ?? 0) < MAX_RELIC_LEVEL);
-  const boons = LOCKED_BOONS.filter((id) => boonRarity(id) === rarity && !col.unlockedBoons.includes(id));
-  // New things first: unseen relics and locked boons beat level-ups of owned relics.
-  const fresh = [...relics.filter((id) => !col.relics[id]).map((id) => ({ k: 'relic' as const, id })), ...boons.map((id) => ({ k: 'boon' as const, id }))];
-  const pool = fresh.length > 0 && rng.next() < 0.75 ? fresh : [...relics.map((id) => ({ k: 'relic' as const, id })), ...boons.map((id) => ({ k: 'boon' as const, id }))];
-  if (pool.length === 0) return { kind: 'coins', amount: COINS.duplicateRefund, rarity };
-  const pick = pool[Math.floor(rng.next() * pool.length)]!;
-  if (pick.k === 'boon') return { kind: 'boon', id: pick.id, rarity };
-  const owned = col.relics[pick.id] ?? 0;
-  return { kind: 'relic', id: pick.id, rarity, level: owned + 1, isNew: owned === 0 };
-}
-
-/** Next seed after a roll (keeps the chest sequence deterministic per save). */
-export function nextChestSeed(seed: number): number {
-  return Math.floor(new Rng(seed ^ 0x2545f491).next() * 4294967296) >>> 0;
-}
-
-export function isHighRarity(r: RelicRarity): boolean {
-  return r === 'epic' || r === 'legendary';
 }

@@ -542,3 +542,16 @@ Números em src/data/towers.ts (WIND, wind), reactions.ts, evolutions.ts e stage
 - **Semana Mutante** (`src/data/mutations.ts`): semana começa na segunda (data local). Rodízio fixo de 6 regras,
   aplicadas como modificadores da simulação (custo, venda, dano comum, vida/velocidade/quantidade de monstros,
   cadência, clima aleatório). 3 fases sorteadas entre as já vencidas e fixadas no save na 1ª vez que a semana é vista.
+
+## Fase 19 — Grimório (substitui o Relicário)
+- Cada Bênção é uma carta (src/data/grimoire.ts; arte em src/view/art/cardArt.ts). Raridades: Comum, Rara, Épica, Lendária.
+- **Baralho de 9** (≤3 Raras, ≤2 Épicas, ≤1 Lendária). As ofertas "escolha 1 de 3", o Altar, a loja da Caçada e o
+  Mercador/Santuário da Expedição sorteiam só do baralho (pesos por raridade: cartas fortes aparecem menos).
+  O Desafio do dia usa as Bênçãos clássicas (igual para todos).
+- **Pacote**: 3 cartas por 100 moedas; chances 62/28/9/1%; garantia de Épica+ a cada 12 pacotes; o sorteio é salvo antes de abrir.
+- **Pó de Éter**: repetidas dão 5/20/80/300; criar custa 40/160/640 (Lendárias não se criam).
+- **Feitos** dão as 4 Lendárias: Pena da Fênix (Fenda 40), Coroa do Tempo (Caçada com 5 chefes < 5:00),
+  Semente do Mundo (3 Expedições seguidas), Sol de Éter (3 fases de uma Semana Mutante).
+- Save v8: Relíquias viram Pó (40/110/260/520 por nível), Bênçãos reveladas viram cartas, baú pago vira 1 pacote.
+- **Amostra de criaturas** (src/view/art/creatures.ts): o Braseiro vira Faísca (nv1), Brasito (nv2), Labarão (nv3),
+  Dracomagma (Vulcão) ou Rubra (Fornalha). Opção "Braseiro-criatura" em Opções (ligada por padrão).

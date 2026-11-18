@@ -1,6 +1,6 @@
 # CLAUDE.md — Projeto ÉTER
 
-Tower defense mobile (retrato) com combos elementais, herói catalisador e relicários.
+Tower defense mobile (retrato) com combos elementais, herói catalisador e Grimório de cartas.
 Design completo: `docs/GDD.md` (fonte da verdade). Fases: `docs/ROADMAP.md`.
 Briefing original: `KICKOFF_CLAUDE_CODE.md`.
 

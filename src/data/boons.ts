@@ -1,10 +1,11 @@
-// Bênçãos de Éter: during a match the player picks 1 of 3 random boons every few waves.
-// They stack, so every run builds a different "deck" of powers. All numbers live here.
+// Bênçãos de Éter: during a match the player picks 1 of 3 boons every few waves; they stack.
+// Since Fase 19 every Bênção is also a CARD of the Grimório (src/data/grimoire.ts): the offers come from the
+// player's 9-card deck. All numbers live here.
 
 import type { SimState } from '../sim/types';
 import type { SimModifiers } from './modifiers';
 
-export type BoonRarity = 'common' | 'rare' | 'epic';
+export type BoonRarity = 'common' | 'rare' | 'epic' | 'legendary';
 
 export interface BoonCtx {
   mods: SimModifiers;
@@ -17,14 +18,16 @@ export interface BoonDef {
   desc: string;
   rarity: BoonRarity;
   color: number;
-  locked?: boolean; // only in the deck after a Relicário reveals it
+  /** Not in the classic pool (Desafio do dia, tests): only in the Grimório. */
+  locked?: boolean;
   apply(ctx: BoonCtx): void;
 }
 
 /** A boon is offered when wave N finishes arriving, for N = 2, 5, 8, 11... */
 export const BOON_RULES = { every: 3, offset: 2, choices: 3 };
 
-export const RARITY_WEIGHT: Record<BoonRarity, number> = { common: 6, rare: 3, epic: 1 };
+/** Weights inside the deck: strong cards show up less often, so a deck full of them is not a sure thing. */
+export const RARITY_WEIGHT: Record<BoonRarity, number> = { common: 6, rare: 3, epic: 1.2, legendary: 0.7 };
 
 /**
  * Altar de Éter (Fenda Infinita only): trade piled-up gold for an extra Bênção.
@@ -33,14 +36,15 @@ export const RARITY_WEIGHT: Record<BoonRarity, number> = { common: 6, rare: 3, e
 export const ALTAR = {
   baseCost: 300,
   growth: 1.25,
-  weights: { common: 3, rare: 3, epic: 2 } as Record<BoonRarity, number>,
+  weights: { common: 3, rare: 3, epic: 2, legendary: 1 } as Record<BoonRarity, number>,
   exclude: ['treasure', 'bounty'] as string[],
 };
 
 /** "Trocar": re-roll the cards of an offer for gold (every mode). Price rises each use in the match. */
 export const REROLL = { baseCost: 40, step: 40 };
-export const RARITY_LABEL: Record<BoonRarity, string> = { common: 'Comum', rare: 'Rara', epic: 'Épica' };
-export const RARITY_COLOR: Record<BoonRarity, number> = { common: 0xb8b8c8, rare: 0x4aa3ff, epic: 0xb26bff };
+export const RARITY_LABEL: Record<BoonRarity, string> = { common: 'Comum', rare: 'Rara', epic: 'Épica', legendary: 'Lendária' };
+export const RARITY_COLOR: Record<BoonRarity, number> = { common: 0xb8b8c8, rare: 0x4aa3ff, epic: 0xb26bff, legendary: 0xffc93d };
+export const RARITIES: BoonRarity[] = ['common', 'rare', 'epic', 'legendary'];
 
 const FIRE = 0xff7a2e;
 const ICE = 0x6fe6ff;
@@ -48,6 +52,7 @@ const NATURE = 0x6ad44a;
 const BOLT = 0xffe95c;
 const GOLD = 0xffd34d;
 const ARCANE = 0xb57bff;
+const WIND = 0x9ff0d0;
 
 export const BOONS = {
   fireMastery: { name: 'Brasas Vivas', desc: 'Fogo: +25% de dano e Queimando dói 40% mais', rarity: 'common', color: FIRE,
@@ -84,7 +89,9 @@ export const BOONS = {
     apply: ({ mods }) => { mods.chainBonus += 3; } },
   overdrive: { name: 'Sobremarcha', desc: 'Todas as torres: +20% de dano', rarity: 'epic', color: 0xffffff,
     apply: ({ mods }) => { for (const k of Object.keys(mods.towerDamageMult) as (keyof typeof mods.towerDamageMult)[]) mods.towerDamageMult[k] *= 1.2; } },
-  // ── Revealed by Relicários (Fase 7) ──
+  windMastery: { name: 'Vento Cortante', desc: 'Vento: +30% de dano', rarity: 'common', color: WIND, locked: true,
+    apply: ({ mods }) => { mods.elementDamageMult.wind *= 1.3; } },
+  // ── Only in the Grimório ──
   tallVines: { name: 'Vinha Trepadeira', desc: 'A Vinha alcança inimigos voadores', rarity: 'common', color: NATURE, locked: true,
     apply: ({ mods }) => { mods.vineHitsFlying = true; } },
   heavyHand: { name: 'Mão Pesada', desc: 'Herói: +35% de dano', rarity: 'common', color: ARCANE, locked: true,
@@ -95,6 +102,25 @@ export const BOONS = {
     apply: ({ mods }) => { mods.rootDurationBonus += 1; } },
   sharpMelt: { name: 'Derretimento Cortante', desc: 'DERRETIMENTO deixa Frágil e Fogo +10%', rarity: 'epic', color: 0xffb347, locked: true,
     apply: ({ mods }) => { mods.meltAppliesFragile = true; mods.elementDamageMult.fire *= 1.1; } },
+  quickHands: { name: 'Mãos Ágeis', desc: 'Herói ataca 30% mais rápido', rarity: 'common', color: ARCANE, locked: true,
+    apply: ({ mods }) => { mods.heroAttackSpeedMult *= 1.3; } },
+  galeForce: { name: 'Rajada', desc: 'Vento: +40% de dano e todas as torres +5% de alcance', rarity: 'rare', color: WIND, locked: true,
+    apply: ({ mods }) => { mods.elementDamageMult.wind *= 1.4; mods.rangeMult *= 1.05; } },
+  goldPact: { name: 'Pacto de Ouro', desc: '+300 de ouro agora, mas −4 vidas', rarity: 'rare', color: GOLD, locked: true,
+    apply: ({ addGold, state }) => { addGold(300); state.lives = Math.max(1, state.lives - 4); } },
+  cyclone: { name: 'Olho do Ciclone', desc: 'Vento e Raio: +35% de dano', rarity: 'epic', color: WIND, locked: true,
+    apply: ({ mods }) => { mods.elementDamageMult.wind *= 1.35; mods.elementDamageMult.lightning *= 1.35; } },
+  goldRain: { name: 'Chuva de Ouro', desc: '+50% de ouro por abate', rarity: 'epic', color: GOLD, locked: true,
+    apply: ({ mods }) => { mods.goldMult *= 1.5; } },
+  // ── Lendárias: feitos difíceis (ou 1% num pacote). Uma por baralho. ──
+  sunOfEter: { name: 'Sol de Éter', desc: 'Todas as torres: +30% de dano e reações +30%', rarity: 'legendary', color: 0xffd34d, locked: true,
+    apply: ({ mods }) => { for (const k of Object.keys(mods.towerDamageMult) as (keyof typeof mods.towerDamageMult)[]) mods.towerDamageMult[k] *= 1.3; mods.reactionDamageMult *= 1.3; } },
+  phoenix: { name: 'Pena da Fênix', desc: '+10 vidas e Fogo +40% de dano', rarity: 'legendary', color: 0xff6a2a, locked: true,
+    apply: ({ mods, state }) => { state.lives += 10; mods.elementDamageMult.fire *= 1.4; } },
+  worldSeed: { name: 'Semente do Mundo', desc: 'Natureza +50%, Enraizado +1,5 s e a Vinha alcança voadores', rarity: 'legendary', color: 0x5ad46a, locked: true,
+    apply: ({ mods }) => { mods.elementDamageMult.nature *= 1.5; mods.rootDurationBonus += 1.5; mods.vineHitsFlying = true; } },
+  timeCrown: { name: 'Coroa do Tempo', desc: 'Combo dura +3 s, chega a +100% mais alto e reações +20%', rarity: 'legendary', color: 0xfff0a0, locked: true,
+    apply: ({ mods }) => { mods.comboWindowBonus += 3; mods.comboMaxBonus += 1; mods.reactionDamageMult *= 1.2; } },
 } satisfies Record<string, BoonDef>;
 
 export type BoonId = keyof typeof BOONS;

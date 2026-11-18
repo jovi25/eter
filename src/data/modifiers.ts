@@ -33,7 +33,8 @@ export interface SimModifiers {
   goldMult: number; // kill gold
   upgradeCostMult: number;
   rangeMult: number;
-  unlockedBoons: string[]; // locked Bênçãos revealed by Relicários (Fase 7)
+  /** Grimório: the player's deck — in-match offers come only from it (empty = the classic Bênçãos). */
+  boonDeck: string[];
   // Semana Mutante (src/data/mutations.ts)
   towerCostMult: number; // build, upgrade and evolution prices
   noSell: boolean;
@@ -70,7 +71,7 @@ export function defaultModifiers(): SimModifiers {
     goldMult: 1,
     upgradeCostMult: 1,
     rangeMult: 1,
-    unlockedBoons: [],
+    boonDeck: [],
     towerCostMult: 1,
     noSell: false,
     plainHitMult: 1,

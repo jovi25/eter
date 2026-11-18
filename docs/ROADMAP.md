@@ -196,12 +196,18 @@ O jogador venceu tudo sem dificuldade: as Relíquias somam ~+60% de dano e a cal
 - [x] Tela inicial só com o Éter; Códice cabe na tela (4 por linha, reações compactas, rodapé fixo)
 - [x] Códice: TORMENTA mostrava "gusted"; análise crítica em docs/ANALISE.md
 
-### Fase 19 — Ameaça (dificuldade escolhida pelo jogador)
-- [ ] Ameaça 1–5 em cada fase com 3★; cada nível soma uma regra dura; coroas e moedas por nível
-- [ ] Caçada e Fenda com Ameaça; robôs calibrados COM as melhores Relíquias
+### Fase 19 — Grimório (o Relicário virou cartas) + amostra de criaturas ✔
+- [x] Toda Bênção é uma carta; 4 raridades com arte cada vez mais rica (Comum → Rara → Épica → Lendária)
+- [x] Baralho de 9 cartas: no máximo 3 Raras, 2 Épicas e 1 Lendária; as ofertas da partida saem só do baralho
+- [x] Pacote de Éter: 3 cartas por 100 moedas (62/28/9/1%), garantia de Épica a cada 12; repetidas viram Pó de Éter
+- [x] Pó cria a carta que quiser (menos Lendárias); 4 Lendárias por feitos (Fenda 40, Caçada < 5:00, 3 Expedições, Semana Mutante)
+- [x] Relíquias saíram do jogo (eram ~+60% de dano permanente) e viraram Pó; 10 cartas novas (vento, ouro, lendárias)
+- [x] Amostra: Braseiro-criatura (Faísca → Brasito → Labarão → Dracomagma / Rubra), opção em Opções
 
-### Fase 20 — Relicário 2.0 (formato a combinar)
-### Fase 21 — Região 5 (monstros com mecânicas novas, chefe novo)
+### Fase 20 — Ameaça (dificuldade escolhida pelo jogador)
+- [ ] Ameaça 1–5 em cada fase com 3★; cada nível soma uma regra dura; coroas e moedas por nível
+- [ ] Caçada e Fenda com Ameaça; robôs calibrados com baralhos fortes
+### Fase 21 — Torres-criaturas (se a amostra agradar) e Região 5 (monstros com mecânicas novas, chefe novo)
 ### Fase 22 — Salão dos Desafios (juntar os modos, metas longas por modo)
 
 ### Fase 23 — O mundo ganha voz

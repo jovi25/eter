@@ -792,7 +792,10 @@ export class Simulation {
 
   /** Roll a "pick 1 of 3" offer (weighted by rarity, no repeats inside one offer). */
   private rollBoons(weights: Record<BoonRarity, number> = RARITY_WEIGHT, exclude: readonly string[] = []): BoonId[] {
-    const pool = BOON_IDS.filter((id) => !exclude.includes(id) && (!(BOONS[id] as BoonDef).locked || this.mods.unlockedBoons.includes(id)));
+    // Grimório: the offers come from the player's deck (the classic Bênçãos when there is none, or it runs dry).
+    const deck = this.mods.boonDeck;
+    let pool = BOON_IDS.filter((id) => !exclude.includes(id) && (deck.length ? deck.includes(id) : !(BOONS[id] as BoonDef).locked));
+    if (pool.length === 0) pool = BOON_IDS.filter((id) => !exclude.includes(id) && !(BOONS[id] as BoonDef).locked);
     const options: BoonId[] = [];
     while (options.length < BOON_RULES.choices && pool.length > 0) {
       const total = pool.reduce((sum, id) => sum + weights[(BOONS[id] as BoonDef).rarity], 0);

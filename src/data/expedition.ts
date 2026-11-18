@@ -28,9 +28,9 @@ export const EXPEDITION = {
   /** Acampamento: lives back (never above the maximum). */
   camp: { lives: 5 },
   /** Mercador: 1 of these Bênçãos for moedas (or walk past for free). */
-  merchant: { choices: 3, cost: 40, weights: { common: 5, rare: 3, epic: 0 } as Record<BoonRarity, number> },
+  merchant: { choices: 3, cost: 40, weights: { common: 5, rare: 3, epic: 0, legendary: 0 } as Record<BoonRarity, number> },
   /** Santuário: 1 strong Bênção for an offering of lives (or walk past). */
-  shrine: { choices: 2, lives: 3, weights: { common: 0, rare: 3, epic: 2 } as Record<BoonRarity, number> },
+  shrine: { choices: 2, lives: 3, weights: { common: 0, rare: 3, epic: 2, legendary: 1 } as Record<BoonRarity, number> },
 };
 
 export type PactId = 'calm' | 'horde' | 'purse' | 'vow' | 'greed' | 'final';
@@ -91,7 +91,8 @@ export interface ExpeditionRun {
 export interface TrailCtx {
   pool: readonly CampaignStageId[];
   bosses?: readonly CampaignStageId[];
-  unlockedBoons?: readonly string[];
+  /** The player's Grimório deck: the Bênçãos sold on the trail come from it. */
+  deck?: readonly string[];
 }
 
 function pick<T>(rng: Rng, list: readonly T[], not?: T): T {
@@ -111,11 +112,14 @@ function vowTowers(rng: Rng): TowerId[] {
 }
 
 /** Different Bênçãos, weighted by rarity; locked ones only if a Relicário revealed them. */
-function rollBoons(rng: Rng, n: number, weights: Record<BoonRarity, number>, unlocked: readonly string[]): BoonId[] {
-  const pool = BOON_IDS.filter((id) => {
+function rollBoons(rng: Rng, n: number, weights: Record<BoonRarity, number>, deck: readonly string[]): BoonId[] {
+  // From the deck when there is one (falls back to the classic Bênçãos if the deck has nothing of these rarities).
+  const pick = (fromDeck: boolean) => BOON_IDS.filter((id) => {
     const b = BOONS[id] as BoonDef;
-    return weights[b.rarity] > 0 && (!b.locked || unlocked.includes(id));
+    return weights[b.rarity] > 0 && (fromDeck ? deck.includes(id) : !b.locked);
   });
+  let pool = deck.length ? pick(true) : pick(false);
+  if (pool.length === 0) pool = pick(false);
   const out: BoonId[] = [];
   while (out.length < n && pool.length > 0) {
     const total = pool.reduce((sum, id) => sum + weights[(BOONS[id] as BoonDef).rarity], 0);
@@ -142,7 +146,7 @@ export function rollNodes(seed: number, leg: number, ctx: TrailCtx): TrailNode[]
   if (kind === 'rest') {
     const a = pick(rng, REST_KINDS);
     const b = pick(rng, REST_KINDS, a);
-    const unlocked = ctx.unlockedBoons ?? [];
+    const unlocked = ctx.deck ?? [];
     return [a, b].map((k): RestNode => {
       if (k === 'merchant') return { kind: k, boons: rollBoons(rng, EXPEDITION.merchant.choices, EXPEDITION.merchant.weights, unlocked) };
       if (k === 'shrine') return { kind: k, boons: rollBoons(rng, EXPEDITION.shrine.choices, EXPEDITION.shrine.weights, unlocked) };

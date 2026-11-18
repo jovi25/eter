@@ -8,7 +8,6 @@ import { fitCamera, frameCap } from '../perf';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { BOONS } from '../../data/boons';
-import { COINS } from '../../data/relics';
 import { playMusic, setMusicIntensity } from '../audio/music';
 import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
@@ -20,6 +19,7 @@ import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { paintMapBackground, placeDecor } from '../battle/MapView';
 import { Button, uiText } from '../ui/Button';
+import { PACK } from '../../data/grimoire';
 import { HUNT, huntTime } from '../../data/hunt';
 import { MUTANT, MUTATIONS, daysLeft } from '../../data/mutations';
 import { HeroPanel } from '../ui/HeroPanel';
@@ -156,12 +156,12 @@ export class WorldMapScene extends Phaser.Scene {
     foot.strokeRoundedRect(-20, GAME_HEIGHT - 128, GAME_WIDTH + 40, 160, 28);
     bakeInPlace(foot, { x0: -24, y0: GAME_HEIGHT - 132, w: GAME_WIDTH + 48, h: 168 }, 'map_foot');
     const done = save.tutorialDone();
-    const chestReady = done && (save.data.coins >= COINS.chestPrice || !!save.data.chest.pending);
-    const relics = () => (done ? this.go('Relics') : this.lockedMsg('Termine o tutorial para abrir o Relicário'));
+    const packReady = done && (save.data.coins >= PACK.price || !!save.data.packs.pending);
+    const grimoire = () => (done ? this.go('Grimoire') : this.lockedMsg('Termine o tutorial para abrir o Grimório'));
     const xs = inRegion ? [90, 270, 450, 630] : [150, 360, 570];
     let i = 0;
     if (inRegion) this.navItem(xs[i++]!, 'nav_pink', 'portal', 'Mapa de Éter', false, () => this.go('WorldMap', { region: -1 }), 0.42);
-    this.navItem(xs[i++]!, 'nav_purple', 'chest', done ? 'Relicário' : '🔒 Relicário', chestReady, relics, 0.34);
+    this.navItem(xs[i++]!, 'nav_purple', 'icon_grimoire', done ? 'Grimório' : '🔒 Grimório', packReady, grimoire, 0.8);
     this.navItem(xs[i++]!, 'nav_blue', 'icon_codex', 'Códice', false, () => this.go('Codex'));
     this.navItem(xs[i++]!, 'nav_gray', 'icon_gear', 'Opções', false, () => this.showOptionsCard());
   }
@@ -700,11 +700,11 @@ export class WorldMapScene extends Phaser.Scene {
     const shields = bossId ? ENEMIES[bossId].boss!.shields! : null;
     if (shields) c.add(uiText(this, 0, 232, `Escudos do chefe: ${shields.reactions.map((r) => REACTIONS[r].name).join(' → ')}`, 17, '#ffb38a', 4).setWordWrapWidth(580));
 
-    // Equipped Relíquias (they apply to every mode except the daily challenge).
-    const eq = save.data.equipped;
+    // The Grimório deck: the Bênçãos of the match come from it.
     const ry = shields ? 268 : 252;
-    c.add(uiText(this, eq.length ? -130 : 0, ry, eq.length ? 'Relíquias:' : 'Sem relíquias equipadas', 19, PAL.uiDim, 4));
-    eq.forEach((rid, i) => c.add(this.add.image(-30 + i * 56, ry, `relic_${rid}`).setScale(0.5)));
+    const dk = save.data.deck;
+    const strong = dk.filter((d) => BOONS[d].rarity !== 'common').length;
+    if (save.tutorialDone()) c.add(uiText(this, 0, ry, `Baralho: ${dk.length} cartas (${strong} raras ou melhores)`, 19, PAL.uiDim, 4));
 
     c.add(
       new Button(this, 0, shields ? 332 : 316, {
@@ -867,12 +867,13 @@ export class WorldMapScene extends Phaser.Scene {
     g.fillStyle(0x2a1a4d, 1);
     g.fillRoundedRect(-285, -395, 570, 790, 26);
     c.add([shade, g, this.add.image(-170, -346, 'icon_gear').setScale(0.6), uiText(this, 20, -346, 'Opções', 38, '#f3e9ff', 7)]);
-    const toggles: [('sound' | 'music' | 'vibration' | 'shake' | 'bigText'), string][] = [
+    const toggles: [('sound' | 'music' | 'vibration' | 'shake' | 'bigText' | 'creatures'), string][] = [
       ['sound', 'Efeitos sonoros'],
       ['music', 'Música'],
       ['vibration', 'Vibração'],
       ['shake', 'Tremor de tela'],
       ['bigText', 'Textos maiores'],
+      ['creatures', 'Braseiro-criatura (amostra)'],
     ];
     toggles.forEach(([key, name], i) => {
       const label = () => `${name}: ${getSettings()[key] ? 'LIGADO' : 'DESLIGADO'}`;
@@ -895,8 +896,8 @@ export class WorldMapScene extends Phaser.Scene {
       });
       c.add(btn);
     });
-    c.add(economyButton(this, 0, 52, 440));
-    c.add(uiText(this, 0, 96, 'Automático baixa a resolução sozinho se o jogo ficar lento.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
+    c.add(economyButton(this, 0, 76, 440));
+    c.add(uiText(this, 0, 116, 'Automático baixa a resolução sozinho se o jogo ficar lento.', 16, PAL.uiDim, 4).setWordWrapWidth(500));
     c.add(uiText(this, 0, 162, 'Backup do progresso', 24, PAL.goldCss, 5));
     c.add(new Button(this, -112, 222, { width: 214, height: 62, label: 'Copiar', fontSize: 22, color: 0x3d7bd9, onClick: () => { close(); this.exportSave(); } }));
     c.add(new Button(this, 112, 222, { width: 214, height: 62, label: 'Restaurar', fontSize: 22, color: 0x6b6480, onClick: () => { close(); this.importSave(); } }));

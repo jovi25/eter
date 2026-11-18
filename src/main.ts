@@ -5,7 +5,7 @@ import { renderScale } from './view/perf';
 import { BattleScene } from './view/scenes/BattleScene';
 import { BootScene } from './view/scenes/BootScene';
 import { CodexScene } from './view/scenes/CodexScene';
-import { RelicScene } from './view/scenes/RelicScene';
+import { GrimoireScene } from './view/scenes/GrimoireScene';
 import { WorldMapScene } from './view/scenes/WorldMapScene';
 
 const game = new Phaser.Game({
@@ -25,7 +25,7 @@ const game = new Phaser.Game({
     antialiasGL: false, // no MSAA on the screen buffer: expensive on phones, invisible with this art
     maxTextures: 8, // few textures per batch: short pixel program, and texts/UI still batch with the atlas
   },
-  scene: [BootScene, WorldMapScene, BattleScene, CodexScene, RelicScene],
+  scene: [BootScene, WorldMapScene, BattleScene, CodexScene, GrimoireScene],
 });
 
 // Handy while debugging in the browser console.

@@ -7,7 +7,7 @@ import { STAGES } from '../../src/data/stages';
 import { migrate, SaveStore } from '../../src/meta/save';
 import { Simulation } from '../../src/sim/simulation';
 
-const CTX: TrailCtx = { pool: ['v3', 'v4', 'v5', 'a1', 'a2'], bosses: ['v5', 'a3'], unlockedBoons: [] };
+const CTX: TrailCtx = { pool: ['v3', 'v4', 'v5', 'a1', 'a2'], bosses: ['v5', 'a3'], deck: [] };
 const battle = (stage: BattleNode['stage'], pact: BattleNode['pact'], towers?: BattleNode['towers']): BattleNode => ({ kind: 'battle', stage, pact, towers });
 
 function memStorage() {

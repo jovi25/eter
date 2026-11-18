@@ -292,10 +292,10 @@ export class BattleScene extends Phaser.Scene {
     const learning = !this.daily && !getSave().tutorialDone();
     this.mutation = data.mutant && !this.daily && !this.trip && STAGE_ORDER.includes(this.stageId as CampaignStageId) ? getSave().mutantWeek().mutation : null;
     if (learning) this.heroClass = 'mage';
-    // Relíquias and revealed Bênçãos count everywhere except the daily challenge (same for everyone).
+    // The Grimório deck counts everywhere except the daily challenge (same for everyone).
     const save = getSave();
     // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
-    const mods = { heroClass: this.heroClass, unlockedBoons: this.daily ? [] : [...save.data.unlockedBoons], ...(this.daily || learning ? {} : save.heroMods(this.heroClass)) };
+    const mods = { heroClass: this.heroClass, boonDeck: this.daily ? [] : [...save.data.deck], ...(this.daily || learning ? {} : save.heroMods(this.heroClass)) };
     // The Torre do Vento is won in the Vale dos Ventos (the bonus stage itself always has it).
     const towers = save.data.galeWon || this.stageId === 'gale' ? TOWER_IDS : CLASSIC_TOWERS;
     // Expedição: the trail's pact, tougher monsters, and the lives and Bênçãos carried from the last battle.
@@ -304,7 +304,6 @@ export class BattleScene extends Phaser.Scene {
       stage: this.stageId,
       seed,
       modifiers: { unlockedTowers: [...towers], ...mods, ...leg?.modifiers },
-      relics: this.daily || learning ? [] : save.loadout(),
       limits: !this.trip,
       run: leg ?? undefined,
       waves: this.stageId === 'hunt' ? save.huntBosses() : undefined,
@@ -1031,6 +1030,8 @@ export class BattleScene extends Phaser.Scene {
         firstDailyToday,
       });
       save.addCoins(coins);
+      // Grimório: feats that grant a Lendária (Fenda, Caçada, Expedição, Semana Mutante).
+      save.checkFeats().forEach((id, i) => this.time.delayedCall(2600 + i * 2200, () => this.fx.bigBanner(`CARTA LENDÁRIA!\n${BOONS[id].name}`, '#ffc93d', 46, 2000, true)));
       const next = !campaign || this.daily || this.trip || this.mutation ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId as CampaignStageId) + 1];
       // Next stage: back to the map with its card open (missions, hero and strategy can change first).
       const onNext = trip ? (g.won && !trip.finished ? () => this.toMap() : undefined) : g.won && next ? () => this.toMap(next) : undefined;

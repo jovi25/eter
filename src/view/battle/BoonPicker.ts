@@ -6,6 +6,7 @@ import { PAL } from '../art/palette';
 import { vibrate } from '../settings';
 import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
+import { ensureCard } from '../art/cardArt';
 
 const CARD_W = 620;
 const CARD_H = 170;
@@ -47,14 +48,7 @@ export class BoonPicker {
       g.fillRoundedRect(-CARD_W / 2 + 6, -CARD_H / 2 + 6, CARD_W - 12, CARD_H - 12, 19);
       g.fillStyle(def.color, 0.16);
       g.fillRoundedRect(-CARD_W / 2 + 6, -CARD_H / 2 + 6, CARD_W - 12, CARD_H - 12, 19);
-      // emblem
-      g.fillStyle(PAL.ink, 1);
-      g.fillCircle(-CARD_W / 2 + 84, 0, 54);
-      g.fillStyle(def.color, 1);
-      g.fillCircle(-CARD_W / 2 + 84, 0, 48);
-      g.fillStyle(0xffffff, 0.25);
-      g.fillEllipse(-CARD_W / 2 + 76, -18, 56, 26);
-      const icon = scene.add.image(-CARD_W / 2 + 84, 0, 'icon_catalyze').setScale(0.95);
+      const icon = scene.add.image(-CARD_W / 2 + 84, 0, ensureCard(scene, id)).setScale(0.36);
       const name = uiText(scene, -CARD_W / 2 + 160, -40, def.name, 32, '#ffffff', 6).setOrigin(0, 0.5);
       const rarity = uiText(scene, CARD_W / 2 - 24, -CARD_H / 2 + 26, RARITY_LABEL[def.rarity].toUpperCase(), 17, `#${rc.toString(16).padStart(6, '0')}`, 4).setOrigin(1, 0.5);
       const desc = uiText(scene, -CARD_W / 2 + 160, 22, def.desc, 23, PAL.uiText, 4).setOrigin(0, 0.5).setAlign('left').setWordWrapWidth(CARD_W - 190);
@@ -62,7 +56,6 @@ export class BoonPicker {
       card.setSize(CARD_W, CARD_H).setInteractive({ useHandCursor: true });
       card.setX(GAME_WIDTH + CARD_W);
       scene.tweens.add({ targets: card, x: GAME_WIDTH / 2, delay: 220 + i * 110, duration: 380, ease: 'Back.easeOut' });
-      scene.tweens.add({ targets: icon, angle: 360, duration: 6000, repeat: -1 });
       card.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
         ev.stopPropagation();
         if (this.done) return;

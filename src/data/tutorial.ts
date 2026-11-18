@@ -71,7 +71,7 @@ export const TIPS: Record<TipId, TipDef> = {
   // ── Fase 5 ──
   boss: { title: 'Chefe MVP', text: 'O Arauto da Geada fica imune a Resfriado de tempos em tempos e chama gosmas. Guarde dano forte para ele.' },
   // ── Depois do tutorial ──
-  rift: { title: 'Fenda Infinita', text: '40 ondas cada vez mais duras. Quanto mais longe, mais moedas para o Relicário.' },
+  rift: { title: 'Fenda Infinita', text: '40 ondas cada vez mais duras. Quanto mais longe, mais moedas para o Grimório.' },
   hunt: { title: 'Caçada de Chefes', text: 'Só chefes, um atrás do outro. O próximo só vem quando o anterior cai. Entre eles, a LOJA vende Bênçãos por ouro. O relógio conta: chame o próximo chefe cedo!' },
   mutant: { title: 'Semana Mutante', text: 'Esta fase está com a regra maluca da semana. Ela muda toda segunda-feira. Vença para ganhar moedas!' },
   altar: { title: 'Altar de Éter', text: 'Ouro sobrando? Toque no ALTAR e troque ouro por uma Bênção extra.' },

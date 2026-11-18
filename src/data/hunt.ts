@@ -23,8 +23,8 @@ export const HUNT = {
   bounty: 450,
   /** The shop between bosses: Bênçãos for match gold (no free Bênçãos in the Caçada). */
   shop: {
-    cost: { common: 90, rare: 150, epic: 230 } as Record<BoonRarity, number>,
-    weights: { common: 4, rare: 3, epic: 2 } as Record<BoonRarity, number>,
+    cost: { common: 90, rare: 150, epic: 230, legendary: 340 } as Record<BoonRarity, number>,
+    weights: { common: 4, rare: 3, epic: 2, legendary: 1 } as Record<BoonRarity, number>,
     exclude: ['treasure', 'bounty'] as string[], // gold-for-gold Bênçãos make no sense here
   },
   /** Moedas: each boss down, a full clear, and a new record. */

@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
-import { RELIC_IDS, RELICS } from '../../data/relics';
-import { drawChest, drawEterCoin, drawIconCheck, drawIconCodex, drawIconDaily, drawIconGear, drawIconMutant, drawNavBadge, drawRelic, drawRuneStone, RELIC_ICON } from './relicArt';
+import { drawChest, drawEterCoin, drawIconCheck, drawIconCodex, drawIconDaily, drawIconGear, drawIconMutant, drawNavBadge, drawRuneStone } from './relicArt';
+import { drawIconGrimoire } from './cardArt';
+import { CREATURE_FORMS } from './creatures';
 import { ASSETS, type AssetKey } from '../../assets/manifest';
 import {
   blush,
@@ -1381,8 +1382,8 @@ export function generateTextures(scene: Phaser.Scene): void {
     const d = DRAW[key];
     paint(key, d.w, d.h, (c) => d.draw(c, d.w / 2, d.h / 2));
   }
-  // Relicário art (Fase 7)
-  for (const id of RELIC_IDS) paint(`relic_${id}`, RELIC_ICON, RELIC_ICON, (c) => drawRelic(c, RELICS[id].shape, RELICS[id].color));
+  paint('icon_grimoire', 72, 72, drawIconGrimoire);
+  for (const f of CREATURE_FORMS) paint(f.key, f.w, f.h, (c) => f.draw(c, f.w / 2, f.h * 0.6 + 22));
   paint('chest', 200, 170, drawChest);
   paint('eter_coin', 40, 40, drawEterCoin);
   paint('bolt', 8, 32, (c) => {

@@ -7,6 +7,7 @@ import { DEPTH, unitDepth } from './layers';
 import { quality, addBlend } from '../quality';
 import { EVOLUTIONS, evolvedLevel } from '../../data/evolutions';
 import { FUSIONS } from '../../data/fusions';
+import { creatureForm, isCreature } from '../art/creatures';
 
 class TowerView {
   readonly root: Phaser.GameObjects.Container;
@@ -15,7 +16,12 @@ class TowerView {
   private aura: Phaser.GameObjects.Image;
   private auraTween?: Phaser.Tweens.Tween;
 
+  /** Torres-criaturas (amostra): the art itself grows; it breathes and never gets tinted. */
+  readonly creature: boolean;
+  private breath = { y: 0 };
+
   constructor(private scene: Phaser.Scene, t: TowerState) {
+    this.creature = isCreature(t.type);
     // Max-level aura: a pulsing glow in the tower's element color.
     this.aura = scene.add
       .image(0, 4, 'spark')
@@ -24,10 +30,14 @@ class TowerView {
       .setBlendMode(addBlend())
       .setVisible(false);
     const base = scene.add.image(0, 6, 'tower_base');
-    this.top = scene.add.image(0, -22, `tower_${t.type}`).setOrigin(0.5, 0.6);
+    this.top = scene.add.image(0, -22, this.creature ? creatureForm(t.level, null).key : `tower_${t.type}`).setOrigin(0.5, 0.6);
     for (let i = 0; i < 3; i++) this.pips.push(scene.add.image(-18 + i * 18, 30, 'pip'));
     this.root = scene.add.container(t.x, t.y, [this.aura, base, this.top, ...this.pips]).setDepth(unitDepth(t.y + 20));
     this.setLevel(t.level);
+    if (this.creature && !quality.low) {
+      // Breathing (a separate tween, so the shooting squash never stops it).
+      scene.tweens.add({ targets: this.breath, y: -3, duration: 900 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', onUpdate: () => this.top.setY(-22 + this.breath.y) });
+    }
   }
 
   baseScale = 1;
@@ -39,8 +49,13 @@ class TowerView {
   setEvolution(t: TowerState): void {
     if (!t.evo) return;
     const def = EVOLUTIONS[t.evo];
-    this.baseScale = 1.32;
-    this.top.setScale(this.baseScale).setTint(0xffffff, 0xffffff, def.color, def.color);
+    if (this.creature) {
+      this.baseScale = 1;
+      this.top.setTexture(creatureForm(t.level, t.evo).key).setScale(1).clearTint();
+    } else {
+      this.baseScale = 1.32;
+      this.top.setScale(this.baseScale).setTint(0xffffff, 0xffffff, def.color, def.color);
+    }
     this.aura.setTint(def.color);
     this.pips.forEach((p) => p.setVisible(false));
     if (!this.crown) {
@@ -102,7 +117,8 @@ class TowerView {
 
   setLevel(level: number): void {
     this.pips.forEach((p, i) => p.setVisible(i < level));
-    this.baseScale = 1 + (level - 1) * 0.1;
+    if (this.creature) this.top.setTexture(creatureForm(level, null).key);
+    this.baseScale = this.creature ? 1 : 1 + (level - 1) * 0.1;
     this.top.setScale(this.baseScale);
     if (level >= MAX_LEVEL && !this.aura.visible && !quality.low) {
       this.aura.setVisible(true).setAlpha(0.5);
