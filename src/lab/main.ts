@@ -85,7 +85,7 @@ if (still) {
   const big = s.forms[2]!;
   const steps: [number, string][] = [[0.25, 'carrega'], [0.41, 'solta'], [0.56, 'dispara']];
   const seq = canvas();
-  const xs = [90, 320, 550];
+  const xs = [130, 345, 560];
   ground(seq, xs);
   steps.forEach(([a], i) => big.draw(seq, xs[i]!, FEET, { t: 0.5, atk: a }));
   sec.append(label(`Ataque do ${big.name}, passo a passo`), seq.canvas, names(steps.map(([, n]) => ({ name: n }))));

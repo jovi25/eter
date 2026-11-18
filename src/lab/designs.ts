@@ -611,6 +611,295 @@ function guardian(st: 0 | 1 | 2): Form['draw'] {
   };
 }
 
+// ───────────────────────── Opção D — Dragão ─────────────────────────
+// Crimson scales, ivory-gold horns, a glowing ember crystal at the tail tip (no flame on the tail),
+// four legs and real wings. It hatches, grows wings, then breathes a stream of fire.
+
+function scales(c: Ctx, x0: number, y0: number, x1: number, y1: number, dark = false): CanvasGradient {
+  return dark
+    ? linear(c, x0, y0, x1, y1, [[0, '#b23a52'], [0.5, '#7a1834'], [1, '#3e0a22']])
+    : linear(c, x0, y0, x1, y1, [[0, '#ee6a78'], [0.5, '#b02a46'], [1, '#5e1030']]);
+}
+const HORN = (c: Ctx, x0: number, y0: number, x1: number, y1: number) => linear(c, x0, y0, x1, y1, [[0, '#fff6e0'], [1, '#d9a85a']]);
+
+function crystal(c: Ctx, x: number, y: number, r: number, heat: number, rot: number): void {
+  glow(c, x, y, r * 3.2, 0xffb347, 0.5 + heat * 0.45);
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  shape(c, poly([[0, -r * 1.7], [r * 0.85, 0], [0, r], [-r * 0.85, 0]]), radial(c, 0, -r * 0.3, r * 1.7, [[0, '#ffffff'], [0.45, '#ffd34d'], [1, '#ff7a2e']]), INK, 2);
+  c.restore();
+}
+
+function sideEye(c: Ctx, x: number, y: number, r: number, closed: boolean, brow: number): void {
+  if (closed) {
+    c.save();
+    c.strokeStyle = INK;
+    c.lineWidth = Math.max(2.5, r * 0.5);
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(x - r, y - r * 0.1);
+    c.quadraticCurveTo(x, y + r * 0.6, x + r, y - r * 0.1);
+    c.stroke();
+    c.restore();
+    return;
+  }
+  shape(c, ellipse(x, y, r * 0.9, r), '#ffffff', INK, 2);
+  shape(c, ellipse(x + r * 0.2, y + r * 0.1, r * 0.62, r * 0.78), radial(c, x + r * 0.2, y + r * 0.4, r, [[0, '#ffe27a'], [1, '#e08a10']]), INK, 0);
+  shape(c, ellipse(x + r * 0.25, y + r * 0.1, r * 0.16, r * 0.6), '#2a0e08', INK, 0);
+  shape(c, circle(x - r * 0.15, y - r * 0.35, r * 0.25), '#ffffff', INK, 0);
+  if (brow > 0) {
+    c.save();
+    c.strokeStyle = INK;
+    c.lineWidth = brow;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(x - r * 1.1, y - r * 1.25);
+    c.lineTo(x + r * 1.0, y - r * 0.85);
+    c.stroke();
+    c.restore();
+  }
+}
+
+function hatchling(c: Ctx, cx: number, fy: number, p: Pose, wind: number, hit: number, shot: number, br: number): void {
+  const sy = fy - 22; // shell rim
+  const sway = Math.sin(p.t * 1.6) * 3;
+  limb(c, [cx - 10, sy + 2], [cx - 34, sy + 2], [cx - 33 + sway, sy - 20], 10, 5, scales(c, cx - 40, sy - 20, cx, sy), 2.5);
+  crystal(c, cx - 33 + sway, sy - 25, 4.5, wind, -0.3);
+  shape(c, ellipse(cx, sy, 25, 7), '#7a5a48', INK, 2.5); // inside of the shell
+  const hy = fy - 52 + wind * 11 - hit * 6 + br;
+  shape(c, ellipse(cx, sy - 8 + wind * 6, 17, 16), scales(c, cx - 17, sy - 24, cx + 17, sy + 8), INK, 3);
+  for (const s of [-1, 1]) shape(c, poly([[cx - 8 + s * 4, sy - 18 + wind * 6], [cx - 24 + s * 4, sy - 30 + wind * 4 - hit * 4], [cx - 18 + s * 4, sy - 14 + wind * 6]]), linear(c, 0, sy - 30, 0, sy - 14, [[0, '#ffb36a'], [1, '#d8455a']]), INK, 2);
+  // head (3/4 view)
+  const hx = cx + 4 + hit * 4;
+  for (const s of [-1, 1]) shape(c, poly([[hx + s * 8 - 3, hy - 15], [hx + s * 10 - 4, hy - 26], [hx + s * 8 + 4, hy - 16]]), HORN(c, 0, hy - 26, 0, hy - 14), INK, 2);
+  shape(
+    c,
+    (pp) => {
+      pp.arc(hx, hy, 19, 0, Math.PI * 2);
+      pp.moveTo(hx + 25, hy + 6);
+      pp.ellipse(hx + 16, hy + 6, 9, 7.5, 0, 0, Math.PI * 2);
+    },
+    scales(c, hx - 19, hy - 19, hx + 19, hy + 19),
+    INK,
+    3,
+  );
+  shape(c, ellipse(hx + 10, hy + 10, 9, 5), '#ffd9a0', INK, 0);
+  if (wind > 0.3) squint(c, hx + 3, hy - 2, 7, 4.5);
+  else eyes(c, hx + 3, hy - 2, 7, 6, { iris: 0xe08a10, look: 2 });
+  blush(c, hx + 4, hy + 7, 12, 3.5);
+  openMouth(c, hx + 15, hy + 10, 9, hit, false);
+  for (const d of [12, 19]) shape(c, circle(hx + d, hy + 2, 1.2), INK, INK, 0);
+  gloss(c, hx - 8, hy - 9, 6, 3, 0.55);
+  // a piece of eggshell still on its head
+  c.save();
+  c.translate(hx - 7, hy - 15);
+  c.rotate(-0.4);
+  shape(
+    c,
+    (pp) => {
+      pp.moveTo(-13, 3);
+      for (let i = 1; i <= 6; i++) pp.lineTo(-13 + i * (26 / 6), i % 2 ? 8 : 3);
+      pp.ellipse(0, 3, 13, 11, 0, 0, Math.PI, true);
+      pp.closePath();
+    },
+    linear(c, 0, -8, 0, 8, [[0, '#fffaf0'], [1, '#e6cfa6']]),
+    INK,
+    2.5,
+  );
+  shape(c, ellipse(-4, -2, 2.5, 1.8), '#c23a52', INK, 0);
+  c.restore();
+  // front of the shell, with a zigzag edge
+  shape(
+    c,
+    (pp) => {
+      pp.moveTo(cx - 26, sy);
+      for (let i = 1; i <= 8; i++) pp.lineTo(cx - 26 + i * 6.5, i % 2 ? sy - 7 : sy);
+      pp.ellipse(cx, sy, 26, 22, 0, 0, Math.PI, false);
+      pp.closePath();
+    },
+    linear(c, cx - 20, sy - 6, cx + 20, sy + 22, [[0, '#fffaf0'], [1, '#d9bd8c']]),
+    INK,
+    3,
+  );
+  for (const [x, y, r] of [[-14, 8, 3], [6, 12, 2.5], [14, 4, 2], [-4, 16, 2]] as const) shape(c, ellipse(cx + x, sy + y, r, r * 0.7), '#c23a52', INK, 0);
+  gloss(c, cx - 12, sy + 6, 8, 3, 0.6);
+  for (const x of [-9, 11]) shape(c, ellipse(cx + x, sy - 2, 5, 3.5), scales(c, 0, sy - 6, 0, sy + 2), INK, 2);
+  shotAt(c, hx + 22, hy + 10, 6, shot);
+}
+
+function dragon(st: 0 | 1 | 2): Form['draw'] {
+  return (c, cx, fy, p) => {
+    const { wind, hit, shot } = phases(p.atk);
+    const br = Math.sin(p.t * 2.4);
+    if (st === 0) return hatchling(c, cx, fy, p, wind, hit, shot, br);
+    const k = st === 1 ? 1 : 1.4;
+    const T: P2 = [cx - 8 * k, fy - 31 * k + br * 0.8];
+    const rx = 29 * k;
+    const ry = 16 * k;
+    const sway = Math.sin(p.t * 1.5) * 4;
+
+    // tail, ending in an ember crystal
+    const tEnd: P2 = [T[0] - rx * 1.9 + sway, T[1] - 20 * k];
+    limb(c, [T[0] - rx * 0.6, T[1] + 2 * k], [T[0] - rx * 1.7, fy - 2 * k], tEnd, 15 * k, 4 * k, scales(c, tEnd[0], tEnd[1], T[0], fy), 3);
+    crystal(c, tEnd[0] - 1 * k, tEnd[1] - 5 * k, 5.5 * k, wind, -0.5);
+
+    // wings
+    const lift = wind * 12 * k - hit * 10 * k + br * 2 * k;
+    const spread = st === 2 ? 1 : 0.5;
+    const wing = (dx: number, dy: number, dark: boolean) => {
+      const S: P2 = [T[0] + 4 * k + dx, T[1] - 11 * k + dy];
+      const E: P2 = [S[0] - (6 + 18 * spread) * k, S[1] - (26 + 22 * spread) * k - lift];
+      const tips: P2[] = [
+        [E[0] - (10 + 30 * spread) * k, E[1] + 4 * k],
+        [E[0] - (12 + 34 * spread) * k, E[1] + (18 + 6 * spread) * k + lift * 0.3],
+        [E[0] - (8 + 26 * spread) * k, E[1] + (30 + 12 * spread) * k + lift * 0.5],
+      ];
+      const root: P2 = [T[0] - 16 * k + dx, T[1] - 9 * k + dy];
+      shape(
+        c,
+        (pp) => {
+          pp.moveTo(S[0], S[1]);
+          pp.lineTo(E[0], E[1]);
+          pp.lineTo(tips[0]![0], tips[0]![1]);
+          const all = [...tips, root];
+          for (let i = 1; i < all.length; i++) {
+            const a = all[i - 1]!;
+            const b = all[i]!;
+            pp.quadraticCurveTo(lerp((a[0] + b[0]) / 2, E[0], 0.28), lerp((a[1] + b[1]) / 2, E[1], 0.28), b[0], b[1]);
+          }
+          pp.closePath();
+        },
+        linear(c, E[0], E[1], root[0], root[1] + 10 * k, dark ? [[0, '#c86a50'], [1, '#7a2040']] : [[0, '#ffb36a'], [0.6, '#e2604a'], [1, '#b02a46']]),
+        INK,
+        2.5,
+      );
+      c.save();
+      c.strokeStyle = INK;
+      c.lineCap = 'round';
+      c.lineWidth = 2;
+      for (const t of tips) {
+        c.beginPath();
+        c.moveTo(E[0], E[1]);
+        c.lineTo(t[0], t[1]);
+        c.stroke();
+      }
+      c.restore();
+      limb(c, S, [lerp(S[0], E[0], 0.5) + 4 * k, lerp(S[1], E[1], 0.5)], E, 7 * k, 4.5 * k, scales(c, E[0], E[1], S[0], S[1], dark), 2.5);
+      shape(c, poly([[E[0] - 2 * k, E[1]], [E[0] + 2 * k, E[1] - 8 * k], [E[0] + 3 * k, E[1] + 1 * k]]), HORN(c, 0, E[1] - 8 * k, 0, E[1]), INK, 1.5);
+    };
+    wing(10 * k, -4 * k, true);
+
+    // legs: far side first (darker)
+    const leg = (x: number, dark: boolean, hind = false) => {
+      const hip: P2 = [x, T[1] + 2 * k];
+      if (hind) shape(c, ellipse(x + 2 * k, T[1] + 1 * k, 12 * k, 14 * k, -0.3), scales(c, x, T[1] - 14 * k, x, T[1] + 14 * k, dark), INK, 2.5);
+      const foot: P2 = [x + 3 * k, fy - 5 * k];
+      limb(c, hip, [x - 5 * k, lerp(hip[1], foot[1], 0.5)], foot, 15 * k, 9 * k, scales(c, x, hip[1], x, fy, dark), 2.5);
+      shape(c, ellipse(foot[0] + 3 * k, fy - 3.5 * k, 8.5 * k, 4.5 * k), scales(c, 0, fy - 8 * k, 0, fy, dark), INK, 2.5);
+      for (const d of [0, 4, 8]) shape(c, poly([[foot[0] + (d + 1) * k, fy - 2 * k], [foot[0] + (d + 5) * k, fy - 1 * k], [foot[0] + (d + 2) * k, fy + 1.5 * k]]), HORN(c, 0, fy - 2, 0, fy + 2), INK, 1.2);
+    };
+    leg(T[0] - rx * 0.45 + 7 * k, true, true);
+    leg(T[0] + rx * 0.55 + 7 * k, true);
+
+    // back spikes (Dragão: ember crystals)
+    for (let i = 0; i < 4; i++) {
+      const dx = -0.55 + i * 0.32;
+      const x = T[0] + dx * rx;
+      const y = T[1] - ry * Math.sqrt(1 - dx * dx) + 2 * k;
+      if (st === 2) crystal(c, x, y - 3 * k, 3.5 * k, wind * 0.6, 0.15);
+      else shape(c, poly([[x - 4 * k, y + 2 * k], [x, y - 7 * k], [x + 4 * k, y + 2 * k]]), HORN(c, 0, y - 7 * k, 0, y + 2 * k), INK, 1.8);
+    }
+
+    // body
+    shape(c, ellipse(T[0], T[1], rx, ry), scales(c, T[0], T[1] - ry, T[0], T[1] + ry), INK, 3);
+    shape(c, ellipse(T[0] + 5 * k, T[1] + ry * 0.45, rx * 0.72, ry * 0.42), linear(c, 0, T[1], 0, T[1] + ry, [[0, '#ffe7a0'], [1, '#f0a84a']]), INK, 0);
+    c.save();
+    c.strokeStyle = 'rgba(160,80,30,0.55)';
+    c.lineWidth = 1.5;
+    for (let i = -2; i <= 2; i++) {
+      c.beginPath();
+      c.moveTo(T[0] + 5 * k + i * rx * 0.24, T[1] + ry * 0.1);
+      c.lineTo(T[0] + 5 * k + i * rx * 0.24, T[1] + ry * 0.82);
+      c.stroke();
+    }
+    c.restore();
+    glow(c, T[0] + rx * 0.55, T[1] - 2 * k, (14 + wind * 16) * k, 0xffc24a, wind * 0.9);
+    gloss(c, T[0] - rx * 0.3, T[1] - ry * 0.5, rx * 0.3, ry * 0.18, 0.45);
+    leg(T[0] - rx * 0.45, false, true);
+    leg(T[0] + rx * 0.55, false);
+
+    // neck and head
+    const H: P2 = [T[0] + rx + (st === 2 ? 20 : 12) * k + hit * 10 * k - wind * 10 * k, T[1] - (st === 2 ? 44 : 34) * k - wind * 5 * k + hit * 4 * k + br];
+    const N0: P2 = [T[0] + rx * 0.62, T[1] - ry * 0.35];
+    limb(c, N0, [N0[0] + 4 * k, H[1] + 10 * k], [H[0] - 4 * k, H[1] + 2 * k], 17 * k, 11 * k, scales(c, N0[0], H[1], N0[0] + 10 * k, N0[1]), 3);
+    wing(0, 0, false);
+    const R = 11 * k;
+    // horns (swept back)
+    const horn = (y0: number, len: number, w: number) =>
+      shape(
+        c,
+        (pp) => {
+          pp.moveTo(H[0] - 2 * k, H[1] + y0 - w);
+          pp.quadraticCurveTo(H[0] - len * 0.5, H[1] + y0 - w * 2.2, H[0] - len, H[1] + y0 - len * 0.55);
+          pp.quadraticCurveTo(H[0] - len * 0.45, H[1] + y0 - w * 0.3, H[0] - 4 * k, H[1] + y0 + w);
+          pp.closePath();
+        },
+        HORN(c, H[0] - len, 0, H[0], 0),
+        INK,
+        2,
+      );
+    horn(-7 * k, (st === 2 ? 26 : 16) * k, 3.5 * k);
+    if (st === 2) horn(-1 * k, 18 * k, 2.6 * k);
+    // jaw opens on the attack
+    const hinge: P2 = [H[0] + 2 * k, H[1] + 5 * k];
+    const ang = hit * 0.55;
+    const jawTip: P2 = [hinge[0] + Math.cos(ang) * 19 * k - Math.sin(ang) * 2 * k, hinge[1] + Math.sin(ang) * 19 * k + Math.cos(ang) * 2 * k];
+    const U: P2 = [H[0] + 22 * k, H[1] + 5 * k];
+    if (hit > 0.05) shape(c, poly([hinge, U, jawTip]), '#5a1408', INK, 2);
+    limb(c, hinge, [lerp(hinge[0], jawTip[0], 0.5), lerp(hinge[1], jawTip[1], 0.5) + 2 * k], jawTip, 9 * k, 5 * k, scales(c, 0, hinge[1], 0, jawTip[1] + 5 * k), 2.5);
+    shape(
+      c,
+      (pp) => {
+        pp.arc(H[0], H[1], R, 0, Math.PI * 2);
+        pp.moveTo(H[0] + 24 * k, H[1] + 1 * k);
+        pp.ellipse(H[0] + 12 * k, H[1] + 1 * k, 12 * k, 7.5 * k, 0, 0, Math.PI * 2);
+      },
+      scales(c, H[0] - R, H[1] - R, H[0] + R, H[1] + R),
+      INK,
+      3,
+    );
+    if (hit > 0.2) for (const d of [10, 16]) shape(c, poly([[H[0] + d * k - 2 * k, H[1] + 7.5 * k], [H[0] + d * k + 2 * k, H[1] + 7.5 * k], [H[0] + d * k, H[1] + 11 * k]]), '#ffffff', INK, 1);
+    for (const d of [-1, 1]) shape(c, poly([[H[0] - 8 * k, H[1] + (2 + d * 3) * k], [H[0] - 17 * k, H[1] + (5 + d * 5) * k], [H[0] - 7 * k, H[1] + (6 + d * 2) * k]]), scales(c, 0, H[1], 0, H[1] + 10 * k, true), INK, 1.8);
+    shape(c, ellipse(H[0] + 20 * k, H[1] - 1.5 * k, 1.8 * k, 1.2 * k), INK, INK, 0);
+    sideEye(c, H[0] + 3 * k, H[1] - 3 * k, 4.6 * k, wind > 0.3, st === 2 ? 3.5 : 2.5);
+    gloss(c, H[0] - 3 * k, H[1] - 7 * k, 5 * k, 2.5 * k, 0.5);
+
+    // attack: a stream of fire (Dragão) or a fireball (Dragonete)
+    const M: P2 = [U[0] + 2 * k, U[1] + 3 * k + hit * 3 * k];
+    if (st === 2 && hit > 0.1) {
+      const L = 80 * Math.min(1, hit * 1.6);
+      glow(c, M[0] + L * 0.5, M[1] + L * 0.1, L * 0.55, 0xff8a2e, 0.7 * hit);
+      shape(
+        c,
+        (pp) => {
+          pp.moveTo(M[0], M[1] - 3 * k);
+          pp.quadraticCurveTo(M[0] + L * 0.6, M[1] - L * 0.12, M[0] + L, M[1] - L * 0.08 + fl(p.t, 1, 3));
+          pp.quadraticCurveTo(M[0] + L * 1.08, M[1] + L * 0.1, M[0] + L, M[1] + L * 0.3);
+          pp.quadraticCurveTo(M[0] + L * 0.6, M[1] + L * 0.24, M[0], M[1] + 3 * k);
+          pp.closePath();
+        },
+        linear(c, M[0], 0, M[0] + L, 0, [[0, '#ffffff'], [0.3, '#ffe27a'], [0.7, '#ff8a2e'], [1, 'rgba(226,64,28,0.6)']]),
+        INK,
+        0,
+      );
+    } else if (st === 1) {
+      if (wind > 0.2) glow(c, U[0], U[1], 10 * wind * k, 0xffb347, 0.8);
+      shotAt(c, M[0] + 4, M[1], 8, shot);
+    }
+  };
+}
+
 export const STYLES: Style[] = [
   {
     id: 'A',
@@ -640,6 +929,16 @@ export const STYLES: Style[] = [
       { name: 'Carvãozinho', draw: guardian(0) },
       { name: 'Fornilho', draw: guardian(1) },
       { name: 'Forjador', draw: guardian(2) },
+    ],
+  },
+  {
+    id: 'D',
+    title: 'Opção D — Dragão',
+    blurb: 'Nasce de um ovo de brasa, ganha asas e vira um dragão de escamas rubras com cristais de fogo nas costas e na cauda. Ataque: cospe bola de fogo e, no fim, um jato de chamas.',
+    forms: [
+      { name: 'Casquinho', draw: dragon(0) },
+      { name: 'Asabrasa', draw: dragon(1) },
+      { name: 'Rubidraco', draw: dragon(2) },
     ],
   },
 ];
