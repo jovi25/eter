@@ -53,12 +53,12 @@ function dropPath(x: number, y: number, w: number, h: number, lean: number): (p:
   };
 }
 
-function flame(c: Ctx, x: number, y: number, w: number, h: number, lean = 0, lw = 2.5): void {
+export function flame(c: Ctx, x: number, y: number, w: number, h: number, lean = 0, lw = 2.5): void {
   shape(c, dropPath(x, y, w, h, lean), radial(c, x, y - w * 0.3, h, FIRE), INK, lw);
   shape(c, dropPath(x, y - w * 0.1, w * 0.5, h * 0.55, lean * 0.6), 'rgba(255,248,214,0.9)', INK, 0);
 }
 
-function fireball(c: Ctx, x: number, y: number, r: number, alpha = 1): void {
+export function fireball(c: Ctx, x: number, y: number, r: number, alpha = 1): void {
   c.save();
   c.globalAlpha = alpha;
   glow(c, x, y, r * 2.8, 0xff8a2e, 0.85);
@@ -90,7 +90,7 @@ function shotAt(c: Ctx, x0: number, y0: number, r: number, shot: number, arc = 6
 }
 
 /** A tapering limb/tail along a quadratic curve a → (b) → d. */
-function limb(c: Ctx, a: P2, b: P2, d: P2, w0: number, w1: number, fill: string | CanvasGradient, lw = 3): void {
+export function limb(c: Ctx, a: P2, b: P2, d: P2, w0: number, w1: number, fill: string | CanvasGradient, lw = 3): void {
   const n = 16;
   const left: P2[] = [];
   const right: P2[] = [];
