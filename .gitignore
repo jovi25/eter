@@ -6,3 +6,6 @@ coverage/
 .DS_Store
 .vite/
 KICKOFF_CLAUDE_CODE.md
+
+# Original AI images (kept locally; the cut-out versions live in public/assets)
+photos/
