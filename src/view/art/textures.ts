@@ -44,7 +44,8 @@ function stoneGrad(ctx: Ctx, x0: number, y0: number, x1: number, y1: number): Ca
   ]);
 }
 
-const DRAW: Record<ProceduralKey, Drawer> = {
+// Keys now shown as pictures keep their painted drawers (unused, a reference for the old look).
+const DRAW: Record<ProceduralKey, Drawer> & Partial<Record<AssetKey, Drawer>> = {
   // ─────────── generic ───────────
   px: { w: 4, h: 4, draw: (c) => ((c.fillStyle = '#fff'), c.fillRect(0, 0, 4, 4)) },
   spark: {

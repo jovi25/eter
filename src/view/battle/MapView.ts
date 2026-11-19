@@ -51,7 +51,7 @@ export class MapView {
     for (const p of paths) starts.set(`${p[0]!.x},${p[0]!.y}`, p[0]!);
     for (const start of starts.values()) {
       const portal = scene.add.image(start.x, start.y + 10, 'portal').setDepth(DEPTH.decor).setScale(0.85);
-      scene.tweens.add({ targets: portal, angle: 360, duration: 5000, repeat: -1 });
+      // The illustrated portal is an oval seen from above at a slant: it pulses instead of spinning.
       scene.tweens.add({ targets: portal, scale: 0.92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.portals.push(portal);
     }
@@ -97,7 +97,7 @@ const GROUND: Record<MapTheme, { top: string; bottom: string; light: string; dar
     dark: 'rgba(120,70,30,0.3)',
     bladeDark: 'rgba(130,80,30,0.7)',
     bladeLight: 'rgba(250,220,140,0.6)',
-    road: ['#6a3420', '#b5603a', 'rgba(220,140,90,0.5)', 'rgba(250,190,140,0.3)'],
+    road: ['#7a4a26', '#e2b77a', 'rgba(250,220,165,0.55)', 'rgba(255,240,200,0.35)'],
     vignette: 'rgba(40,15,5,0.45)',
   },
   // Região 3: Cumes Nevados — snow fields, slate roads.
@@ -124,9 +124,9 @@ const GROUND: Record<MapTheme, { top: string; bottom: string; light: string; dar
   },
 };
 
-/** The illustrated ground picture for this theme, if there is one (only the meadow in the pilot). */
+/** The illustrated ground picture for this theme, if there is one. */
 export function illustratedGround(scene: Phaser.Scene, theme: MapTheme): Phaser.Textures.Texture | null {
-  return theme === 'meadow' && scene.textures.exists('map_meadow') ? scene.textures.get('map_meadow') : null;
+  return scene.textures.exists(`map_${theme}`) ? scene.textures.get(`map_${theme}`) : null;
 }
 
 /** Paint grass + every road into one canvas texture; returns the background image (world size). */

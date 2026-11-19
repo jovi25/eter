@@ -7,7 +7,7 @@ import { DEPTH, unitDepth } from './layers';
 import { quality, addBlend } from '../quality';
 import { EVOLUTIONS, evolvedLevel } from '../../data/evolutions';
 import { FUSIONS } from '../../data/fusions';
-import { creatureForm, dragonArt, isCreature, type DragonArt } from '../art/creatures';
+import { dragonArt, isCreature, type DragonArt } from '../art/creatures';
 
 class TowerView {
   readonly root: Phaser.GameObjects.Container;
@@ -18,7 +18,6 @@ class TowerView {
 
   /** Torres-criaturas (amostra): the art itself grows; it breathes and never gets tinted. */
   readonly creature: boolean;
-  private breath = { y: 0 };
   /** Illustrated creature (pilot): a picture with an attack pose; null = painted art. */
   art: DragonArt | null = null;
   /** Shooting squash, combined with the breathing every frame. */
@@ -27,9 +26,12 @@ class TowerView {
   flameGlow?: Phaser.GameObjects.Image;
   atkTimer?: Phaser.Time.TimerEvent;
 
+  private readonly type: TowerState['type'];
+
   constructor(private scene: Phaser.Scene, t: TowerState) {
-    this.creature = isCreature(t.type);
-    this.art = this.creature ? dragonArt(scene.textures, t.level, null) : null;
+    this.type = t.type;
+    this.art = isCreature(t.type, scene.textures) ? dragonArt(scene.textures, t.type, t.level, null) : null;
+    this.creature = this.art !== null;
     // Max-level aura: a pulsing glow in the tower's element color.
     this.aura = scene.add
       .image(0, 4, 'spark')
@@ -38,12 +40,12 @@ class TowerView {
       .setBlendMode(addBlend())
       .setVisible(false);
     const base = scene.add.image(0, 6, 'tower_base');
-    this.top = scene.add.image(0, -22, this.creature ? creatureForm(t.level, null).key : `tower_${t.type}`).setOrigin(0.5, 0.6);
+    this.top = scene.add.image(0, -22, this.art ? this.art.key : `tower_${t.type}`).setOrigin(0.5, 0.6);
     for (let i = 0; i < 3; i++) this.pips.push(scene.add.image(-18 + i * 18, 30, 'pip'));
     this.root = scene.add.container(t.x, t.y, [this.aura, base, this.top, ...this.pips]).setDepth(unitDepth(t.y + 20));
-    if (this.art) {
-      // The tail flame glows softly behind the picture.
-      this.flameGlow = scene.add.image(0, 0, 'spark').setTint(0xffa040).setBlendMode(addBlend()).setAlpha(0.55);
+    if (this.art && this.art.glow !== null) {
+      // The tail tip (flame, snowflake, spark) glows softly behind the picture.
+      this.flameGlow = scene.add.image(0, 0, 'spark').setTint(this.art.glow).setBlendMode(addBlend()).setAlpha(0.55);
       this.root.addAt(this.flameGlow, this.root.getIndex(this.top));
       this.top.setY(2);
     }
@@ -56,9 +58,6 @@ class TowerView {
         onUpdate: () => this.top.setScale(this.facing * this.baseScale * this.squash.x * (1 - 0.012 * b.v), this.baseScale * this.squash.y * (1 + 0.03 * b.v)),
       });
       if (this.flameGlow) scene.tweens.add({ targets: this.flameGlow, alpha: 0.95, duration: 380 + Math.random() * 120, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    } else if (this.creature && !quality.low) {
-      // Breathing (a separate tween, so the shooting squash never stops it).
-      scene.tweens.add({ targets: this.breath, y: -3, duration: 900 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', onUpdate: () => this.top.setY(-22 + this.breath.y) });
     }
   }
 
@@ -72,11 +71,8 @@ class TowerView {
     if (!t.evo) return;
     const def = EVOLUTIONS[t.evo];
     if (this.art) {
-      this.showArt(dragonArt(this.scene.textures, t.level, t.evo) ?? this.art);
+      this.showArt(dragonArt(this.scene.textures, t.type, t.evo ? 3 : t.level, t.evo) ?? this.art);
       this.top.clearTint();
-    } else if (this.creature) {
-      this.baseScale = 1;
-      this.top.setTexture(creatureForm(t.level, t.evo).key).setScale(1).clearTint();
     } else {
       this.baseScale = 1.32;
       this.top.setScale(this.baseScale).setTint(0xffffff, 0xffffff, def.color, def.color);
@@ -130,7 +126,11 @@ class TowerView {
     const ringB = this.scene.add.image(0, 14, 'ring').setScale(1.2, 0.56).setTint(ELEMENTS[TOWERS[partner].element].color).setBlendMode(addBlend()).setAlpha(0.85);
     this.root.addAt(ringA, 0);
     this.root.addAt(ringB, 0);
-    const side = this.scene.add.image(30, -34, `tower_${partner}`).setOrigin(0.5, 0.6).setScale(0.62);
+    // The partner rides on the side: its adult dragon, small (or its painted tower).
+    const pArt = this.creature ? dragonArt(this.scene.textures, partner, 3, null) : null;
+    const side = pArt
+      ? this.scene.add.image(34, -18, pArt.key).setOrigin(pArt.originX, pArt.originY).setScale(pArt.scale * 0.55)
+      : this.scene.add.image(30, -34, `tower_${partner}`).setOrigin(0.5, 0.6).setScale(0.62);
     this.root.add(side);
     this.crown = this.scene.add.image(0, -92, 'star').setScale(0.5).setTint(def.color);
     this.root.add(this.crown);
@@ -142,10 +142,9 @@ class TowerView {
 
   setLevel(level: number): void {
     this.pips.forEach((p, i) => p.setVisible(i < level));
-    const art = this.art ? dragonArt(this.scene.textures, level, null) : null;
+    const art = this.art ? dragonArt(this.scene.textures, this.type, level, null) : null;
     if (art) this.showArt(art);
     else {
-      if (this.creature) this.top.setTexture(creatureForm(level, null).key);
       this.baseScale = this.creature ? 1 : 1 + (level - 1) * 0.1;
       this.top.setScale(this.baseScale);
     }

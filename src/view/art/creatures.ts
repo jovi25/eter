@@ -1,7 +1,13 @@
 // Torres-criaturas (amostra, Fase 19): the Braseiro is a fire lizard that grows with each level and becomes
 // one of two creatures when it evolves. Original designs, painted like the rest of the game.
 // Only the Braseiro for now; the option lives in Opções ("Braseiro-criatura").
-import type { EvolutionId } from '../../data/evolutions';
+import { EVOLUTIONS, type EvolutionId } from '../../data/evolutions';
+import fireMeta from './sprites/fire.json';
+import iceMeta from './sprites/ice.json';
+import natureMeta from './sprites/nature.json';
+import stormMeta from './sprites/storm.json';
+import windMeta from './sprites/wind.json';
+import normalMeta from './sprites/normal.json';
 import type { TowerId } from '../../data/towers';
 import { getSettings } from '../settings';
 import { blush, circle, ellipse, eyes, glow, gloss, INK, linear, poly, radial, shape, type Ctx } from './paint';
@@ -234,9 +240,9 @@ export const CREATURE_FORMS: CreatureForm[] = [
   { key: 'creature_furnace', name: 'Rubra', w: 230, h: 170, draw: rubra },
 ];
 
-/** Is this tower shown as a creature? (only the Braseiro in the sample) */
-export function isCreature(type: TowerId): boolean {
-  return type === 'brazier' && getSettings().creatures;
+/** Is this tower shown as a creature? Every tower with loaded pictures (option in Opções). */
+export function isCreature(type: TowerId, has: { exists(key: string): boolean }): boolean {
+  return getSettings().creatures && dragonArt(has, type, 1, null) !== null;
 }
 
 /** Texture and display name of a creature tower at this level / evolution. */
@@ -246,34 +252,68 @@ export function creatureForm(level: number, evo: EvolutionId | null): CreatureFo
   return CREATURE_FORMS[Math.max(0, Math.min(2, level - 1))]!;
 }
 
-// ── Illustrated dragon line (pilot of the new art direction, see docs/ARTE_IA.md) ──
-// Pictures made by the player in an image AI and cut out by tools/cutout.py; the code only moves them.
+// ── Illustrated dragon lines (see docs/ARTE_IA.md) ──
+// Pictures made by the player in an image AI and cut out by tools/cutout.py (which also writes the
+// sprites/*.json frame data); the code only moves them.
 
 export interface DragonArt {
   key: string;
-  /** Same frame, attack pose (mouth open, flame at the mouth). */
+  /** Same frame, attack pose (mouth open, effect at the mouth). */
   atkKey: string;
   name: string;
   scale: number;
-  /** Feet anchor inside the picture (from public/assets/creatures/fire.json). */
+  /** Feet anchor inside the picture. */
   originX: number;
   originY: number;
-  /** Tail flame, in picture pixels: a soft glow pulses there. */
+  /** Tail tip, in picture pixels: a soft glow pulses there (null = no glow for this line). */
   flame: [number, number];
+  glow: number | null;
 }
 
-const FIRE_DRAGON: DragonArt[] = [
-  { key: 'creature_fire_1', atkKey: 'creature_fire_1_atk', name: 'Faísca', scale: 0.35, originX: 0.462, originY: 0.971, flame: [28, 62] },
-  { key: 'creature_fire_2', atkKey: 'creature_fire_2_atk', name: 'Brasito', scale: 0.37, originX: 0.613, originY: 0.976, flame: [44, 95] },
-  { key: 'creature_fire_3', atkKey: 'creature_fire_3_atk', name: 'Labarão', scale: 0.38, originX: 0.593, originY: 0.979, flame: [70, 166] },
-];
-const EVO_NAMES: Partial<Record<EvolutionId, string>> = { volcano: 'Dracomagma', furnace: 'Rubra' };
+interface SpriteMeta {
+  w: number;
+  h: number;
+  originX: number;
+  originY: number;
+  tail: number[];
+}
 
-/** The illustrated form for this level / evolution, or null when its pictures are not loaded
- *  (then the painted creature is used). Evolutions reuse the adult, a bit bigger, until they get pictures. */
-export function dragonArt(has: { exists(key: string): boolean }, level: number, evo: EvolutionId | null): DragonArt | null {
-  const base = FIRE_DRAGON[evo ? 2 : Math.max(0, Math.min(2, level - 1))]!;
-  if (!has.exists(base.key) || !has.exists(base.atkKey)) return null;
-  const evoName = evo ? EVO_NAMES[evo] : undefined;
-  return evo ? { ...base, name: evoName ?? base.name, scale: base.scale * 1.12 } : base;
+interface Line {
+  file: string;
+  names: [string, string, string];
+  meta: SpriteMeta[];
+  glow: number | null;
+}
+
+const LINES: Record<TowerId, Line> = {
+  brazier: { file: 'fire', names: ['Faísca', 'Brasito', 'Labarão'], meta: fireMeta, glow: 0xffa040 },
+  frost: { file: 'ice', names: ['Floco', 'Geada', 'Glaciar'], meta: iceMeta, glow: 0x9fe8ff },
+  vine: { file: 'nature', names: ['Broto', 'Rama', 'Copado'], meta: natureMeta, glow: null },
+  storm: { file: 'storm', names: ['Estalo', 'Relampo', 'Trovoada'], meta: stormMeta, glow: 0xfff27a },
+  wind: { file: 'wind', names: ['Brisa', 'Lufada', 'Vendaval'], meta: windMeta, glow: null },
+  archer: { file: 'normal', names: ['Tufo', 'Juba', 'Jubão'], meta: normalMeta, glow: null },
+};
+
+/** On-screen area of each stage (px²): every line grows the same way whatever the picture's shape. */
+const STAGE_AREA = [7200, 10900, 17900];
+
+/** The illustrated form for this tower / level / evolution, or null when its pictures are not loaded.
+ *  Evolutions reuse the adult, a bit bigger, until they get pictures of their own. */
+export function dragonArt(has: { exists(key: string): boolean }, type: TowerId, level: number, evo: EvolutionId | null): DragonArt | null {
+  const line = LINES[type];
+  const st = evo ? 2 : Math.max(0, Math.min(2, level - 1));
+  const key = `creature_${line.file}_${st + 1}`;
+  const m = line.meta[st];
+  if (!m || !has.exists(key) || !has.exists(`${key}_atk`)) return null;
+  const scale = Math.sqrt(STAGE_AREA[st]! / (m.w * m.h)) * (evo ? 1.12 : 1);
+  return {
+    key,
+    atkKey: `${key}_atk`,
+    name: evo ? EVOLUTIONS[evo].name : line.names[st]!,
+    scale,
+    originX: m.originX,
+    originY: m.originY,
+    flame: [m.tail[0] ?? 0, m.tail[1] ?? 0],
+    glow: line.glow,
+  };
 }

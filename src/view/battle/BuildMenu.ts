@@ -12,7 +12,7 @@ import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
 import { DEPTH } from './layers';
-import { creatureForm, dragonArt, isCreature } from '../art/creatures';
+import { dragonArt, isCreature } from '../art/creatures';
 
 interface Option {
   root: Phaser.GameObjects.Container;
@@ -96,7 +96,7 @@ export class BuildMenu {
       const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
-      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, isCreature(type) ? (dragonArt(this.scene.textures, 1, null)?.key ?? creatureForm(1, null).key) : `tower_${type}`, this.sim.buildCost(type), locked, () => {
+      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, dragonArt(this.scene.textures, type, 1, null)?.key && isCreature(type, this.scene.textures) ? dragonArt(this.scene.textures, type, 1, null)!.key : `tower_${type}`, this.sim.buildCost(type), locked, () => {
         if (this.sim.state.gold < this.sim.buildCost(type) || locked) {
           playSfx('error');
           this.shake(opt.root);
@@ -170,7 +170,7 @@ export class BuildMenu {
     root.add(sell.root);
     const fuDef = tower.fusion ? FUSIONS[tower.fusion] : null;
     const evoDef = tower.evo ? EVOLUTIONS[tower.evo] : fuDef;
-    const beast = isCreature(tower.type) && !tower.fusion ? creatureForm(tower.level, tower.evo).name : null;
+    const beast = isCreature(tower.type, this.scene.textures) && !tower.fusion ? (dragonArt(this.scene.textures, tower.type, tower.level, tower.evo)?.name ?? null) : null;
     const title = beast ? `${beast}  •  ${evoDef ? evoDef.name : `nv ${tower.level}`}` : evoDef ? evoDef.name : `${def.name}  nv ${tower.level}`;
     root.add(uiText(this.scene, 0, evolving ? -238 : -172, title, 22, evoDef ? `#${evoDef.color.toString(16).padStart(6, '0')}` : PAL.uiText, 5));
     const info = def.abilityInfo;

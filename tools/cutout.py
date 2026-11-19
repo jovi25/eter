@@ -102,12 +102,20 @@ def save_group(frames: list[tuple[np.ndarray, str]]) -> dict:
     up = max(fy - y0 for _, y0, _, _, _, fy in info) + PAD
     down = max(y1 - fy for _, _, _, y1, _, fy in info) + PAD
     w, h = int(np.ceil(left + right)), int(np.ceil(up + down))
-    for (one, out), (_, _, _, _, cx, fy) in zip(frames, info):
+    tail = [0, 0]
+    for k, ((one, out), (_, _, _, _, cx, fy)) in enumerate(zip(frames, info)):
         canvas = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         img = Image.fromarray(one.round().astype(np.uint8), 'RGBA')
         canvas.paste(img, (int(round(left - cx)), int(round(up - fy))), img)
         canvas.save(out, 'WEBP', quality=92, method=6)
-    return {'w': w, 'h': h, 'originX': round(left / w, 3), 'originY': round(up / h, 3)}
+        if k == 0:
+            # Tail tip of the resting pose: the solid pixels in the leftmost strip (a glow can sit there).
+            al = np.asarray(canvas)[..., 3] > 128
+            xs = np.where(al.any(axis=0))[0]
+            strip = al[:, xs[0]:xs[0] + max(8, (xs[-1] - xs[0]) // 8)]
+            ys, sx = np.where(strip)
+            tail = [int(xs[0] + sx.mean()), int(ys.mean())]
+    return {'w': w, 'h': h, 'originX': round(left / w, 3), 'originY': round(up / h, 3), 'tail': tail}
 
 
 def write_meta(path: str, meta: list[dict]) -> None:
