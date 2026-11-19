@@ -12,7 +12,7 @@ import { playSfx } from '../audio/sfx';
 import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
 import { DEPTH } from './layers';
-import { creatureForm, isCreature } from '../art/creatures';
+import { creatureForm, dragonArt, isCreature } from '../art/creatures';
 
 interface Option {
   root: Phaser.GameObjects.Container;
@@ -96,7 +96,7 @@ export class BuildMenu {
       const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
-      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, isCreature(type) ? creatureForm(1, null).key : `tower_${type}`, this.sim.buildCost(type), locked, () => {
+      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, isCreature(type) ? (dragonArt(this.scene.textures, 1, null)?.key ?? creatureForm(1, null).key) : `tower_${type}`, this.sim.buildCost(type), locked, () => {
         if (this.sim.state.gold < this.sim.buildCost(type) || locked) {
           playSfx('error');
           this.shake(opt.root);
@@ -365,7 +365,7 @@ export class BuildMenu {
     g.fillStyle(0xffffff, 0.2);
     g.fillEllipse(-8, -14, 44, 22);
     const gImg = bakeInPlace(g, { x0: -46, y0: -46, w: 92, h: 92 }, `opt_${color}`);
-    const img = this.scene.add.image(0, -4, icon).setScale(icon.startsWith('tower_') ? 0.62 : 1.1);
+    const img = this.scene.add.image(0, -4, icon).setScale(icon.startsWith('tower_') ? 0.62 : icon.startsWith('creature_fire') ? 0.27 : 1.1);
     const costBg = this.scene.add.graphics();
     costBg.fillStyle(PAL.ink, 0.9);
     costBg.fillRoundedRect(-34, 26, 68, 28, 14);

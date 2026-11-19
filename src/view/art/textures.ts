@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { drawChest, drawEterCoin, drawIconCheck, drawIconCodex, drawIconDaily, drawIconGear, drawIconMutant, drawNavBadge, drawRuneStone } from './relicArt';
 import { drawIconGrimoire } from './cardArt';
 import { CREATURE_FORMS } from './creatures';
-import { ASSETS, type AssetKey } from '../../assets/manifest';
+import { ASSETS, type AssetKey, type ProceduralKey } from '../../assets/manifest';
 import {
   blush,
   circle,
@@ -44,7 +44,7 @@ function stoneGrad(ctx: Ctx, x0: number, y0: number, x1: number, y1: number): Ca
   ]);
 }
 
-const DRAW: Record<AssetKey, Drawer> = {
+const DRAW: Record<ProceduralKey, Drawer> = {
   // ─────────── generic ───────────
   px: { w: 4, h: 4, draw: (c) => ((c.fillStyle = '#fff'), c.fillRect(0, 0, 4, 4)) },
   spark: {
@@ -1379,7 +1379,7 @@ export function generateTextures(scene: Phaser.Scene): void {
   };
   for (const key of Object.keys(ASSETS) as AssetKey[]) {
     if (ASSETS[key].kind !== 'procedural') continue;
-    const d = DRAW[key];
+    const d = DRAW[key as ProceduralKey];
     paint(key, d.w, d.h, (c) => d.draw(c, d.w / 2, d.h / 2));
   }
   paint('icon_grimoire', 72, 72, drawIconGrimoire);

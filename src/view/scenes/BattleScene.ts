@@ -794,7 +794,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     ev.on('towerFired', (f) => {
-      this.towers.fired(f.towerId);
+      this.towers.fired(f.towerId, this.sim.getEnemy(f.targetId)?.x);
       const t = this.sim.getTower(f.towerId);
       if (t) playSfx(`shoot_${TOWERS[t.type].element as 'fire'}`);
     });

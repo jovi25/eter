@@ -6,6 +6,8 @@ export type AssetSource =
   | { kind: 'image'; url: string };
 
 const P = { kind: 'procedural' } as const;
+/** Illustrations made by the player in an image AI, cut out by tools/cutout.py (see docs/ARTE_IA.md). */
+const art = (path: string) => ({ kind: 'image', url: `${import.meta.env.BASE_URL}assets/${path}` }) as const;
 
 export const ASSETS = {
   // generic
@@ -82,6 +84,16 @@ export const ASSETS = {
   icon_pause: P,
   icon_speed: P,
   icon_play: P,
+  // illustrated art (pilot): the Braseiro dragon line and the meadow ground
+  creature_fire_1: art('creatures/fire_1.webp'),
+  creature_fire_1_atk: art('creatures/fire_1_atk.webp'),
+  creature_fire_2: art('creatures/fire_2.webp'),
+  creature_fire_2_atk: art('creatures/fire_2_atk.webp'),
+  creature_fire_3: art('creatures/fire_3.webp'),
+  creature_fire_3_atk: art('creatures/fire_3_atk.webp'),
+  map_meadow: art('maps/meadow.webp'),
 } as const satisfies Record<string, AssetSource>;
 
 export type AssetKey = keyof typeof ASSETS;
+/** Keys drawn in code (the rest are picture files). */
+export type ProceduralKey = { [K in AssetKey]: (typeof ASSETS)[K]['kind'] extends 'procedural' ? K : never }[AssetKey];

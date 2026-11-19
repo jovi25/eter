@@ -7,7 +7,7 @@ import { DEPTH, unitDepth } from './layers';
 import { quality, addBlend } from '../quality';
 import { EVOLUTIONS, evolvedLevel } from '../../data/evolutions';
 import { FUSIONS } from '../../data/fusions';
-import { creatureForm, isCreature } from '../art/creatures';
+import { creatureForm, dragonArt, isCreature, type DragonArt } from '../art/creatures';
 
 class TowerView {
   readonly root: Phaser.GameObjects.Container;
@@ -19,9 +19,17 @@ class TowerView {
   /** Torres-criaturas (amostra): the art itself grows; it breathes and never gets tinted. */
   readonly creature: boolean;
   private breath = { y: 0 };
+  /** Illustrated creature (pilot): a picture with an attack pose; null = painted art. */
+  art: DragonArt | null = null;
+  /** Shooting squash, combined with the breathing every frame. */
+  readonly squash = { x: 1, y: 1 };
+  facing = 1;
+  flameGlow?: Phaser.GameObjects.Image;
+  atkTimer?: Phaser.Time.TimerEvent;
 
   constructor(private scene: Phaser.Scene, t: TowerState) {
     this.creature = isCreature(t.type);
+    this.art = this.creature ? dragonArt(scene.textures, t.level, null) : null;
     // Max-level aura: a pulsing glow in the tower's element color.
     this.aura = scene.add
       .image(0, 4, 'spark')
@@ -33,8 +41,22 @@ class TowerView {
     this.top = scene.add.image(0, -22, this.creature ? creatureForm(t.level, null).key : `tower_${t.type}`).setOrigin(0.5, 0.6);
     for (let i = 0; i < 3; i++) this.pips.push(scene.add.image(-18 + i * 18, 30, 'pip'));
     this.root = scene.add.container(t.x, t.y, [this.aura, base, this.top, ...this.pips]).setDepth(unitDepth(t.y + 20));
+    if (this.art) {
+      // The tail flame glows softly behind the picture.
+      this.flameGlow = scene.add.image(0, 0, 'spark').setTint(0xffa040).setBlendMode(addBlend()).setAlpha(0.55);
+      this.root.addAt(this.flameGlow, this.root.getIndex(this.top));
+      this.top.setY(2);
+    }
     this.setLevel(t.level);
-    if (this.creature && !quality.low) {
+    if (this.art && !quality.low) {
+      // Breathing: the chest swells (scale from the feet), combined with the shooting squash.
+      const b = { v: 0 };
+      scene.tweens.add({
+        targets: b, v: 1, duration: 1100 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        onUpdate: () => this.top.setScale(this.facing * this.baseScale * this.squash.x * (1 - 0.012 * b.v), this.baseScale * this.squash.y * (1 + 0.03 * b.v)),
+      });
+      if (this.flameGlow) scene.tweens.add({ targets: this.flameGlow, alpha: 0.95, duration: 380 + Math.random() * 120, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    } else if (this.creature && !quality.low) {
       // Breathing (a separate tween, so the shooting squash never stops it).
       scene.tweens.add({ targets: this.breath, y: -3, duration: 900 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', onUpdate: () => this.top.setY(-22 + this.breath.y) });
     }
@@ -49,7 +71,10 @@ class TowerView {
   setEvolution(t: TowerState): void {
     if (!t.evo) return;
     const def = EVOLUTIONS[t.evo];
-    if (this.creature) {
+    if (this.art) {
+      this.showArt(dragonArt(this.scene.textures, t.level, t.evo) ?? this.art);
+      this.top.clearTint();
+    } else if (this.creature) {
       this.baseScale = 1;
       this.top.setTexture(creatureForm(t.level, t.evo).key).setScale(1).clearTint();
     } else {
@@ -97,8 +122,8 @@ class TowerView {
     if (!t.fusion || this.crown) return;
     const def = FUSIONS[t.fusion];
     const partner = def.towers[0] === t.type ? def.towers[1] : def.towers[0];
-    this.baseScale = 1.2;
-    this.top.setScale(this.baseScale).setTint(0xffffff, 0xffffff, def.color, def.color);
+    this.baseScale = this.art ? this.art.scale * 1.1 : 1.2;
+    this.top.setScale(this.facing * this.baseScale, this.baseScale).setTint(0xffffff, 0xffffff, def.color, def.color);
     this.aura.setTint(def.color);
     this.pips.forEach((p) => p.setVisible(false));
     const ringA = this.scene.add.image(0, 14, 'ring').setScale(1.55, 0.72).setTint(ELEMENTS[TOWERS[t.type].element].color).setBlendMode(addBlend()).setAlpha(0.85);
@@ -117,16 +142,58 @@ class TowerView {
 
   setLevel(level: number): void {
     this.pips.forEach((p, i) => p.setVisible(i < level));
-    if (this.creature) this.top.setTexture(creatureForm(level, null).key);
-    this.baseScale = this.creature ? 1 : 1 + (level - 1) * 0.1;
-    this.top.setScale(this.baseScale);
+    const art = this.art ? dragonArt(this.scene.textures, level, null) : null;
+    if (art) this.showArt(art);
+    else {
+      if (this.creature) this.top.setTexture(creatureForm(level, null).key);
+      this.baseScale = this.creature ? 1 : 1 + (level - 1) * 0.1;
+      this.top.setScale(this.baseScale);
+    }
     if (level >= MAX_LEVEL && !this.aura.visible && !quality.low) {
       this.aura.setVisible(true).setAlpha(0.5);
       this.auraTween = this.scene.tweens.add({ targets: this.aura, alpha: 0.95, scaleX: 6.3, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
   }
 
+  /** Switch to an illustrated form: picture, feet anchor, size, and where the tail flame glows. */
+  showArt(art: DragonArt): void {
+    this.art = art;
+    this.atkTimer?.remove();
+    this.top.setTexture(art.key).setOrigin(art.originX, art.originY);
+    this.baseScale = art.scale;
+    this.top.setScale(this.facing * art.scale, art.scale);
+    this.placeGlow();
+  }
+
+  /** The glow follows the tail flame (it flips with the creature). */
+  placeGlow(): void {
+    if (!this.art || !this.flameGlow) return;
+    const f = this.top.frame;
+    const gx = (this.art.flame[0] - this.art.originX * f.width) * this.art.scale;
+    const gy = (this.art.flame[1] - this.art.originY * f.height) * this.art.scale;
+    this.flameGlow.setPosition(this.top.x + gx * this.facing, this.top.y + gy).setScale(1.2 + this.art.scale * 2);
+  }
+
+  /** Attack: turn to the target, open the mouth, lunge forward and squash; back to rest after a moment. */
+  attack(targetX: number | undefined): void {
+    if (!this.art) return;
+    if (targetX !== undefined && Math.abs(targetX - this.root.x) > 8) {
+      this.facing = targetX < this.root.x ? -1 : 1;
+      this.placeGlow();
+    }
+    const art = this.art;
+    this.top.setTexture(art.atkKey);
+    this.atkTimer?.remove();
+    this.atkTimer = this.scene.time.delayedCall(320, () => this.top.setTexture(art.key));
+    this.scene.tweens.killTweensOf(this.squash);
+    this.scene.tweens.add({ targets: this.squash, x: { from: 1.1, to: 1 }, y: { from: 0.86, to: 1 }, duration: 260, ease: 'Quad.easeOut' });
+    this.scene.tweens.killTweensOf(this.top);
+    this.scene.tweens.add({ targets: this.top, x: { from: 9 * this.facing, to: 0 }, duration: 300, ease: 'Quad.easeOut' });
+    if (quality.low) this.top.setScale(this.facing * this.baseScale, this.baseScale);
+  }
+
   destroy(): void {
+    this.atkTimer?.remove();
     this.auraTween?.stop();
     this.snow?.destroy();
     this.field?.destroy();
@@ -183,9 +250,14 @@ export class TowerLayer {
     this.scene.tweens.add({ targets: v.root, x, y: y - 20, scale: 0.2, alpha: 0.3, duration: 380, ease: 'Cubic.easeIn', onComplete: () => v.destroy() });
   }
 
-  fired(id: number): void {
+  fired(id: number, targetX?: number): void {
     const v = this.views.get(id);
-    if (!v || quality.low) return;
+    if (!v) return;
+    if (v.art) {
+      v.attack(targetX);
+      return;
+    }
+    if (quality.low) return;
     // Always squash relative to the level's base size (reading the current scale would creep mid-tween).
     const s = v.baseScale;
     this.scene.tweens.killTweensOf(v.top);

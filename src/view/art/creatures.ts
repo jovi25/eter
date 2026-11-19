@@ -245,3 +245,35 @@ export function creatureForm(level: number, evo: EvolutionId | null): CreatureFo
   if (evo === 'furnace') return CREATURE_FORMS[4]!;
   return CREATURE_FORMS[Math.max(0, Math.min(2, level - 1))]!;
 }
+
+// ── Illustrated dragon line (pilot of the new art direction, see docs/ARTE_IA.md) ──
+// Pictures made by the player in an image AI and cut out by tools/cutout.py; the code only moves them.
+
+export interface DragonArt {
+  key: string;
+  /** Same frame, attack pose (mouth open, flame at the mouth). */
+  atkKey: string;
+  name: string;
+  scale: number;
+  /** Feet anchor inside the picture (from public/assets/creatures/fire.json). */
+  originX: number;
+  originY: number;
+  /** Tail flame, in picture pixels: a soft glow pulses there. */
+  flame: [number, number];
+}
+
+const FIRE_DRAGON: DragonArt[] = [
+  { key: 'creature_fire_1', atkKey: 'creature_fire_1_atk', name: 'Faísca', scale: 0.35, originX: 0.462, originY: 0.971, flame: [28, 62] },
+  { key: 'creature_fire_2', atkKey: 'creature_fire_2_atk', name: 'Brasito', scale: 0.37, originX: 0.613, originY: 0.976, flame: [44, 95] },
+  { key: 'creature_fire_3', atkKey: 'creature_fire_3_atk', name: 'Labarão', scale: 0.38, originX: 0.593, originY: 0.979, flame: [70, 166] },
+];
+const EVO_NAMES: Partial<Record<EvolutionId, string>> = { volcano: 'Dracomagma', furnace: 'Rubra' };
+
+/** The illustrated form for this level / evolution, or null when its pictures are not loaded
+ *  (then the painted creature is used). Evolutions reuse the adult, a bit bigger, until they get pictures. */
+export function dragonArt(has: { exists(key: string): boolean }, level: number, evo: EvolutionId | null): DragonArt | null {
+  const base = FIRE_DRAGON[evo ? 2 : Math.max(0, Math.min(2, level - 1))]!;
+  if (!has.exists(base.key) || !has.exists(base.atkKey)) return null;
+  const evoName = evo ? EVO_NAMES[evo] : undefined;
+  return evo ? { ...base, name: evoName ?? base.name, scale: base.scale * 1.12 } : base;
+}

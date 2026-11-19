@@ -124,6 +124,11 @@ const GROUND: Record<MapTheme, { top: string; bottom: string; light: string; dar
   },
 };
 
+/** The illustrated ground picture for this theme, if there is one (only the meadow in the pilot). */
+export function illustratedGround(scene: Phaser.Scene, theme: MapTheme): Phaser.Textures.Texture | null {
+  return theme === 'meadow' && scene.textures.exists('map_meadow') ? scene.textures.get('map_meadow') : null;
+}
+
 /** Paint grass + every road into one canvas texture; returns the background image (world size). */
 export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: string, height = GAME_HEIGHT, theme: MapTheme = 'meadow'): Phaser.GameObjects.Image {
   const H = height;
@@ -141,7 +146,21 @@ export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: st
   base.addColorStop(1, pal.bottom);
   c.fillStyle = base;
   c.fillRect(0, 0, GAME_WIDTH, H);
-  for (let i = 0; i < Math.round(90 * (H / GAME_HEIGHT)); i++) {
+  const art = illustratedGround(scene, theme);
+  if (art) {
+    // Illustrated ground (pilot): the picture is one screen tall; taller maps repeat it mirrored, so the seams match.
+    const img = art.getSourceImage() as CanvasImageSource;
+    for (let y = 0, i = 0; y < H; y += GAME_HEIGHT, i++) {
+      c.save();
+      if (i % 2) {
+        c.translate(0, y + GAME_HEIGHT);
+        c.scale(1, -1);
+        c.drawImage(img, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+      } else c.drawImage(img, 0, y, GAME_WIDTH, GAME_HEIGHT);
+      c.restore();
+    }
+  }
+  for (let i = 0; i < (art ? 0 : Math.round(90 * (H / GAME_HEIGHT))); i++) {
     const x = rng.int(0, GAME_WIDTH);
     const y = rng.int(0, H);
     const r = rng.int(40, 130);
@@ -152,7 +171,7 @@ export function paintMapBackground(scene: Phaser.Scene, paths: Vec2[][], key: st
     ]);
     c.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  for (let i = 0; i < Math.round(420 * (H / GAME_HEIGHT)); i++) {
+  for (let i = 0; i < (art ? 0 : Math.round(420 * (H / GAME_HEIGHT))); i++) {
     const x = rng.int(0, GAME_WIDTH);
     const y = rng.int(0, H);
     const h = rng.int(5, 11);
@@ -237,6 +256,8 @@ function pebbles(c: Ctx, pts: readonly Vec2[], rng: Rng): void {
 
 /** Trees, rocks and flowers on free grass (away from roads and the given spots). */
 export function placeDecor(scene: Phaser.Scene, paths: Vec2[][], keepClear: readonly Vec2[], seed: number, max = 30, height = GAME_HEIGHT, theme: MapTheme = 'meadow'): void {
+  // The illustrated ground already has its trees and rocks (at the edges); painted ones would clash.
+  if (illustratedGround(scene, theme)) return;
   const rng = new Rng(seed);
   const clearOf = (x: number, y: number, r: number) => {
     for (const s of keepClear) if (Math.hypot(s.x - x, s.y - y) < 72 + r) return false;
