@@ -39,7 +39,7 @@ Três moedas separadas: `gold` (partida), `coins` (ganhas jogando), `gems` (prem
 
 ## Arte de terceiros
 - Estilo oficial hoje: **arte pintada por código** (`src/view/art/textures.ts` + `paint.ts`). O jogador testou pixel art CC0 e preferiu o pintado — não voltar para pixel art sem pedido.
-- **Em transição (2026-11-18):** o jogador não gostou das criaturas desenhadas por código e aprovou trocar para **ilustrações que ele gera numa IA de imagem** + animação/efeitos por código. O Claude escreve os prompts (`docs/ARTE_IA.md`), recorta o fundo magenta e integra. Piloto: linha do Braseiro (dragão de Fogo) + fundo de um mapa; só trocar o resto se o piloto agradar no celular.
+- **Em transição (2026-11-18):** o jogador não gostou das criaturas desenhadas por código e aprovou trocar para **ilustrações que ele gera numa IA de imagem** + animação/efeitos por código. O Claude escreve os prompts (`docs/ARTE_IA.md`), recorta o fundo magenta e integra. Piloto (Braseiro = dragão de Fogo + fundo do campo) aprovado: "ficou muito melhor". Todos os pedidos (torres, mapas, monstros, heróis, evoluções) estão em `docs/ARTE_IA.md` com IDs (T1, P1, M1, H1, E1...). Recorte: `python tools/cutout.py` (modos sheet/pair/split/map; fundo magenta ou verde). Imagens em `public/assets/`, chaves em `src/assets/manifest.ts`.
 - Se um dia entrar arte de terceiros: só CC0, com créditos em `public/assets/CREDITS.txt`; downloads em pasta temporária.
 - `npm run balance`: relatório de dificuldade das 5 fases com robôs (60 partidas simuladas).
 

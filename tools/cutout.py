@@ -1,10 +1,18 @@
-"""Cut AI-made creature sheets out of their flat magenta background (dev tool, not shipped).
+"""Cut AI-made creature pictures out of their flat background (dev tool, not shipped).
+
+The background must be one flat colour: magenta (#FF00FF) or, for purple/pink subjects, green (#00FF00).
+The colour is detected from the picture's border.
 
 Usage:
-  python tools/cutout.py sheet  <idle.webp> <attack.webp> <out_dir> <name>
-      Splits each sheet into its 3 creatures (left to right), crops idle and attack with the same box
-      so they overlay, and writes <name>_<stage>.webp / <name>_<stage>_atk.webp plus <name>.json
-      (size and feet anchor of each stage).
+  python tools/cutout.py sheet <idle> <attack> <out_dir> <name> [count]
+      An evolution line: two pictures with the same `count` creatures (default 3) left to right, the first
+      resting and the second attacking. Writes <name>_<n>.webp and <name>_<n>_atk.webp (same frame, feet on
+      the same point, so they swap cleanly) plus <name>.json with each frame's feet anchor.
+  python tools/cutout.py pair <image> <out_dir> <name>
+      One character twice in one picture: resting on the left, attacking on the right.
+      Writes <name>.webp and <name>_atk.webp (+ <name>.json).
+  python tools/cutout.py split <image> <out_dir> <name1> <name2> ...
+      One picture with several different creatures left to right; one file per name (+ <name1>.json).
   python tools/cutout.py map <image> <out_file> [width height]
       Crops and scales a map background to the game size (720x1280 by default).
 """
@@ -14,30 +22,41 @@ import sys
 import numpy as np
 from PIL import Image, ImageFilter
 
+PAD = 4
+
 
 def key_out(path: str) -> np.ndarray:
-    """RGBA float array with the magenta background removed and the magenta spill cleaned."""
+    """RGBA float array with the background removed and its colour spill cleaned."""
     rgb = np.asarray(Image.open(path).convert('RGB')).astype(np.float32)
     border = np.concatenate([rgb[:4].reshape(-1, 3), rgb[-4:].reshape(-1, 3), rgb[:, :4].reshape(-1, 3), rgb[:, -4:].reshape(-1, 3)])
     bg = np.median(border, axis=0)
-    # "Magenta-ness": how much red AND blue stand above green. The creatures never have that.
-    s = np.minimum(rgb[..., 0], rgb[..., 2]) - rgb[..., 1]
-    sbg = float(min(bg[0], bg[2]) - bg[1])
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    green = bg[1] > max(bg[0], bg[2])
+    # How strongly a pixel leans to the key colour (magenta: red AND blue above green; green: the opposite).
+    if green:
+        s = g - np.maximum(r, b)
+        sbg = float(bg[1] - max(bg[0], bg[2]))
+    else:
+        s = np.minimum(r, b) - g
+        sbg = float(min(bg[0], bg[2]) - bg[1])
     hi, lo = sbg * 0.8, sbg * 0.12
     a = np.clip((hi - s) / (hi - lo), 0, 1)
     # Unmix the background from the soft edges: C = a*F + (1-a)*bg  ->  F = (C - (1-a)*bg) / a
     safe = np.maximum(a, 0.05)[..., None]
     f = np.clip((rgb - (1 - a[..., None]) * bg) / safe, 0, 255)
-    # Despill: any pixel still leaning magenta loses that lean.
-    m = np.minimum(f[..., 0], f[..., 2])
-    spill = np.maximum(m - f[..., 1], 0)
-    f[..., 0] -= spill
-    f[..., 2] -= spill
+    # Despill: any pixel still leaning to the key colour loses that lean.
+    if green:
+        f[..., 1] = np.minimum(f[..., 1], np.maximum(f[..., 0], f[..., 2]) + 12)
+    else:
+        m = np.minimum(f[..., 0], f[..., 2])
+        spill = np.maximum(m - f[..., 1], 0)
+        f[..., 0] -= spill
+        f[..., 2] -= spill
     a[a < 0.04] = 0
     return np.dstack([f, a * 255])
 
 
-def split(arr: np.ndarray, n: int = 3) -> list[np.ndarray]:
+def split(arr: np.ndarray, n: int) -> list[np.ndarray]:
     """One mask per creature, left to right. The n biggest solid blobs are the creatures; every other
     pixel (sparks, soft edges, glow) belongs to the creature whose solid part is nearest."""
     from scipy import ndimage
@@ -46,7 +65,6 @@ def split(arr: np.ndarray, n: int = 3) -> list[np.ndarray]:
     lab, count = ndimage.label(core)
     sizes = ndimage.sum(core, lab, range(1, count + 1))
     big = [int(i) + 1 for i in np.argsort(sizes)[::-1][:n]]
-    # nearest big blob for every pixel
     owner = np.zeros(core.shape, np.int32)
     for k, b in enumerate(big, start=1):
         owner[lab == b] = k
@@ -57,45 +75,70 @@ def split(arr: np.ndarray, n: int = 3) -> list[np.ndarray]:
     return masks
 
 
-def bbox(mask: np.ndarray, alpha: np.ndarray) -> tuple[int, int, int, int]:
-    sub = mask & (alpha > 20)
-    ys = np.where(sub.any(axis=1))[0]
-    xs = np.where(sub.any(axis=0))[0]
-    return int(xs[0]), int(ys[0]), int(xs[-1]), int(ys[-1])
+def isolate(arr: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    one = arr.copy()
+    one[..., 3] *= mask
+    return one
 
 
-def save(arr: np.ndarray, box: tuple[int, int, int, int], out: str) -> None:
-    x0, y0, x1, y1 = box
-    img = Image.fromarray(arr[y0:y1 + 1, x0:x1 + 1].round().astype(np.uint8), 'RGBA')
-    img.save(out, 'WEBP', quality=92, method=6)
+def anchor(one: np.ndarray) -> tuple[int, int, int, int, float, int]:
+    """Bounding box and feet point: x = centre of the lowest quarter (legs), y = lowest solid row."""
+    al = one[..., 3]
+    ys = np.where((al > 20).any(axis=1))[0]
+    xs = np.where((al > 20).any(axis=0))[0]
+    x0, y0, x1, y1 = int(xs[0]), int(ys[0]), int(xs[-1]), int(ys[-1])
+    feet = int(np.where((al > 128).any(axis=1))[0][-1])
+    legs = al[y0 + int((y1 - y0) * 0.75):y1 + 1, x0:x1 + 1]
+    cols = legs.sum(axis=0)
+    cx = x0 + float((cols * np.arange(len(cols))).sum() / max(cols.sum(), 1))
+    return x0, y0, x1, y1, cx, feet
 
 
-def sheet(idle_path: str, atk_path: str, out_dir: str, name: str) -> None:
-    idle, atk = key_out(idle_path), key_out(atk_path)
-    mi, ma = split(idle), split(atk)
-    meta = []
-    pad = 4
-    h, w = idle.shape[:2]
-    for st, (m_i, m_a) in enumerate(zip(mi, ma), start=1):
-        bi, ba = bbox(m_i, idle[..., 3]), bbox(m_a, atk[..., 3])
-        box = (max(0, min(bi[0], ba[0]) - pad), max(0, min(bi[1], ba[1]) - pad), min(w - 1, max(bi[2], ba[2]) + pad), min(h - 1, max(bi[3], ba[3]) + pad))
-        one_i = idle.copy()
-        one_i[..., 3] *= m_i
-        one_a = atk.copy()
-        one_a[..., 3] *= m_a
-        save(one_i, box, f'{out_dir}/{name}_{st}.webp')
-        save(one_a, box, f'{out_dir}/{name}_{st}_atk.webp')
-        # Feet anchor: the centre of the legs (lowest quarter of the idle pose), the bottom of the box.
-        x0, y0, x1, y1 = box
-        al = one_i[y0:y1 + 1, x0:x1 + 1, 3]
-        legs = al[int(al.shape[0] * 0.75):]
-        cols = legs.sum(axis=0)
-        cx = float((cols * np.arange(len(cols))).sum() / max(cols.sum(), 1))
-        feet = int(np.where((al > 128).any(axis=1))[0][-1])
-        meta.append({'stage': st, 'w': x1 - x0 + 1, 'h': y1 - y0 + 1, 'originX': round(cx / (x1 - x0 + 1), 3), 'originY': round(feet / (y1 - y0 + 1), 3)})
-    with open(f'{out_dir}/{name}.json', 'w') as fh:
+def save_group(frames: list[tuple[np.ndarray, str]]) -> dict:
+    """Crop several poses of one creature into frames of the same size with the feet on the same point."""
+    info = [anchor(one) for one, _ in frames]
+    left = max(cx - x0 for x0, _, _, _, cx, _ in info) + PAD
+    right = max(x1 - cx for _, _, x1, _, cx, _ in info) + PAD
+    up = max(fy - y0 for _, y0, _, _, _, fy in info) + PAD
+    down = max(y1 - fy for _, _, _, y1, _, fy in info) + PAD
+    w, h = int(np.ceil(left + right)), int(np.ceil(up + down))
+    for (one, out), (_, _, _, _, cx, fy) in zip(frames, info):
+        canvas = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        img = Image.fromarray(one.round().astype(np.uint8), 'RGBA')
+        canvas.paste(img, (int(round(left - cx)), int(round(up - fy))), img)
+        canvas.save(out, 'WEBP', quality=92, method=6)
+    return {'w': w, 'h': h, 'originX': round(left / w, 3), 'originY': round(up / h, 3)}
+
+
+def write_meta(path: str, meta: list[dict]) -> None:
+    with open(path, 'w') as fh:
         json.dump(meta, fh, indent=1)
     print(json.dumps(meta))
+
+
+def sheet(idle_path: str, atk_path: str, out_dir: str, name: str, count: str = '3') -> None:
+    n = int(count)
+    idle, atk = key_out(idle_path), key_out(atk_path)
+    meta = []
+    for st, (m_i, m_a) in enumerate(zip(split(idle, n), split(atk, n)), start=1):
+        m = save_group([(isolate(idle, m_i), f'{out_dir}/{name}_{st}.webp'), (isolate(atk, m_a), f'{out_dir}/{name}_{st}_atk.webp')])
+        meta.append({'stage': st, **m})
+    write_meta(f'{out_dir}/{name}.json', meta)
+
+
+def pair(path: str, out_dir: str, name: str) -> None:
+    arr = key_out(path)
+    m_idle, m_atk = split(arr, 2)
+    m = save_group([(isolate(arr, m_idle), f'{out_dir}/{name}.webp'), (isolate(arr, m_atk), f'{out_dir}/{name}_atk.webp')])
+    write_meta(f'{out_dir}/{name}.json', [m])
+
+
+def split_names(path: str, out_dir: str, *names: str) -> None:
+    arr = key_out(path)
+    meta = []
+    for mask, nm in zip(split(arr, len(names)), names):
+        meta.append({'name': nm, **save_group([(isolate(arr, mask), f'{out_dir}/{nm}.webp')])})
+    write_meta(f'{out_dir}/{names[0]}.json', meta)
 
 
 def map_bg(path: str, out: str, w: int = 720, h: int = 1280) -> None:
@@ -113,7 +156,12 @@ def map_bg(path: str, out: str, w: int = 720, h: int = 1280) -> None:
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'sheet':
-        sheet(*sys.argv[2:6])
-    elif sys.argv[1] == 'map':
-        map_bg(sys.argv[2], sys.argv[3], *(int(v) for v in sys.argv[4:6]))
+    cmd, args = sys.argv[1], sys.argv[2:]
+    if cmd == 'sheet':
+        sheet(*args)
+    elif cmd == 'pair':
+        pair(*args)
+    elif cmd == 'split':
+        split_names(*args)
+    elif cmd == 'map':
+        map_bg(args[0], args[1], *(int(v) for v in args[2:4]))
