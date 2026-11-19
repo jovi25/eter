@@ -9,13 +9,17 @@ import { DEPTH, unitDepth } from './layers';
 import mageMeta from '../art/sprites/mage.json';
 import knightMeta from '../art/sprites/knight.json';
 import druidMeta from '../art/sprites/druid.json';
+import priestMeta from '../art/sprites/priest.json';
+import bearMeta from '../art/sprites/bear.json';
 
 /** Illustrated heroes (docs/ARTE_IA.md): feet anchor of each picture; the code makes them breathe, lean and strike. */
 const HERO_PICS: Partial<Record<HeroClass, { originX: number; originY: number }>> = {
   mage: mageMeta[0]!,
   knight: knightMeta[0]!,
   druid: druidMeta[0]!,
+  priest: priestMeta[0]!,
 };
+const BEAR_HEIGHT = 112; // on-screen height of the bear picture (resting pose)
 const PIC_HEIGHT = 140; // on-screen height of a hero picture
 
 const S = 0.9; // on-screen scale of the hero rig
@@ -269,10 +273,22 @@ export class SummonView {
   private prevY: number;
   private t = Math.random() * 10;
   private facing = 1;
+  private bodyScale = 0.95;
+  /** Illustrated bear: resting picture swapped for the swipe pose while it attacks. */
+  private pic = false;
+  private poseTimer?: Phaser.Time.TimerEvent;
 
   constructor(private scene: Phaser.Scene, s: SummonState) {
     const shadow = scene.add.image(0, 2, 'shadow').setScale(0.8, 0.9);
-    this.body = scene.add.image(0, 0, 'summon_bear').setOrigin(0.5, 0.92).setScale(0.95);
+    this.pic = scene.textures.exists('bearpic') && scene.textures.exists('bearpic_atk');
+    if (this.pic) {
+      const m = bearMeta[0]!;
+      this.body = scene.add.image(0, 0, 'bearpic').setOrigin(m.originX, m.originY);
+      this.bodyScale = BEAR_HEIGHT / this.body.height;
+    } else {
+      this.body = scene.add.image(0, 0, 'summon_bear').setOrigin(0.5, 0.92);
+    }
+    this.body.setScale(this.bodyScale);
     this.bar = new HpBar(scene, -96);
     this.root = scene.add.container(s.x, s.y, [shadow, this.body, this.bar.bg, this.bar.fill]);
     this.down = new DownTimer(scene);
@@ -294,6 +310,13 @@ export class SummonView {
   }
 
   swing(): void {
+    if (this.pic) {
+      this.body.setTexture('bearpic_atk');
+      this.poseTimer?.remove();
+      this.poseTimer = this.scene.time.delayedCall(340, () => this.body.setTexture('bearpic'));
+      this.scene.tweens.add({ targets: this.body, x: 10 * this.facing, duration: 90, yoyo: true, ease: 'Quad.easeOut' });
+      return;
+    }
     this.scene.tweens.add({ targets: this.body, x: 12 * this.facing, angle: 10 * this.facing, duration: 80, yoyo: true, ease: 'Quad.easeOut' });
   }
 
@@ -306,7 +329,7 @@ export class SummonView {
       this.facing = s.facing;
       this.body.setFlipX(this.facing < 0);
     }
-    this.body.setScale(0.95, 0.95 * (1 + Math.sin(this.t * 3) * 0.02));
+    this.body.setScale(this.bodyScale, this.bodyScale * (1 + Math.sin(this.t * 3) * 0.02));
     this.bar.set(s);
     this.root.setAlpha(s.alive ? 1 : 0.35);
     this.down.set(s, x, y - 70);

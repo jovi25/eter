@@ -1,7 +1,7 @@
 // Torres-criaturas (amostra, Fase 19): the Braseiro is a fire lizard that grows with each level and becomes
 // one of two creatures when it evolves. Original designs, painted like the rest of the game.
 // Only the Braseiro for now; the option lives in Opções ("Braseiro-criatura").
-import { EVOLUTIONS, type EvolutionId } from '../../data/evolutions';
+import { EVOLUTIONS, TOWER_EVOLUTIONS, type EvolutionId } from '../../data/evolutions';
 import fireMeta from './sprites/fire.json';
 import iceMeta from './sprites/ice.json';
 import natureMeta from './sprites/nature.json';
@@ -296,11 +296,37 @@ const LINES: Record<TowerId, Line> = {
 
 /** On-screen area of each stage (px²): every line grows the same way whatever the picture's shape. */
 const STAGE_AREA = [7200, 10900, 17900];
+/** On-screen area of a final evolution (its own picture). */
+const EVO_AREA = 21500;
+
+/** Evolution pictures: sprites/<file>_evo.json holds both final forms, in TOWER_EVOLUTIONS order. */
+const EVO_META: Record<string, SpriteMeta[]> = Object.fromEntries(
+  Object.entries(import.meta.glob<{ default: SpriteMeta[] }>('./sprites/*_evo.json', { eager: true })).map(([path, mod]) => [path.replace(/^.*\/(\w+)_evo\.json$/, '$1'), mod.default]),
+);
+
+function evoArt(has: { exists(key: string): boolean }, type: TowerId, evo: EvolutionId, line: Line): DragonArt | null {
+  const i = TOWER_EVOLUTIONS[type].indexOf(evo);
+  const m = EVO_META[line.file]?.[i];
+  const key = `creature_${line.file}_evo_${i + 1}`;
+  if (!m || !has.exists(key) || !has.exists(`${key}_atk`)) return null;
+  return {
+    key,
+    atkKey: `${key}_atk`,
+    name: EVOLUTIONS[evo].name,
+    scale: Math.sqrt(EVO_AREA / (m.w * m.h)),
+    originX: m.originX,
+    originY: m.originY,
+    flame: [m.tail[0] ?? 0, m.tail[1] ?? 0],
+    glow: line.glow,
+  };
+}
 
 /** The illustrated form for this tower / level / evolution, or null when its pictures are not loaded.
  *  Evolutions reuse the adult, a bit bigger, until they get pictures of their own. */
 export function dragonArt(has: { exists(key: string): boolean }, type: TowerId, level: number, evo: EvolutionId | null): DragonArt | null {
   const line = LINES[type];
+  const own = evo ? evoArt(has, type, evo, line) : null;
+  if (own) return own;
   const st = evo ? 2 : Math.max(0, Math.min(2, level - 1));
   const key = `creature_${line.file}_${st + 1}`;
   const m = line.meta[st];

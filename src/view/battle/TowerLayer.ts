@@ -84,7 +84,8 @@ class TowerView {
       const ring = this.scene.add.image(0, 14, 'ring').setScale(1.5, 0.7).setTint(def.color).setBlendMode(addBlend()).setAlpha(0.85);
       this.root.addAt(ring, 0);
       if (!quality.low) this.scene.tweens.add({ targets: ring, alpha: 0.4, scaleX: 1.7, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      this.crown = this.scene.add.image(0, -92, 'star').setScale(0.5).setTint(def.color);
+      // (Illustrated dragons show the evolution in the picture itself: no star over their heads.)
+      this.crown = this.scene.add.image(0, -92, 'star').setScale(0.5).setTint(def.color).setVisible(!this.art);
       this.root.add(this.crown);
       if (!quality.low) this.scene.tweens.add({ targets: this.crown, y: -94, angle: 15, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }

@@ -16,8 +16,12 @@ respiração, bote, projéteis, partículas e brilho.
 
 ## Pronto
 
-- ✅ Braseiro (dragão de Fogo, 3 fases parado + atacando)
-- ✅ Fundo do campo (fases de grama)
+- ✅ Todas as torres (T1–T5 + Braseiro), mapas e objetos (P1–P4), monstros (M1–M5)
+- ✅ Heróis H1–H5 (Arcanista, Cavaleiro, Druida, Sacerdotisa, Urso)
+- ✅ Evoluções E1–E6 (2026-11-19, geradas no Gemini numa conversa nova por elemento; sem anexar
+  referência, o dragão adulto foi descrito em texto no próprio pedido)
+- Dica: peça cada imagem nova numa **conversa nova**. Na mesma conversa o Gemini às vezes edita a
+  imagem anterior (o urso saiu com a Sacerdotisa por cima).
 
 ## Ordem sugerida
 
