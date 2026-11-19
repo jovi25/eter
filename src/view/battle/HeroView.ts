@@ -6,6 +6,17 @@ import type { BlockerState, HeroState, SummonState } from '../../sim/types';
 import { HERO_STYLES, RIG, type HeroTexture } from '../art/chibi';
 import { PAL } from '../art/palette';
 import { DEPTH, unitDepth } from './layers';
+import mageMeta from '../art/sprites/mage.json';
+import knightMeta from '../art/sprites/knight.json';
+import druidMeta from '../art/sprites/druid.json';
+
+/** Illustrated heroes (docs/ARTE_IA.md): feet anchor of each picture; the code makes them breathe, lean and strike. */
+const HERO_PICS: Partial<Record<HeroClass, { originX: number; originY: number }>> = {
+  mage: mageMeta[0]!,
+  knight: knightMeta[0]!,
+  druid: druidMeta[0]!,
+};
+const PIC_HEIGHT = 140; // on-screen height of a hero picture
 
 const S = 0.9; // on-screen scale of the hero rig
 const BAR_W = 56;
@@ -51,11 +62,16 @@ class DownTimer {
  */
 export class HeroView {
   private root: Phaser.GameObjects.Container;
-  private rig: Phaser.GameObjects.Container; // flipped to face left/right
+  private rig!: Phaser.GameObjects.Container; // flipped to face left/right
   private shadow: Phaser.GameObjects.Image;
-  private cape: Phaser.GameObjects.Image;
-  private armC: Phaser.GameObjects.Container;
-  private flash: Phaser.GameObjects.Image;
+  private cape?: Phaser.GameObjects.Image;
+  private armC?: Phaser.GameObjects.Container;
+  /** Illustrated hero: one picture (resting) swapped for the attack pose while striking. */
+  private pic?: Phaser.GameObjects.Image;
+  private picKey = '';
+  private picScale = 1;
+  private poseTimer?: Phaser.Time.TimerEvent;
+  private flash!: Phaser.GameObjects.Image;
   private orb?: Phaser.GameObjects.Image;
   private marker: Phaser.GameObjects.Image;
   private aura?: Phaser.GameObjects.Image;
@@ -81,23 +97,23 @@ export class HeroView {
     const origin = { x: 0.5, y: RIG.feetY / RIG.h };
 
     this.shadow = scene.add.image(0, 2, 'shadow').setScale(0.7, 0.8);
-    this.cape = scene.add.image(0, 0, `${key}_cape`).setOrigin(origin.x, 76 / RIG.h).setScale(S);
-    this.cape.setPosition(0, (76 - RIG.feetY) * S);
-    const body = scene.add.image(0, 0, `${key}_body`).setOrigin(origin.x, origin.y).setScale(S);
-    // Arm container sits on the shoulder; everything inside rotates with the arm.
-    const arm = scene.add.image(0, 0, `${key}_arm`).setOrigin(RIG.shoulder.x / RIG.w, RIG.shoulder.y / RIG.h).setScale(S);
-    const tip = { x: (st.tip.x - RIG.shoulder.x) * S, y: (st.tip.y - RIG.shoulder.y) * S };
-    this.flash = scene.add.image(tip.x, tip.y, 'spark').setTint(this.color).setBlendMode(addBlend()).setScale(0).setAlpha(0);
-    this.armC = scene.add.container((RIG.shoulder.x - ox) * S, (RIG.shoulder.y - RIG.feetY) * S, [arm, this.flash]);
-    if (hero.cls === 'mage') {
-      this.orb = scene.add.image(tip.x, tip.y, 'hero_orb').setTint(this.color).setBlendMode(addBlend()).setScale(0.8);
-      this.armC.add(this.orb);
-      scene.tweens.add({ targets: this.orb, scale: 1.05, alpha: 0.75, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const picMeta = HERO_PICS[hero.cls];
+    this.picKey = `heropic_${hero.cls}`;
+    if (picMeta && scene.textures.exists(this.picKey) && scene.textures.exists(`${this.picKey}_atk`)) {
+      this.pic = scene.add.image(0, 0, this.picKey).setOrigin(picMeta.originX, picMeta.originY);
+      this.picScale = PIC_HEIGHT / this.pic.height;
+      this.pic.setScale(this.picScale);
+      // The spell / hit flash sits in front of the chest.
+      this.flash = scene.add.image(PIC_HEIGHT * 0.38, -PIC_HEIGHT * 0.62, 'spark').setTint(this.color).setBlendMode(addBlend()).setScale(0).setAlpha(0);
+      this.rig = scene.add.container(0, 0, [this.pic, this.flash]);
+    } else {
+      const parts = this.buildRig(scene, key, st, hero.cls, ox, origin);
+      this.flash = parts.flash;
+      this.rig = parts.rig;
     }
-    this.rig = scene.add.container(0, 0, [this.cape, body, this.armC]);
     this.root = scene.add.container(hero.x, hero.y, [this.shadow, this.rig]);
     if (this.melee) {
-      this.bar = new HpBar(scene, -RIG.feetY * S - 4);
+      this.bar = new HpBar(scene, -(this.pic ? PIC_HEIGHT : RIG.feetY * S) - 4);
       this.root.add([this.bar.bg, this.bar.fill]);
     }
     this.down = new DownTimer(scene);
@@ -108,6 +124,24 @@ export class HeroView {
     this.marker = scene.add.image(0, 0, 'move_marker').setDepth(DEPTH.groundFx).setVisible(false);
     this.prevX = hero.x;
     this.prevY = hero.y;
+  }
+
+  /** The painted layered rig (heroes without a picture yet). */
+  private buildRig(scene: Phaser.Scene, key: HeroTexture, st: (typeof HERO_STYLES)[HeroTexture], cls: HeroClass, ox: number, origin: { x: number; y: number }) {
+    this.cape = scene.add.image(0, 0, `${key}_cape`).setOrigin(origin.x, 76 / RIG.h).setScale(S);
+    this.cape.setPosition(0, (76 - RIG.feetY) * S);
+    const body = scene.add.image(0, 0, `${key}_body`).setOrigin(origin.x, origin.y).setScale(S);
+    // Arm container sits on the shoulder; everything inside rotates with the arm.
+    const arm = scene.add.image(0, 0, `${key}_arm`).setOrigin(RIG.shoulder.x / RIG.w, RIG.shoulder.y / RIG.h).setScale(S);
+    const tip = { x: (st.tip.x - RIG.shoulder.x) * S, y: (st.tip.y - RIG.shoulder.y) * S };
+    const flash = scene.add.image(tip.x, tip.y, 'spark').setTint(this.color).setBlendMode(addBlend()).setScale(0).setAlpha(0);
+    this.armC = scene.add.container((RIG.shoulder.x - ox) * S, (RIG.shoulder.y - RIG.feetY) * S, [arm, flash]);
+    if (cls === 'mage') {
+      this.orb = scene.add.image(tip.x, tip.y, 'hero_orb').setTint(this.color).setBlendMode(addBlend()).setScale(0.8);
+      this.armC.add(this.orb);
+      scene.tweens.add({ targets: this.orb, scale: 1.05, alpha: 0.75, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    return { flash, rig: scene.add.container(0, 0, [this.cape, body, this.armC]) };
   }
 
   get x(): number {
@@ -132,6 +166,7 @@ export class HeroView {
 
   /** Arm animation: wind up → strike → settle. Angles in degrees (negative = raise the weapon back). */
   private armAnim(windup: number, strike: number, t1: number, t2: number, t3: number, flashScale: number): void {
+    if (!this.armC) return;
     this.scene.tweens.killTweensOf(this.armC);
     this.animating = true;
     this.scene.tweens.chain({
@@ -157,19 +192,40 @@ export class HeroView {
 
   /** Ranged attack: the staff snaps forward and flashes as the spell leaves. */
   shoot(): void {
+    if (this.pic) return this.strike(260, 6, 1.6);
     this.armAnim(-26, 20, 70, 60, 200, 1.6);
   }
 
   /** Melee attack: a wide slash plus a small lunge. */
   swing(): void {
+    if (this.pic) return this.strike(300, 12, 0);
     this.armAnim(-85, 70, 80, 70, 220, 0);
     this.scene.tweens.add({ targets: this.rig, x: 9 * this.facing, duration: 80, yoyo: true, ease: 'Quad.easeOut' });
   }
 
   /** Class skill: raise the weapon high, big flash. */
   cast(): void {
+    if (this.pic) {
+      this.strike(560, 0, 4);
+      this.scene.tweens.add({ targets: this.rig, y: -8, duration: 110, yoyo: true, hold: 200, ease: 'Quad.easeOut' });
+      return;
+    }
     this.armAnim(-70, -62, 110, 260, 260, 4);
     this.scene.tweens.add({ targets: this.rig, y: -8, duration: 110, yoyo: true, hold: 200, ease: 'Quad.easeOut' });
+  }
+
+  /** Illustrated hero strike: attack picture for `ms`, a lunge forward and a flash at the weapon. */
+  private strike(ms: number, lunge: number, flashScale: number): void {
+    const pic = this.pic!;
+    pic.setTexture(`${this.picKey}_atk`);
+    this.poseTimer?.remove();
+    this.poseTimer = this.scene.time.delayedCall(ms, () => pic.setTexture(this.picKey));
+    if (lunge) this.scene.tweens.add({ targets: this.rig, x: lunge * this.facing, duration: 90, yoyo: true, ease: 'Quad.easeOut' });
+    if (flashScale > 0) {
+      this.scene.tweens.killTweensOf(this.flash);
+      this.flash.setScale(flashScale * 0.4).setAlpha(1);
+      this.scene.tweens.add({ targets: this.flash, scale: flashScale, alpha: 0, duration: 260, ease: 'Cubic.easeOut' });
+    }
   }
 
   sync(hero: HeroState, alpha: number, dtMs: number): void {
@@ -189,11 +245,13 @@ export class HeroView {
     this.rig.setAngle(this.lean * this.facing);
     const breathe = 1 + Math.sin(this.t * 2.4) * 0.012;
     this.rig.setScale(this.facing, breathe);
-    this.cape.setScale(S * (1 + this.glide * 0.14 + Math.sin(this.t * 2) * 0.025), S * (1 - this.glide * 0.05));
-    this.cape.setX(-6 * this.glide);
-    this.cape.setAngle(8 * this.glide + Math.sin(this.t * 1.7) * 1.5);
+    this.cape?.setScale(S * (1 + this.glide * 0.14 + Math.sin(this.t * 2) * 0.025), S * (1 - this.glide * 0.05));
+    this.cape?.setX(-6 * this.glide);
+    this.cape?.setAngle(8 * this.glide + Math.sin(this.t * 1.7) * 1.5);
     this.shadow.setScale(0.7 - this.glide * 0.08, 0.8 - this.glide * 0.1);
-    if (!this.animating) this.armC.setAngle(Math.sin(this.t * 2.1) * 2 - this.glide * 10);
+    if (!this.animating) this.armC?.setAngle(Math.sin(this.t * 2.1) * 2 - this.glide * 10);
+    // Illustrated hero: gentle breathing, and it hovers a little while gliding.
+    this.pic?.setScale(this.picScale * (1 - Math.sin(this.t * 2.4) * 0.006), this.picScale * (1 + Math.sin(this.t * 2.4) * 0.014)).setY(-3 * this.glide);
     this.bar?.set(hero);
     this.root.setAlpha(hero.alive ? 1 : 0.35);
     this.down.set(hero, x, y - 80);
