@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { ENEMY_PIC } from '../../assets/manifest';
 import { bakeInPlace } from '../ui/bake';
 import { getSettings, setSetting } from '../settings';
 import { refreshMusic } from '../audio/music';
@@ -276,7 +277,7 @@ export class WorldMapScene extends Phaser.Scene {
       const max = reg.stages.length * 3;
       const sub = open ? `★ ${save.regionStars(r)}/${max}${r === 0 && !done ? '  •  COMECE AQUI' : ''}` : `3★ em tudo em ${REGIONS[r - 1]!.name}`;
       const bonus = r === 0 && done && !save.data.galeWon; // the Vale dos Ventos is waiting
-      stop(at.x, at.y, 64, COLORS[look.theme], `enemy_${look.enemy}`, 0.6, `${r + 1}. ${reg.name}`, bonus ? 'NOVO: fase bônus!' : sub, open, () => this.go('WorldMap', { region: r }), `Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]?.name ?? ''}`, r === frontier, bonus);
+      stop(at.x, at.y, 64, COLORS[look.theme], `enemy_${look.enemy}`, 0.6 * ENEMY_PIC, `${r + 1}. ${reg.name}`, bonus ? 'NOVO: fase bônus!' : sub, open, () => this.go('WorldMap', { region: r }), `Faça 3 estrelas em todas as fases de ${REGIONS[r - 1]?.name ?? ''}`, r === frontier, bonus);
     });
     // What comes after the last region.
     const far = WORLD_TRAIL[REGION_AT[REGIONS.length]!];
@@ -298,7 +299,7 @@ export class WorldMapScene extends Phaser.Scene {
     const huntOpen = save.isUnlocked('hunt');
     const hb = save.huntBosses();
     const huntSub = !huntOpen ? `Vença ${HUNT.minBosses} chefes` : save.data.hunt.best > 0 && save.data.hunt.bosses === hb ? `Recorde: ${huntTime(save.data.hunt.best)}` : `${hb} chefes em fila`;
-    stop(m.hunt.x, m.hunt.y, 46, 0xc0504a, 'enemy_herald', 0.42, 'Caçada', huntSub, huntOpen, () => this.showStageCard('hunt'), `Vença o chefe de ${STAGES[HUNT.bosses[HUNT.minBosses - 1]!.stage].name} para abrir`, false, huntOpen && save.data.hunt.best === 0);
+    stop(m.hunt.x, m.hunt.y, 46, 0xc0504a, 'enemy_herald', 0.42 * ENEMY_PIC, 'Caçada', huntSub, huntOpen, () => this.showStageCard('hunt'), `Vença o chefe de ${STAGES[HUNT.bosses[HUNT.minBosses - 1]!.stage].name} para abrir`, false, huntOpen && save.data.hunt.best === 0);
     const week = done ? save.mutantWeek() : null;
     const mut = week ? MUTATIONS[week.mutation] : null;
     stop(m.mutant.x, m.mutant.y, 46, mut?.color ?? 0x8a5fd0, 'icon_mutant', 0.8, 'Semana Mutante', week && mut ? `${mut.name} • ${week.won.length}/${week.stages.length}` : 'Fim do tutorial', done, () => this.showMutantCard(), lockTip, false, !!week && week.won.length === 0);
@@ -534,7 +535,7 @@ export class WorldMapScene extends Phaser.Scene {
 
     // Featured monster next to the node.
     const side = n.x < GAME_WIDTH / 2 ? 1 : -1;
-    const mon = this.add.image(n.x + side * (r + 56), n.y + 10, `enemy_${n.enemy}`).setScale(boss ? 0.9 : 1);
+    const mon = this.add.image(n.x + side * (r + 56), n.y + 10, `enemy_${n.enemy}`).setScale((boss ? 0.9 : 1) * ENEMY_PIC);
     mon.setDepth(39);
     if (!unlocked) mon.setTint(0x222222).setAlpha(0.7);
     else this.tweens.add({ targets: mon, scaleY: mon.scaleY * 1.06, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

@@ -7,6 +7,9 @@ export type AssetSource =
 
 const P = { kind: 'procedural' } as const;
 /** Illustrations made by the player in an image AI, cut out by tools/cutout.py (see docs/ARTE_IA.md). */
+/** Monster pictures are cut at twice their on-screen size (sharp on phones): draw them at this scale. */
+export const ENEMY_PIC = 0.5;
+
 const art = (path: string) => ({ kind: 'image', url: `${import.meta.env.BASE_URL}assets/${path}` }) as const;
 
 export const ASSETS = {
@@ -30,25 +33,25 @@ export const ASSETS = {
   rock: P,
   flower: P,
   // enemies
-  enemy_slime: P,
-  enemy_wolf: P,
-  enemy_golem: P,
-  enemy_bat: P,
-  enemy_herald: P,
-  enemy_salamander: P,
-  enemy_yeti: P,
-  enemy_skeleton: P,
-  enemy_shaman: P,
-  enemy_mudling: P,
-  enemy_colossus: P,
-  enemy_treasure: P,
-  enemy_sentinel: P,
-  enemy_devourer: P,
-  enemy_monk: P,
-  enemy_gargoyle: P,
-  enemy_titan: P,
-  enemy_imp: P,
-  enemy_prism: P,
+  enemy_slime: art('enemies/slime.webp'),
+  enemy_wolf: art('enemies/wolf.webp'),
+  enemy_golem: art('enemies/golem.webp'),
+  enemy_bat: art('enemies/bat.webp'),
+  enemy_herald: art('enemies/herald.webp'),
+  enemy_salamander: art('enemies/salamander.webp'),
+  enemy_yeti: art('enemies/yeti.webp'),
+  enemy_skeleton: art('enemies/skeleton.webp'),
+  enemy_shaman: art('enemies/shaman.webp'),
+  enemy_mudling: art('enemies/mudling.webp'),
+  enemy_colossus: art('enemies/colossus.webp'),
+  enemy_treasure: art('enemies/treasure.webp'),
+  enemy_sentinel: art('enemies/sentinel.webp'),
+  enemy_devourer: art('enemies/devourer.webp'),
+  enemy_monk: art('enemies/monk.webp'),
+  enemy_gargoyle: art('enemies/gargoyle.webp'),
+  enemy_titan: art('enemies/titan.webp'),
+  enemy_imp: art('enemies/imp.webp'),
+  enemy_prism: art('enemies/prism.webp'),
   // statuses
   status_roots: P,
   status_ice: P,

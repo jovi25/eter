@@ -13,6 +13,8 @@ Usage:
       Writes <name>.webp and <name>_atk.webp (+ <name>.json).
   python tools/cutout.py split <image> <out_dir> <name1> <name2> ...
       One picture with several different creatures left to right; one file per name (+ <name1>.json).
+  python tools/cutout.py fit <image> <out_dir> <name:w:h[:c]> ...
+      Several creatures left to right, each fitted into a fixed w x h frame (feet at the bottom; :c centres).
   python tools/cutout.py map <image> <out_file> [width height]
       Crops and scales a map background to the game size (720x1280 by default).
 """
@@ -68,8 +70,10 @@ def split(arr: np.ndarray, n: int) -> list[np.ndarray]:
     owner = np.zeros(core.shape, np.int32)
     for k, b in enumerate(big, start=1):
         owner[lab == b] = k
-    _, (iy, ix) = ndimage.distance_transform_edt(owner == 0, return_indices=True)
+    dist, (iy, ix) = ndimage.distance_transform_edt(owner == 0, return_indices=True)
     owner = owner[iy, ix]
+    # Specks far from every creature (an AI watermark in a corner, stray dots) belong to nobody.
+    owner[dist > arr.shape[1] * 0.04] = 0
     masks = [(owner == k) & (arr[..., 3] > 0) for k in range(1, n + 1)]
     masks.sort(key=lambda m: float(np.where(m.any(axis=0))[0].mean()))
     return masks
@@ -149,6 +153,27 @@ def split_names(path: str, out_dir: str, *names: str) -> None:
     write_meta(f'{out_dir}/{names[0]}.json', meta)
 
 
+def fit(path: str, out_dir: str, *specs: str) -> None:
+    """Several creatures left to right, each fitted into a fixed frame: spec = name:width:height[:c]
+    (feet on the bottom edge, or centred with :c for flyers)."""
+    arr = key_out(path)
+    for mask, spec in zip(split(arr, len(specs)), specs):
+        name, w, h, *mode = spec.split(':')
+        w, h = int(w), int(h)
+        one = isolate(arr, mask)
+        x0, y0, x1, y1, cx, fy = anchor(one)
+        img = Image.fromarray(one.round().astype(np.uint8), 'RGBA').crop((x0, y0, x1 + 1, y1 + 1))
+        k = min(w / img.width, h / img.height)
+        img = img.resize((max(1, round(img.width * k)), max(1, round(img.height * k))), Image.LANCZOS)
+        canvas = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        left = int(round(w / 2 - (cx - x0) * k))
+        left = max(0, min(w - img.width, left))
+        top = (h - img.height) // 2 if mode == ['c'] else h - img.height
+        canvas.paste(img, (left, top), img)
+        canvas.save(f'{out_dir}/{name}.webp', 'WEBP', quality=92, method=6)
+        print(name, img.size)
+
+
 def map_bg(path: str, out: str, w: int = 720, h: int = 1280) -> None:
     img = Image.open(path).convert('RGB')
     sw, sh = img.size
@@ -171,5 +196,7 @@ if __name__ == '__main__':
         pair(*args)
     elif cmd == 'split':
         split_names(*args)
+    elif cmd == 'fit':
+        fit(*args)
     elif cmd == 'map':
         map_bg(args[0], args[1], *(int(v) for v in args[2:4]))

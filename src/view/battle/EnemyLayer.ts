@@ -6,6 +6,7 @@ import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
 import { unitDepth } from './layers';
 import { quality } from '../quality';
+import { ENEMY_PIC } from '../../assets/manifest';
 
 const HP_W = 52;
 
@@ -31,6 +32,7 @@ class EnemyView {
   breathMs = 420;
   flying = false;
   fireTimer = 0;
+  facing = 1;
 
   constructor(scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, 'shadow');
@@ -110,6 +112,12 @@ export class EnemyLayer {
       const x = v.prevX + (e.x - v.prevX) * alpha;
       const y = v.prevY + (e.y - v.prevY) * alpha;
       v.root.setPosition(x, y).setDepth(unitDepth(y));
+      // The pictures face right: turn around when walking left (a dead zone avoids flicker on vertical roads).
+      const dx = e.x - v.prevX;
+      if (Math.abs(dx) > 0.3 && Math.sign(dx) !== v.facing) {
+        v.facing = Math.sign(dx);
+        v.body.setFlipX(v.facing < 0);
+      }
       this.updateStatus(v, e, dtMs);
     }
     for (const [id, v] of this.views) {
@@ -128,8 +136,9 @@ export class EnemyLayer {
     v.dying = null;
     v.flashUntil = 0;
     v.root.setVisible(true).setAlpha(1).setScale(1);
-    v.body.setTexture(`enemy_${e.type}`).setScale(1).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
-    const h = v.body.height;
+    v.body.setTexture(`enemy_${e.type}`).setScale(ENEMY_PIC).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY).setFlipX(false);
+    v.facing = 1;
+    const h = v.body.height * ENEMY_PIC;
     v.bodyY = def.flying ? -h * 0.5 - 34 : -h * 0.42;
     v.body.setPosition(0, v.bodyY);
     v.shadow.setScale(def.radius / 30, 1).setPosition(0, 4).setAlpha(def.flying ? 0.5 : 1).setVisible(!quality.low);
@@ -169,7 +178,7 @@ export class EnemyLayer {
     v.roots.setVisible(e.rootTime > 0);
     v.fragile.setVisible(e.fragileTime > 0);
     v.loot.setVisible(e.stolen > 0);
-    if (e.stolen > 0) v.loot.setY(v.bodyY - v.body.height * 0.5 - 30 + Math.sin(now / 120) * 4);
+    if (e.stolen > 0) v.loot.setY(v.bodyY - v.body.displayHeight * 0.5 - 30 + Math.sin(now / 120) * 4);
     v.burn.setVisible(e.burnTime > 0);
     const damaged = e.hp < e.maxHp;
     v.hpBg.setVisible(damaged);
@@ -188,7 +197,7 @@ export class EnemyLayer {
     // Breathing (squash & stretch) computed here — bats flap faster and bob. Rooted/frozen enemies hold still.
     if (!(e.frozenTime > 0 || e.rootTime > 0)) v.phase = (v.phase + dtMs / (v.breathMs * 2)) % 1;
     const w = 0.5 - 0.5 * Math.cos(v.phase * Math.PI * 2);
-    v.body.setScale(1 + (v.flying ? 0.08 : 0.05) * w, 1 - (v.flying ? 0.1 : 0.08) * w).setY(v.bodyY + (v.flying ? 6 : 1) * w);
+    v.body.setScale(ENEMY_PIC * (1 + (v.flying ? 0.08 : 0.05) * w), ENEMY_PIC * (1 - (v.flying ? 0.1 : 0.08) * w)).setY(v.bodyY + (v.flying ? 6 : 1) * w);
   }
 
   private despawn(v: EnemyView): void {

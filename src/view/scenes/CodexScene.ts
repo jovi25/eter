@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { ENEMY_PIC } from '../../assets/manifest';
 import { bakeInPlace } from '../ui/bake';
 import { fitCamera, frameCap } from '../perf';
 import { CODEX_ENEMIES, enemyFacts, REACTION_EFFECT, reactionName, reactionRecipe } from '../../data/codex';
@@ -84,7 +85,7 @@ export class CodexScene extends Phaser.Scene {
       g.fillRoundedRect(-82, -80, 164, 162, 18);
       g.fillStyle(seen ? 0x3d2a6a : 0x241a3a, 1);
       g.fillRoundedRect(-78, -76, 156, 154, 15);
-      const img = this.add.image(0, -14, `enemy_${id}`).setScale(ENEMIES[id].boss ? 0.55 : 0.9);
+      const img = this.add.image(0, -14, `enemy_${id}`).setScale((ENEMIES[id].boss ? 0.55 : 0.9) * ENEMY_PIC);
       if (!seen) img.setTint(0x0d0a16).setAlpha(0.85);
       c.add([g, img, uiText(this, 0, 58, seen ? ENEMIES[id].name : '???', 16, seen ? PAL.uiText : PAL.uiDim, 4).setWordWrapWidth(150)]);
       c.setSize(164, 162).setInteractive({ useHandCursor: true });
@@ -110,7 +111,7 @@ export class CodexScene extends Phaser.Scene {
     g.fillStyle(0x2a1a4d, 1);
     g.fillRoundedRect(-295, -255, 590, 510, 26);
     c.add([shade, g]);
-    c.add(this.add.image(0, -150, `enemy_${id}`).setScale(ENEMIES[id].boss ? 1.1 : 1.8));
+    c.add(this.add.image(0, -150, `enemy_${id}`).setScale((ENEMIES[id].boss ? 1.1 : 1.8) * ENEMY_PIC));
     c.add(uiText(this, 0, -50, ENEMIES[id].name, 36, '#ffffff', 7));
     enemyFacts(id).forEach((f, i) => c.add(uiText(this, 0, -6 + i * 40, f, 23, i === 0 ? PAL.goldCss : PAL.uiText, 5)));
     c.add(uiText(this, 0, 228, 'toque fora para fechar', 18, PAL.uiDim, 4));
