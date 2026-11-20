@@ -19,11 +19,11 @@ const CARD_Y = 560;
 const CARD_S = 1.02;
 
 /** The show behind a turned card, per rarity: colours, rays, vortex, particles. */
-const RARITY_SHOW: Record<BoonRarity, { color: number; light: number; hint: number; tremble: number; glow: number; rays: number; spin: number; vortex: boolean; motes: number; burst: number; shake: number; flash: boolean }> = {
-  common: { color: 0xb8b2c8, light: 0xffffff, hint: 0.25, tremble: 0, glow: 9, rays: 0, spin: 0, vortex: false, motes: 8, burst: 14, shake: 0, flash: false },
-  rare: { color: 0x4aa3ff, light: 0xcfe8ff, hint: 0.45, tremble: 0, glow: 12, rays: 10, spin: 16000, vortex: false, motes: 20, burst: 30, shake: 0, flash: false },
-  epic: { color: 0xb26bff, light: 0xffd76a, hint: 0.65, tremble: 1.5, glow: 14, rays: 14, spin: 11000, vortex: true, motes: 35, burst: 55, shake: 0.004, flash: true },
-  legendary: { color: 0xffc93d, light: 0xfff6c8, hint: 0.85, tremble: 3, glow: 17, rays: 20, spin: 8000, vortex: true, motes: 55, burst: 90, shake: 0.012, flash: true },
+const RARITY_SHOW: Record<BoonRarity, { color: number; light: number; hint: number; tremble: number; glow: number; rays: number; spin: number; vortex: boolean; motes: number; burst: number; shake: number }> = {
+  common: { color: 0xb8b2c8, light: 0xffffff, hint: 0.25, tremble: 0, glow: 9, rays: 0, spin: 0, vortex: false, motes: 8, burst: 14, shake: 0 },
+  rare: { color: 0x4aa3ff, light: 0xcfe8ff, hint: 0.45, tremble: 0, glow: 12, rays: 10, spin: 16000, vortex: false, motes: 20, burst: 30, shake: 0 },
+  epic: { color: 0xb26bff, light: 0xffd76a, hint: 0.65, tremble: 1.5, glow: 14, rays: 14, spin: 11000, vortex: true, motes: 35, burst: 55, shake: 0.004 },
+  legendary: { color: 0xffc93d, light: 0xfff6c8, hint: 0.85, tremble: 3, glow: 17, rays: 20, spin: 8000, vortex: true, motes: 55, burst: 90, shake: 0.012 },
 };
 
 /** A long soft wedge of light (one ray of the reveal), painted once. */
@@ -59,7 +59,7 @@ const ORDER: BoonId[] = [...BOON_IDS].sort((a, b) => {
  * A painted card with its live name (and, when `full`, rarity and text). Lendárias get a moving shine.
  * Scale 1 = 300×420.
  */
-export function cardView(scene: Phaser.Scene, id: BoonId, x: number, y: number, scale: number, full = true): Phaser.GameObjects.Container {
+export function cardView(scene: Phaser.Scene, id: BoonId, x: number, y: number, scale: number, full = true, rarityLine = true): Phaser.GameObjects.Container {
   const def = BOONS[id] as BoonDef;
   const c = scene.add.container(x, y);
   const img = scene.add.image(0, 0, ensureCard(scene, id));
@@ -68,7 +68,7 @@ export function cardView(scene: Phaser.Scene, id: BoonId, x: number, y: number, 
   const name = uiText(scene, 0, top + CARD_ART_BOTTOM + 34, def.name, full ? 25 : 30, '#ffffff', 6).setWordWrapWidth(CARD_W - 40);
   c.add(name);
   if (full) {
-    c.add(uiText(scene, 0, top + CARD_ART_BOTTOM + 62, RARITY_LABEL[def.rarity].toUpperCase(), 15, css(RARITY_COLOR[def.rarity]), 4));
+    if (rarityLine) c.add(uiText(scene, 0, top + CARD_ART_BOTTOM + 62, RARITY_LABEL[def.rarity].toUpperCase(), 15, css(RARITY_COLOR[def.rarity]), 4));
     c.add(uiText(scene, 0, top + CARD_ART_BOTTOM + 104, def.desc, 17, PAL.uiText, 4).setWordWrapWidth(CARD_W - 44).setLineSpacing(-2));
   }
   if (def.rarity === 'legendary' || def.rarity === 'epic') {
@@ -148,25 +148,12 @@ export class GrimoireScene extends Phaser.Scene {
     p.add([glow, pack]);
     p.add(uiText(this, GAME_WIDTH / 2, 612, PACK.cards === 1 ? 'Pacote de Éter: 1 carta, revelada com estilo' : `Pacote de Éter: ${PACK.cards} cartas`, 26, '#ffffff', 6));
     p.add(uiText(this, GAME_WIDTH / 2, 648, 'Repetidas viram Pó de Éter • com o Pó você cria a carta que quiser', 18, PAL.uiDim, 4).setWordWrapWidth(640));
-    const can = pending || save.data.coins >= PACK.price;
-    p.add(
-      new Button(this, GAME_WIDTH / 2, 724, {
-        width: 460,
-        height: 92,
-        label: pending ? 'ABRIR PACOTE (já pago)' : `ABRIR • ${PACK.price} moedas`,
-        fontSize: 32,
-        color: can ? 0x3aa655 : 0x4a4560,
-        onClick: () => {
-          if (!can) {
-            playSfx('error');
-            this.toast('Moedas insuficientes: jogue partidas para ganhar mais');
-            return;
-          }
-          if (!save.buyPack()) return;
-          this.openPack(save.claimPack());
-        },
-      }),
-    );
+    if (pending) {
+      p.add(new Button(this, GAME_WIDTH / 2, 724, { width: 460, height: 92, label: 'ABRIR (já pago)', fontSize: 32, color: 0x3aa655, onClick: () => this.buy(1) }));
+    } else {
+      p.add(this.buyButton(GAME_WIDTH / 2 - 165, 724, 1));
+      p.add(this.buyButton(GAME_WIDTH / 2 + 165, 724, PACK.bulk));
+    }
     const odds = RARITIES.map((r) => `${RARITY_LABEL[r]} ${Math.round(PACK.odds[r] * 1000) / 10}%`).join('  •  ');
     p.add(uiText(this, GAME_WIDTH / 2, 800, `Chance de cada carta: ${odds}`, 17, PAL.uiDim, 4).setWordWrapWidth(660));
     p.add(uiText(this, GAME_WIDTH / 2, 828, `Garantia: uma Épica ou melhor a cada ${PACK.pity} cartas, no máximo`, 17, PAL.uiDim, 4));
@@ -176,6 +163,30 @@ export class GrimoireScene extends Phaser.Scene {
       const done = save.data.feats.includes(f.card);
       p.add(uiText(this, GAME_WIDTH / 2, 924 + i * 32, `${done ? '✔' : '○'} ${BOONS[f.card].name}: ${f.text}`, 18, done ? '#9be89b' : PAL.uiText, 4).setWordWrapWidth(660));
     });
+  }
+
+  /** "Abrir 1" / "Abrir 10" button. */
+  private buyButton(x: number, y: number, n: number): Button {
+    const can = getSave().data.coins >= PACK.price * n;
+    return new Button(this, x, y, {
+      width: 310,
+      height: 92,
+      label: n === 1 ? `ABRIR 1 • ${PACK.price}` : `ABRIR ${n} • ${PACK.price * n}`,
+      fontSize: 28,
+      color: !can ? 0x4a4560 : n === 1 ? 0x3aa655 : 0xc77b1f,
+      onClick: () => this.buy(n),
+    });
+  }
+
+  private buy(n: number): void {
+    const save = getSave();
+    if (!save.data.packs.pending && save.data.coins < PACK.price * n) {
+      playSfx('error');
+      this.toast('Moedas insuficientes: jogue partidas para ganhar mais');
+      return;
+    }
+    if (!save.buyPack(n)) return;
+    this.openPack(save.claimPack());
   }
 
   /** The pack opens: one card at a time, face down and glowing in its rarity; a tap turns it over and the
@@ -192,10 +203,7 @@ export class GrimoireScene extends Phaser.Scene {
     playSfx('boon');
     vibrate(30);
     this.tweens.add({ targets: pack, angle: { from: -4, to: 4 }, duration: 70, yoyo: true, repeat: 6 });
-    const flash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xffffff, 0);
-    o.add(flash);
     this.time.delayedCall(650, () => {
-      this.tweens.add({ targets: flash, fillAlpha: { from: 0.9, to: 0 }, duration: 380 });
       this.tweens.add({ targets: pack, scale: 1.6, alpha: 0, duration: 300, onComplete: () => pack.destroy() });
       playSfx('upgrade');
       this.revealCard(o, results, 0);
@@ -225,9 +233,26 @@ export class GrimoireScene extends Phaser.Scene {
     const hint = uiText(this, x, CARD_Y + 290, results.length > 1 ? `Toque para revelar (${i + 1}/${results.length})` : 'Toque para revelar', 26, PAL.uiText, 6);
     stage.add(hint);
     this.tweens.add({ targets: hint, alpha: 0.45, duration: 700, yoyo: true, repeat: -1 });
+    let all: Button | null = null;
+    if (results.length - i > 1) {
+      stage.add(
+        (all = new Button(this, x, CARD_Y + 360, {
+          width: 360,
+          height: 74,
+          label: `Revelar todas (${results.length - i})`,
+          fontSize: 26,
+          color: 0x5a3fb0,
+          onClick: () => {
+            stage.destroy();
+            this.revealAll(o, results.slice(i));
+          },
+        })),
+      );
+    }
     back.setInteractive({ useHandCursor: true });
     back.once('pointerdown', () => {
       hint.destroy();
+      all?.destroy();
       this.tweens.killTweensOf(back);
       back.setAngle(0);
       this.tweens.add({
@@ -239,7 +264,7 @@ export class GrimoireScene extends Phaser.Scene {
           this.tweens.killTweensOf(halo);
           halo.destroy();
           this.rarityShow(fx, def.rarity);
-          const face = cardView(this, r.id, x, y, CARD_S);
+          const face = cardView(this, r.id, x, y, CARD_S, true, false);
           face.scaleX = 0;
           stage.add(face);
           this.tweens.add({ targets: face, scaleX: CARD_S, duration: 180, ease: 'Back.easeOut' });
@@ -273,6 +298,41 @@ export class GrimoireScene extends Phaser.Scene {
         },
       });
     });
+  }
+
+  /** All remaining cards at once, in a grid; the background plays the show of the best one. */
+  private revealAll(o: Phaser.GameObjects.Container, results: { id: BoonId; fresh: boolean; dust: number }[]): void {
+    const stage = this.add.container(0, 0);
+    o.add(stage);
+    const fx = this.add.container(0, 0);
+    stage.add(fx);
+    const rank = (r: { id: BoonId }) => RARITIES.indexOf((BOONS[r.id] as BoonDef).rarity);
+    const best = (BOONS[results.reduce((a, b) => (rank(b) > rank(a) ? b : a)).id] as BoonDef).rarity;
+    this.rarityShow(fx, best);
+    const cols = Math.min(5, results.length);
+    const S = 0.4;
+    results.forEach((r, k) => {
+      const def = BOONS[r.id] as BoonDef;
+      const col = k % cols;
+      const row = Math.floor(k / cols);
+      const x = GAME_WIDTH / 2 + (col - (cols - 1) / 2) * 134;
+      const y = 380 + row * 250;
+      const halo = this.add.image(x, y, 'spark').setTint(RARITY_SHOW[def.rarity].color).setBlendMode(Phaser.BlendModes.ADD).setAlpha(def.rarity === 'common' ? 0.2 : 0.7).setScale(0);
+      const face = cardView(this, r.id, x, y, S, false);
+      face.setScale(0);
+      const tag = uiText(this, x, y + 98, r.fresh ? 'NOVA!' : `+${r.dust} pó`, 18, r.fresh ? PAL.goldCss : '#d6c4ff', 4).setAlpha(0);
+      stage.add([halo, face, tag]);
+      this.tweens.add({ targets: face, scale: S, duration: 260, delay: k * 90, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: halo, scale: def.rarity === 'common' ? 4 : 6, duration: 300, delay: k * 90 });
+      this.tweens.add({ targets: tag, alpha: 1, duration: 200, delay: k * 90 + 200 });
+    });
+    const top = results.some((r) => rank(r) >= 2);
+    playSfx(best === 'legendary' ? 'mvp' : top ? 'star' : 'coin');
+    vibrate(top ? [40, 30, 80] : 20);
+    const banner = uiText(this, GAME_WIDTH / 2, 230, `Melhor carta: ${RARITY_LABEL[best].toUpperCase()}`, 36, css(RARITY_SHOW[best].color), 8);
+    stage.add(banner);
+    this.refreshWallet();
+    this.time.delayedCall(results.length * 90 + 300, () => this.packDone(o));
   }
 
   /** The background show of a turned card, by rarity. Everything lives in `fx` (behind the card). */
@@ -341,17 +401,15 @@ export class GrimoireScene extends Phaser.Scene {
       }
     }
     if (show.shake) this.cameras.main.shake(rarity === 'legendary' ? 500 : 250, show.shake);
-    if (show.flash) this.cameras.main.flash(rarity === 'legendary' ? 450 : 250, (show.color >> 16) & 255, (show.color >> 8) & 255, show.color & 255);
   }
 
   private packDone(o: Phaser.GameObjects.Container): void {
     this.refreshWallet();
-    const again = getSave().data.coins >= PACK.price;
     o.add(
       new Button(this, GAME_WIDTH / 2, 912, {
         width: 420,
         height: 84,
-        label: PACK.cards === 1 ? 'Pegar carta' : 'Pegar cartas',
+        label: 'Pegar cartas',
         fontSize: 30,
         color: 0x3aa655,
         onClick: () => {
@@ -361,21 +419,9 @@ export class GrimoireScene extends Phaser.Scene {
         },
       }),
     );
-    if (again)
-      o.add(
-        new Button(this, GAME_WIDTH / 2, 1008, {
-          width: 420,
-          height: 70,
-          label: `Abrir outra • ${PACK.price} moedas`,
-          fontSize: 24,
-          color: 0x5a3fb0,
-          onClick: () => {
-            const save = getSave();
-            if (!save.buyPack()) return;
-            this.openPack(save.claimPack());
-          },
-        }),
-      );
+    const coins = getSave().data.coins;
+    if (coins >= PACK.price) o.add(this.buyButton(GAME_WIDTH / 2 - (coins >= PACK.price * PACK.bulk ? 165 : 0), 1008, 1));
+    if (coins >= PACK.price * PACK.bulk) o.add(this.buyButton(GAME_WIDTH / 2 + 165, 1008, PACK.bulk));
   }
 
   // ───────────────────────────── collection & deck ─────────────────────────────

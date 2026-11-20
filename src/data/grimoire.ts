@@ -16,7 +16,9 @@ export const DECK = {
 export const STARTER: BoonId[] = ['fireMastery', 'iceMastery', 'natureMastery', 'boltMastery', 'eagleEye', 'longReach', 'treasure', 'heart', 'windMastery'];
 
 export const PACK = {
-  price: 35, // moedas (one card at a time: a reveal of its own for each card)
+  price: 100, // moedas per card (each card gets a reveal of its own)
+  /** The big buy: this many cards at once. */
+  bulk: 10,
   cards: 1,
   /** Chance of each card's rarity (shown to the player in "Ver chances"). */
   odds: { common: 0.62, rare: 0.28, epic: 0.09, legendary: 0.01 } as Record<BoonRarity, number>,

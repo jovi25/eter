@@ -292,16 +292,20 @@ export class SaveStore {
 
   // ───────────── Grimório (v8) ─────────────
 
-  /** Pay for a pack and pre-roll its cards (saved: closing the game can't re-roll it). */
-  buyPack(): BoonId[] | null {
+  /** Pay for `count` packs at once and pre-roll their cards (saved: closing the game can't re-roll them). */
+  buyPack(count = 1): BoonId[] | null {
     const p = this.data.packs;
     if (p.pending) return p.pending;
-    if (this.data.coins < PACK.price) return null;
-    this.data.coins -= PACK.price;
-    const roll = rollPack(p.seed, p.sinceEpic);
-    p.pending = roll.cards;
-    p.seed = roll.seed;
-    p.sinceEpic = roll.sinceEpic;
+    if (count < 1 || this.data.coins < PACK.price * count) return null;
+    this.data.coins -= PACK.price * count;
+    const cards: BoonId[] = [];
+    for (let i = 0; i < count; i++) {
+      const roll = rollPack(p.seed, p.sinceEpic);
+      cards.push(...roll.cards);
+      p.seed = roll.seed;
+      p.sinceEpic = roll.sinceEpic;
+    }
+    p.pending = cards;
     this.persist();
     return p.pending;
   }

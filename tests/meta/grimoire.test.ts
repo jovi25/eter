@@ -153,3 +153,15 @@ describe('Grimório — in the match', () => {
     }
   });
 });
+
+describe('Grimório — 10 at once', () => {
+  it('buys 10 cards for 10× the price, pre-rolled like a single pack', () => {
+    const save = new SaveStore(mem());
+    save.data.coins = PACK.price * PACK.bulk;
+    const cards = save.buyPack(PACK.bulk)!;
+    expect(cards).toHaveLength(PACK.bulk);
+    expect(save.data.coins).toBe(0);
+    expect(save.buyPack(PACK.bulk)).toEqual(cards); // already paid: same cards
+    expect(save.claimPack()).toHaveLength(PACK.bulk);
+  });
+});
