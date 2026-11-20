@@ -518,3 +518,54 @@ Same style and same background: one solid flat magenta color (#FF00FF). No gradi
 
 Braseiro = Fogo ✅, Cristal Gélido = Gelo, Vinha Ancestral = Planta, Torre do Trovão = Raio,
 Torre do Vento = Vento, Arqueiro = Normal. Pedra fica guardado para uma torre futura.
+
+---
+
+## 6. Cartas do Grimório (C1 a C4)
+
+Cada imagem é uma **grade 3×3 de pinturas separadas por faixas brancas** (a última tem só 5). O recorte é
+automático: `python tools/cutout.py grid <imagem> public/assets/cards <nomes na ordem>`.
+A ordem é sempre da esquerda para a direita, de cima para baixo.
+
+Estilo comum a todas (vai junto em cada pedido):
+```
+Style: polished fantasy collectible card game illustrations, painterly with soft cel shading, rich glowing
+magical lighting, saturated jewel colors, one clear central subject per painting, cute and friendly (not dark),
+matching a cute chibi fantasy tower defense game. No text, no letters, no numbers, no card frames, no borders.
+```
+
+**C1** (fireMastery, iceMastery, natureMastery, boltMastery, eagleEye, longReach, treasure, heart, windMastery)
+```
+Generate an image. A 3x3 grid of 9 separate square paintings of equal size, separated by thick pure white
+gutters (#FFFFFF) between them and around the edges. Each painting fills its whole square.
+1: glowing living embers and a dancing flame. 2: a long winter, a big shining snowflake over frozen pines.
+3: ancient glowing golden sap dripping from a huge old leaf. 4: a charged stormy sky full of lightning.
+5: the sharp golden eye of an eagle with feathers. 6: a floating magical crystal lens refracting violet light.
+7: a forgotten treasure chest overflowing with gold, half covered in moss. 8: a glowing crystal heart full of
+ether light. 9: cutting wind, swirling green-white gusts with flying leaves.
+[estilo comum]
+```
+
+**C2** (bounty, bargain, catalyst, eternalCombo, heroFury, echo, absoluteZero, stormHeart, overdrive)
+```
+... 1: a bounty hunter's heavy coin pouch with a wanted poster. 2: a master builder's hammer and tools with
+blueprints. 3: an unstable bubbling potion flask cracking with orange energy. 4: a glowing hourglass whose sand
+loops forever. 5: a guardian's sword wreathed in fiery golden aura. 6: arcane echo, violet rune rings rippling
+outward. 7: absolute zero, a perfect ice crystal freezing the air around it. 8: the heart of a storm, a dark
+cloud with a glowing core and lightning. 9: overdrive, glowing brass gears spinning with white light.
+```
+
+**C3** (tallVines, heavyHand, ironArrows, deepRoots, sharpMelt, quickHands, galeForce, goldPact, cyclone)
+```
+... 1: a climbing vine growing up into the sky. 2: a heavy armored gauntlet fist hitting the ground.
+3: a bundle of iron-tipped arrows gleaming. 4: deep eternal roots glowing underground. 5: melting ice pierced by
+a burning drop of fire. 6: nimble winged gloves. 7: a powerful gust spiral of wind. 8: a golden pact, a glowing
+contract scroll sealed with a heart-shaped wax seal. 9: the eye of a cyclone crackling with lightning.
+```
+
+**C4 — Lendárias e Épica** (goldRain, sunOfEter, phoenix, worldSeed, timeCrown): pedir grade 3x2, a 6ª célula vazia.
+```
+... A 3x2 grid of 6 squares ... 1: a rain of gold coins from a glowing sky. 2: the radiant sun of Ether with
+rings of runes. 3: a phoenix feather blazing with fire. 4: a glowing world seed sprouting a tiny world tree.
+5: a crown of time with clock faces and floating golden gears. 6: leave this square plain white.
+```

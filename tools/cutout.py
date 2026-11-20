@@ -17,6 +17,9 @@ Usage:
       Several creatures left to right, each fitted into a fixed w x h frame (feet at the bottom; :c centres).
   python tools/cutout.py map <image> <out_file> [width height]
       Crops and scales a map background to the game size (720x1280 by default).
+  python tools/cutout.py grid <image> <out_dir> <name1> <name2> ...
+      A grid of paintings separated by white gutters (card art): finds the cells, row by row, and saves each
+      one (inner border trimmed) as <name>.webp, 320x300. Use '-' to skip a cell.
 """
 import json
 import sys
@@ -188,6 +191,48 @@ def map_bg(path: str, out: str, w: int = 720, h: int = 1280) -> None:
     print(out, img.size)
 
 
+def runs(mask: np.ndarray, min_len: int) -> list[tuple[int, int]]:
+    """Stretches of True at least `min_len` long: (start, end)."""
+    out, start = [], None
+    for i, v in enumerate(list(mask) + [False]):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            if i - start >= min_len:
+                out.append((start, i))
+            start = None
+    return out
+
+
+def grid(path: str, out_dir: str, *names: str) -> None:
+    rgb = np.asarray(Image.open(path).convert('RGB')).astype(np.float32)
+    light = rgb.min(axis=2) > 225  # gutter pixels: nearly white
+    h, w = light.shape
+    # A row/column is gutter when almost all of it is white.
+    rows = runs(light.mean(axis=1) < 0.6, h // 12)
+    cols = runs(light.mean(axis=0) < 0.6, w // 12)
+    print('cells:', len(rows), 'x', len(cols))
+    img = Image.open(path).convert('RGB')
+    k = 0
+    for (y0, y1) in rows:
+        for (x0, x1) in cols:
+            if k >= len(names):
+                return
+            name = names[k]
+            k += 1
+            if name == '-':
+                continue
+            m = max(6, (x1 - x0) // 60)  # trim soft edges / thin frames
+            cell = img.crop((x0 + m, y0 + m, x1 - m, y1 - m))
+            # Cover 320x300 (the art window's shape).
+            tw, th = 320, 300
+            s = max(tw / cell.width, th / cell.height)
+            cell = cell.resize((round(cell.width * s), round(cell.height * s)), Image.LANCZOS)
+            left, top = (cell.width - tw) // 2, (cell.height - th) // 2
+            cell.crop((left, top, left + tw, top + th)).save(f'{out_dir}/{name}.webp', 'WEBP', quality=90, method=6)
+            print(name, (x0, y0, x1, y1))
+
+
 if __name__ == '__main__':
     cmd, args = sys.argv[1], sys.argv[2:]
     if cmd == 'sheet':
@@ -198,5 +243,7 @@ if __name__ == '__main__':
         split_names(*args)
     elif cmd == 'fit':
         fit(*args)
+    elif cmd == 'grid':
+        grid(*args)
     elif cmd == 'map':
         map_bg(args[0], args[1], *(int(v) for v in args[2:4]))

@@ -38,7 +38,10 @@ export function ensureCard(scene: Phaser.Scene, id: BoonId): string {
   if (scene.textures.exists(key)) return key;
   const tex = scene.textures.createCanvas(key, CARD_W, CARD_H);
   if (!tex) return key;
-  paintCard(tex.getContext(), id);
+  // An illustration made in an image AI (docs/ARTE_IA.md, section 6) fills the art window when it is loaded.
+  const pic = `cardpic_${id}`;
+  const art = scene.textures.exists(pic) ? (scene.textures.get(pic).getSourceImage() as CanvasImageSource & { width: number; height: number }) : undefined;
+  paintCard(tex.getContext(), id, art);
   tex.refresh();
   return key;
 }
@@ -109,7 +112,7 @@ function crystalGem(c: Ctx, x: number, y: number, s: number): void {
 }
 
 /** The whole card face (frame + backdrop + emblem). Name and text are drawn live on top. */
-export function paintCard(c: Ctx, id: BoonId): void {
+export function paintCard(c: Ctx, id: BoonId, art?: CanvasImageSource & { width: number; height: number }): void {
   const def = BOONS[id] as BoonDef;
   const r = def.rarity;
   const f = FRAME[r];
@@ -143,8 +146,21 @@ export function paintCard(c: Ctx, id: BoonId): void {
   c.beginPath();
   c.roundRect(ax, ay, aw, ah, 18);
   c.clip();
-  backdrop(c, ax, ay, aw, ah, col, lvl);
-  emblem(c, EMBLEM[id], W / 2, ay + ah * 0.53, 0.95 + lvl * 0.08, col);
+  if (art) {
+    // Cover the window with the picture (cropped to fit, centred), then a soft vignette in the card's colour.
+    const k = Math.max(aw / art.width, ah / art.height);
+    const dw = art.width * k;
+    const dh = art.height * k;
+    c.drawImage(art, ax + (aw - dw) / 2, ay + (ah - dh) / 2, dw, dh);
+    const v = c.createRadialGradient(W / 2, ay + ah / 2, Math.min(aw, ah) * 0.35, W / 2, ay + ah / 2, Math.max(aw, ah) * 0.75);
+    v.addColorStop(0, 'rgba(0,0,0,0)');
+    v.addColorStop(1, hex(shade(col, -0.6), 0.55));
+    c.fillStyle = v;
+    c.fillRect(ax, ay, aw, ah);
+  } else {
+    backdrop(c, ax, ay, aw, ah, col, lvl);
+    emblem(c, EMBLEM[id], W / 2, ay + ah * 0.53, 0.95 + lvl * 0.08, col);
+  }
   c.restore();
   c.strokeStyle = INK;
   c.lineWidth = 4;
