@@ -757,6 +757,10 @@ export class BattleScene extends Phaser.Scene {
       this.hud.floatText(sh.x, sh.y - 60 - this.cameras.main.scrollY, 'Couraça quebrada!', '#f0e0b0');
       playSfx('reaction_melt', 1.4);
     });
+    ev.on('frostNova', (b) => {
+      this.fx.shockwave(b.x, b.y - 16, 0x9fe8ff, b.radius / 54, 420);
+      this.fx.burst(b.x, b.y - 16, 0xdff6ff, 12);
+    });
     ev.on('emberBurst', (b) => {
       this.fx.shockwave(b.x, b.y - 16, 0xff7a2e, b.radius / 54, 380);
       this.fx.burst(b.x, b.y - 16, 0xffb347, 10);

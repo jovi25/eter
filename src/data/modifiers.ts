@@ -53,6 +53,16 @@ export interface SimModifiers {
   emberBurst: number; // Faísca Final: damage of the burst when a burning enemy dies (0 = off)
   secondChance: number; // Segunda Chance: lives restored once when they hit 0 (0 = none)
   bossDamageMult: number; // Caçador de Chefes
+  // Pacote de conteúdo 2
+  startLives: number; // Cristal de Vidro: lives at the start (0 = the usual)
+  waveGapMult: number; // Blitz: pause between waves
+  earlyCallMult: number; // gold for calling a wave early
+  livesPerWave: number; // Escudo do Cristal: lives back when a wave is cleared (never above the start)
+  bossGoldBonus: number; // Toque de Midas: extra gold for a boss
+  weatherNeverHurts: boolean; // Senhor do Clima: weather only helps
+  overchargeAt: number; // Sobrecarga: from this combo on (0 = off)...
+  overchargeMult: number; // ...towers hit this much harder
+  frostNova: boolean; // Estilhaço Gélido: a frozen enemy that dies chills the ones around it
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -96,5 +106,14 @@ export function defaultModifiers(): SimModifiers {
     emberBurst: 0,
     secondChance: 0,
     bossDamageMult: 1,
+    startLives: 0,
+    waveGapMult: 1,
+    earlyCallMult: 1,
+    livesPerWave: 0,
+    bossGoldBonus: 0,
+    weatherNeverHurts: false,
+    overchargeAt: 0,
+    overchargeMult: 1,
+    frostNova: false,
   };
 }

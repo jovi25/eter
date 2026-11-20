@@ -86,6 +86,37 @@ export class WeatherLayer {
         const wave = Math.sin((p.x + i * 40) / 60) * 6;
         g.lineBetween(p.x, p.y + wave, p.x + 110 * p.len, p.y + wave * 0.4);
       }
+    } else if (kind === 'blizzard') {
+      // Nevasca: a pale sky and big flakes drifting down sideways.
+      this.tint.setFillStyle(0xd8f0ff, 0.12 * a);
+      g.fillStyle(0xffffff, 0.8 * a);
+      const n = few ? DROPS / 3 : DROPS / 1.5;
+      for (let i = 0; i < n; i++) {
+        const p = this.parts[i]!;
+        p.y += 220 * p.v * dt;
+        p.x += Math.sin((p.y + i * 50) / 80) * 40 * dt - 60 * dt;
+        if (p.y > GAME_HEIGHT) {
+          p.y -= GAME_HEIGHT + 40;
+          p.x = Math.random() * GAME_WIDTH;
+        }
+        if (p.x < -20) p.x += GAME_WIDTH + 40;
+        g.fillCircle(p.x, p.y, 2 + 3 * p.len);
+      }
+    } else if (kind === 'heatwave') {
+      // Onda de Calor: a warm orange sky and wavy heat rising from the ground.
+      this.tint.setFillStyle(0xff8a2a, 0.1 * a);
+      g.lineStyle(3, 0xffd08a, 0.28 * a);
+      const n = few ? STREAKS / 3 : STREAKS / 1.5;
+      for (let i = 0; i < n; i++) {
+        const p = this.parts[i]!;
+        p.y -= 120 * p.v * dt;
+        if (p.y < 80) {
+          p.y = GAME_HEIGHT - 40;
+          p.x = Math.random() * GAME_WIDTH;
+        }
+        const t = this.scene.time.now / 300 + i;
+        g.lineBetween(p.x + Math.sin(t) * 6, p.y, p.x + Math.sin(t + 1) * 6, p.y - 40 * p.len);
+      }
     } else {
       // Eclipse: the sky darkens to violet; a pale ring pulses at the edges.
       this.tint.setFillStyle(0x1a0838, 0.26 * a);

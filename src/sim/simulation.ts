@@ -157,7 +157,7 @@ export class Simulation {
       time: 0,
       seed: opts.seed,
       gold: this.stage.startGold ?? ECONOMY.startGold,
-      lives: ECONOMY.startLives,
+      lives: this.mods.startLives || ECONOMY.startLives,
       wave: 0,
       totalWaves: this.stage.waves.length,
       wavePhase: 'prep',
@@ -800,7 +800,7 @@ export class Simulation {
   earlyCallBonus(): number {
     const s = this.state;
     if (s.wavePhase !== 'prep' && s.wavePhase !== 'countdown') return 0;
-    return Math.round(s.nextWaveTimer * ECONOMY.earlyCallGoldPerSecond);
+    return Math.round(s.nextWaveTimer * ECONOMY.earlyCallGoldPerSecond * this.mods.earlyCallMult);
   }
 
   stars(): number {
@@ -1002,7 +1002,7 @@ export class Simulation {
         s.wavePhase = 'fight'; // Caçada: the next boss waits for this one to fall
       } else if (s.wave < s.totalWaves) {
         s.wavePhase = 'countdown';
-        s.nextWaveTimer = WAVE_TIMING.timeBetweenWaves;
+        s.nextWaveTimer = WAVE_TIMING.timeBetweenWaves * this.mods.waveGapMult;
         if (this.rules.boons !== false && s.wave % BOON_RULES.every === BOON_RULES.offset) this.offerBoons();
       } else {
         s.wavePhase = 'done';
@@ -1027,6 +1027,11 @@ export class Simulation {
     if (this.mods.interestRate > 0) bonus += Math.min(this.mods.interestCap, Math.floor(s.gold * this.mods.interestRate));
     this.addGold(bonus);
     this.events.emit('waveCleared', { wave, bonus });
+    if (this.mods.livesPerWave > 0 && s.lives < ECONOMY.startLives) {
+      const back = Math.min(this.mods.livesPerWave, ECONOMY.startLives - s.lives);
+      s.lives += back;
+      this.events.emit('livesChanged', { lives: s.lives, delta: back });
+    }
     if (this.stage.hunt && s.wavePhase === 'fight' && wave === s.wave) {
       // Caçada: the boss is down — bounty, a breather, and the shop.
       s.wavePhase = 'countdown';
@@ -1252,7 +1257,7 @@ export class Simulation {
       if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
       const before = e.dist;
-      let speed = def.speed * this.mods.enemySpeedMult;
+      let speed = def.speed * this.mods.enemySpeedMult * (this.weatherDef?.enemySpeed ?? 1);
       if (e.flying) speed *= this.weatherDef?.flyerSpeed ?? 1;
       if (e.fleeing && def.thief) speed *= def.thief.fleeMult;
       if (def.dash && e.phaseTime > 0) speed *= def.dash.mult;
@@ -1388,6 +1393,12 @@ export class Simulation {
       for (let k = 0; k < def.splits.count; k++) {
         this.spawnEnemy(def.splits.into, { dist: Math.max(0, e.dist - 12 + k * 12), wave: e.wave, path: e.pathIndex, goldMult: def.splits.goldMult });
       }
+    }
+    if (e.isBoss && this.mods.bossGoldBonus > 0) this.addGold(this.mods.bossGoldBonus);
+    if (this.mods.frostNova && e.frozenTime > 0) {
+      // Estilhaço Gélido: the frozen one shatters and chills its neighbours twice.
+      this.events.emit('frostNova', { x: e.x, y: e.y, radius: 85 });
+      for (const o of this.enemiesNear(e.x, e.y, 85)) if (o !== e) { this.applyChill(o); this.applyChill(o); }
     }
     if (this.mods.emberBurst > 0 && e.burnTime > 0) {
       // Faísca Final: a burning enemy bursts and singes the ones around it.
@@ -2156,7 +2167,9 @@ export class Simulation {
       return;
     }
     dmg *= eff;
-    dmg *= this.weatherDef?.damage?.[element as 'fire'] ?? 1;
+    const sky = this.weatherDef?.damage?.[element as 'fire'] ?? 1;
+    dmg *= this.mods.weatherNeverHurts ? Math.max(1, sky) : sky;
+    if (this.mods.overchargeAt > 0 && opts.towerId !== undefined && this.state.combo.count >= this.mods.overchargeAt) dmg *= this.mods.overchargeMult;
     if (e.fragileTime > 0) dmg *= 1 + STATUS.fragile.damageTakenBonus;
     if (e.shield) dmg *= ENEMIES[e.type].boss?.shields?.taken ?? 1;
     const def = ENEMIES[e.type];

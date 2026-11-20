@@ -54,6 +54,8 @@ export interface SimEvents {
   shieldBroken: { enemyId: number; reaction: ReactionId; x: number; y: number };
   /** Besouro Couraçado: a reaction cracked its shell. */
   shellBroken: { enemyId: number; x: number; y: number };
+  /** Estilhaço Gélido: a frozen enemy shattered on death. */
+  frostNova: { x: number; y: number; radius: number };
   /** Faísca Final: a burning enemy burst on death. */
   emberBurst: { x: number; y: number; radius: number };
   /** Segunda Chance: the crystal came back from 0 lives. */

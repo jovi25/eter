@@ -6,7 +6,7 @@ import { Rng } from '../sim/rng';
 import type { SimModifiers } from './modifiers';
 import type { CampaignStageId } from './stages';
 
-export type MutationId = 'giants' | 'sale' | 'wildsky' | 'alchemy' | 'swarm' | 'haste';
+export type MutationId = 'giants' | 'sale' | 'wildsky' | 'alchemy' | 'swarm' | 'haste' | 'glass' | 'goldrush' | 'blitz';
 
 export interface MutationDef {
   name: string;
@@ -53,6 +53,27 @@ export const MUTATIONS: Record<MutationId, MutationDef> = {
       m.goldMult *= 0.55;
     },
   },
+  glass: {
+    name: 'Cristal de Vidro', desc: 'Só 5 vidas, mas +60% de ouro por abate', color: 0xbfe8ff, icon: '💎',
+    apply: (m) => {
+      m.startLives = 5;
+      m.goldMult *= 1.6;
+    },
+  },
+  goldrush: {
+    name: 'Corrida do Ouro', desc: 'Abates dão o dobro de ouro, mas tudo custa 50% mais', color: 0xffc93d, icon: '💰',
+    apply: (m) => {
+      m.goldMult *= 2;
+      m.towerCostMult *= 1.5;
+    },
+  },
+  blitz: {
+    name: 'Blitz', desc: 'Pausas entre ondas pela metade, e chamar cedo paga o dobro', color: 0xff6a4a, icon: '⏩',
+    apply: (m) => {
+      m.waveGapMult *= 0.5;
+      m.earlyCallMult *= 2;
+    },
+  },
   haste: {
     name: 'Pressa', desc: 'Monstros 35% mais rápidos, mas as torres também atiram 35% mais rápido', color: 0x6fe6ff, icon: '⚡',
     apply: (m) => {
@@ -63,7 +84,7 @@ export const MUTATIONS: Record<MutationId, MutationDef> = {
 };
 
 /** Fixed rotation (never the same rule two weeks in a row). */
-export const MUTATION_ORDER: MutationId[] = ['giants', 'sale', 'wildsky', 'alchemy', 'swarm', 'haste'];
+export const MUTATION_ORDER: MutationId[] = ['giants', 'sale', 'wildsky', 'alchemy', 'swarm', 'haste', 'glass', 'goldrush', 'blitz'];
 
 export const MUTANT = {
   stages: 3, // stages of the week
@@ -77,9 +98,15 @@ export function weekIndex(d: Date): number {
   return Math.floor((days + 3) / 7); // 1970-01-01 was a Thursday
 }
 
+/** The rule weeks used before the Pacote de conteúdo 2 (kept so that week's rule did not change midway). */
+const FIRST_SIX = MUTATION_ORDER.slice(0, 6);
+/** First week with the 9 rules. */
+export const NINE_RULES_FROM = 2969;
+
 export function weekMutation(week: number): MutationId {
-  const n = MUTATION_ORDER.length;
-  return MUTATION_ORDER[((week % n) + n) % n]!;
+  const order = week < NINE_RULES_FROM ? FIRST_SIX : MUTATION_ORDER;
+  const n = order.length;
+  return order[((week % n) + n) % n]!;
 }
 
 /** Days until the rule changes (1 = it changes tomorrow). */

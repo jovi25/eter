@@ -608,3 +608,12 @@ growing into a taller stack with a soft magic glow (interest). 5: a burning embe
 light, a second chance. 8: a hunter's trophy: a big monster horn crossed with a glowing spear. 9: plain white.
 [estilo comum das cartas]
 ```
+
+### C6 — 6 cartas do Pacote de conteúdo 2 (grade 3×2) ✅
+Recorte: `python tools/cutout.py grid <imagem> public/assets/cards crystalShield quickstart midas weatherWise overcharge frostNova`
+```
+1: a glowing blue crystal shield protecting a small purple crystal. 2: a runner's starting line with a golden
+hourglass and a burst of speed lines. 3: a golden hand touching a monster horn that turns into gold. 4: a wizard's
+staff conducting swirling weather: snow, sun and rain clouds together. 5: an overcharged lightning orb crackling
+with golden energy. 6: a frozen ice statue shattering into a burst of frost shards. [estilo comum das cartas]
+```

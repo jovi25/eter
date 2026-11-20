@@ -250,6 +250,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar I',
     subtitle: 'Cânion — o mapa agora rola: arraste para cima e para baixo',
     map: 'canyon',
+    weather: { 8: 'heatwave' },
     hpMult: 1.6,
     startGold: 230,
     waves: [
@@ -272,6 +273,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar II',
     subtitle: 'Comporta — toque nela para mandar os inimigos para o outro lado',
     map: 'sluice',
+    weather: { 6: 'heatwave' },
     hpMult: 1.2,
     startGold: 230,
     waves: [
@@ -316,6 +318,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Ermos de Âmbar IV',
     subtitle: 'Confluência — dois portais que se encontram no meio',
     map: 'confluence',
+    weather: { 8: 'heatwave' },
     hpMult: 1.25,
     startGold: 250,
     waves: [
@@ -361,6 +364,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados I',
     subtitle: 'Encosta — toque na ponte para segurar os monstros por 4 s',
     map: 'peak',
+    weather: { 5: 'blizzard' },
     hpMult: 1.3,
     startGold: 260,
     waves: [
@@ -405,6 +409,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Cumes Nevados III',
     subtitle: 'Geleira — Comporta no alto e ponte embaixo',
     map: 'glacier',
+    weather: { 6: 'blizzard', 10: 'blizzard' },
     hpMult: 1.3,
     startGold: 270,
     waves: [
@@ -449,6 +454,7 @@ export const STAGES: Record<StageId, StageDef> = {
     name: 'Trono de Obsidiana',
     subtitle: 'Cume — o Titã de Obsidiana',
     map: 'summit',
+    weather: { 4: 'blizzard', 9: 'blizzard' },
     hpMult: 0.7,
     startGold: 290,
     waves: [

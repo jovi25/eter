@@ -33,7 +33,7 @@ export const EXPEDITION = {
   shrine: { choices: 2, lives: 3, weights: { common: 0, rare: 3, epic: 2, legendary: 1 } as Record<BoonRarity, number> },
 };
 
-export type PactId = 'calm' | 'horde' | 'purse' | 'vow' | 'greed' | 'final';
+export type PactId = 'calm' | 'horde' | 'purse' | 'vow' | 'greed' | 'arcane' | 'skies' | 'final';
 
 export interface PactDef {
   name: string;
@@ -47,6 +47,9 @@ export interface PactDef {
   extraBoon?: boolean; // one Bênção to pick before wave 1
   towerKinds?: number; // only this many kinds of tower can be built...
   towerDamage?: number; // ...and they hit this much harder
+  reactionMult?: number; // reaction damage
+  enemySpeed?: number; // monster speed
+  wildWeather?: boolean; // a random weather every wave
 }
 
 export const PACTS: Record<PactId, PactDef> = {
@@ -54,12 +57,14 @@ export const PACTS: Record<PactId, PactDef> = {
   horde: { name: 'Trilha da Horda', good: 'Começa com 1 Bênção extra', bad: 'Monstros com +25% de vida', color: 0xff5a4a, hpMult: 1.25, extraBoon: true },
   purse: { name: 'Trilha do Mercador', good: '+200 de ouro inicial', bad: 'Custa 4 vidas', color: 0xffd34d, gold: 200, lives: -4 },
   vow: { name: 'Trilha do Voto', good: 'Suas torres causam +35% de dano', bad: 'Só 3 tipos de torre', color: 0xb57bff, towerKinds: 3, towerDamage: 1.35 },
+  arcane: { name: 'Trilha Arcana', good: 'Reações causam +40% de dano', bad: 'Monstros 12% mais rápidos', color: 0xc77bff, reactionMult: 1.4, enemySpeed: 1.12 },
+  skies: { name: 'Trilha dos Céus', good: '+30% de ouro por abate', bad: 'O clima muda a cada onda', color: 0x8fb8ff, goldMult: 1.3, wildWeather: true },
   greed: { name: 'Trilha do Tesouro', good: '+40% de ouro por abate', bad: 'Monstros com +15% de vida', color: 0xffa23a, goldMult: 1.4, hpMult: 1.15 },
   // The last stop: no pact, just the boss.
   final: { name: 'Chefe final', good: 'Vença para completar a expedição', bad: 'Os monstros mais fortes da trilha', color: 0xff4d9a },
 };
 /** Pacts that can be rolled for an ordinary battle. */
-export const PACT_IDS: PactId[] = ['calm', 'horde', 'purse', 'vow', 'greed'];
+export const PACT_IDS: PactId[] = ['calm', 'horde', 'purse', 'vow', 'greed', 'arcane', 'skies'];
 
 export type RestKind = 'camp' | 'merchant' | 'shrine';
 export const REST_KINDS: RestKind[] = ['camp', 'merchant', 'shrine'];
@@ -182,6 +187,9 @@ export function legSetup(run: ExpeditionRun, node: BattleNode, base: SimModifier
   const pact = PACTS[node.pact];
   const mods: Partial<SimModifiers> = {};
   if (pact.goldMult) mods.goldMult = base.goldMult * pact.goldMult;
+  if (pact.reactionMult) mods.reactionDamageMult = base.reactionDamageMult * pact.reactionMult;
+  if (pact.enemySpeed) mods.enemySpeedMult = base.enemySpeedMult * pact.enemySpeed;
+  if (pact.wildWeather) mods.wildWeather = true;
   if (node.towers && pact.towerDamage) {
     const dmg = { ...base.towerDamageMult };
     for (const t of node.towers) dmg[t] *= pact.towerDamage;
