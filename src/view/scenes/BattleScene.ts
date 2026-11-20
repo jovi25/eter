@@ -51,6 +51,7 @@ import { DebugOverlay, logicMs } from '../DebugOverlay';
 import { Tutorial } from '../battle/Tutorial';
 import { getSettings, vibrate } from '../settings';
 import { updateQuality } from '../quality';
+import { heroIconKey } from '../art/heroPortrait';
 
 const HITSTOP_MS = 70;
 const HITSTOP_COOLDOWN_MS = 350;
@@ -396,7 +397,7 @@ export class BattleScene extends Phaser.Scene {
       GAME_HEIGHT - 76,
       skillColor,
       HEROES[cls].skill.name,
-      cls === 'mage' ? 'icon_catalyze' : HEROES[cls].texture,
+      cls === 'mage' ? 'icon_catalyze' : heroIconKey(this, cls),
     ));
     this.summons = this.sim.state.summons.map((s) => new SummonView(this, s));
     this.debug = asUi(this, () => new DebugOverlay(this, () => ({ tick: this.sim.state.tick, seed: this.sim.state.seed }), 8, GAME_HEIGHT - 150, DEPTH.debug));

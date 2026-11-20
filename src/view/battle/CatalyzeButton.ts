@@ -6,6 +6,7 @@ import { PAL } from '../art/palette';
 import { uiText } from '../ui/Button';
 import { DEPTH } from './layers';
 
+
 const R = 58;
 
 /**
@@ -37,7 +38,8 @@ export class CatalyzeButton {
     bg.fillStyle(0xffffff, 0.25);
     bg.fillEllipse(-10, -22, 70, 34);
     const bgImg = bakeInPlace(bg, { x0: -R - 8, y0: -R - 8, w: 2 * R + 16, h: 2 * R + 20 }, `skillbtn_${color}`);
-    const img = scene.add.image(0, -6, icon).setScale(icon === 'icon_catalyze' ? 0.85 : 0.42);
+    const img = scene.add.image(0, -6, icon);
+    img.setScale(icon === 'icon_catalyze' ? 0.85 : icon.startsWith('heropic_') ? 64 / img.height : 0.42);
     const text = uiText(scene, 0, 38, label.toUpperCase(), label.length > 12 ? 13 : 16, PAL.uiText, 4);
     const auto = uiText(scene, 0, -R + 4, 'AUTO', 13, PAL.goldCss, 4);
     // Cooldown shade: a dark disc cropped from the top (an Image — a Graphics would cost extra draw calls).

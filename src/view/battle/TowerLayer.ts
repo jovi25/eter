@@ -47,8 +47,9 @@ class TowerView {
       // The tail tip (flame, snowflake, spark) glows softly behind the picture.
       this.flameGlow = scene.add.image(0, 0, 'spark').setTint(this.art.glow).setBlendMode(addBlend()).setAlpha(0.55);
       this.root.addAt(this.flameGlow, this.root.getIndex(this.top));
-      this.top.setY(2);
     }
+    // Illustrated dragons stand with their feet on the pedestal's top (every line, glow or not).
+    if (this.art) this.top.setY(PEDESTAL_FEET_Y);
     this.setLevel(t.level);
     if (this.art && !quality.low) {
       // Breathing: the chest swells (scale from the feet), combined with the shooting squash.
@@ -159,7 +160,7 @@ class TowerView {
   showArt(art: DragonArt): void {
     this.art = art;
     this.atkTimer?.remove();
-    this.top.setTexture(art.key).setOrigin(art.originX, art.originY);
+    this.top.setTexture(art.key).setOrigin(art.originX, art.originY).setY(PEDESTAL_FEET_Y);
     this.baseScale = art.scale;
     this.top.setScale(this.facing * art.scale, art.scale);
     this.placeGlow();
@@ -202,6 +203,9 @@ class TowerView {
 }
 
 /** Towers: pop in when built, grow when upgraded, squash when they shoot. */
+/** Where an illustrated dragon's feet touch the pedestal (container space). */
+const PEDESTAL_FEET_Y = 2;
+
 export class TowerLayer {
   private views = new Map<number, TowerView>();
 

@@ -19,8 +19,8 @@ const HERO_PICS: Partial<Record<HeroClass, { originX: number; originY: number }>
   druid: druidMeta[0]!,
   priest: priestMeta[0]!,
 };
-const BEAR_HEIGHT = 112; // on-screen height of the bear picture (resting pose)
-const PIC_HEIGHT = 140; // on-screen height of a hero picture
+const BEAR_HEIGHT = 128; // on-screen height of the bear picture (resting pose)
+const PIC_HEIGHT = 176; // on-screen height of a hero picture
 
 const S = 0.9; // on-screen scale of the hero rig
 const BAR_W = 56;
@@ -289,7 +289,7 @@ export class SummonView {
       this.body = scene.add.image(0, 0, 'summon_bear').setOrigin(0.5, 0.92);
     }
     this.body.setScale(this.bodyScale);
-    this.bar = new HpBar(scene, -96);
+    this.bar = new HpBar(scene, this.pic ? -BEAR_HEIGHT * 0.9 : -96);
     this.root = scene.add.container(s.x, s.y, [shadow, this.body, this.bar.bg, this.bar.fill]);
     this.down = new DownTimer(scene);
     this.prevX = s.x;

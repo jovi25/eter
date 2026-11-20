@@ -365,7 +365,9 @@ export class BuildMenu {
     g.fillStyle(0xffffff, 0.2);
     g.fillEllipse(-8, -14, 44, 22);
     const gImg = bakeInPlace(g, { x0: -46, y0: -46, w: 92, h: 92 }, `opt_${color}`);
-    const img = this.scene.add.image(0, -4, icon).setScale(icon.startsWith('tower_') ? 0.62 : icon.startsWith('creature_fire') ? 0.27 : 1.1);
+    const img = this.scene.add.image(0, -4, icon);
+    // Illustrated dragons come in different picture sizes: fit each one inside the round button.
+    img.setScale(icon.startsWith('tower_') ? 0.62 : icon.startsWith('creature_') ? Math.min(76 / img.width, 66 / img.height) : 1.1);
     const costBg = this.scene.add.graphics();
     costBg.fillStyle(PAL.ink, 0.9);
     costBg.fillRoundedRect(-34, 26, 68, 28, 14);

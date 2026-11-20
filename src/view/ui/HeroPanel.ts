@@ -7,6 +7,7 @@ import { getSave } from '../../meta/save';
 import { PAL } from '../art/palette';
 import { playSfx } from '../audio/sfx';
 import { Button, uiText } from './Button';
+import { heroPortrait } from '../art/heroPortrait';
 
 const W = 660;
 const H = 1160;
@@ -52,7 +53,7 @@ export class HeroPanel {
 
     // Header: portrait, name, level, XP bar.
     const top = -H / 2;
-    c.add(scene.add.image(-W / 2 + 92, top + 98, def.texture).setScale(0.7));
+    c.add(heroPortrait(scene, cls, -W / 2 + 92, top + 98, 0.7));
     c.add(uiText(scene, 40, top + 50, def.name, 36, '#f3e9ff', 7));
     c.add(uiText(scene, 40, top + 94, `Nível ${level}${level >= MAX_HERO_LEVEL ? ' (máximo)' : ''}`, 24, PAL.goldCss, 5));
     const next = HERO_LEVELS.xp[level];

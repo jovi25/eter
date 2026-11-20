@@ -30,6 +30,7 @@ import type { Vec2 } from '../../data/maps';
 import { TOWERS } from '../../data/towers';
 import { Rng } from '../../sim/rng';
 import { MODE_SPOTS, paintWorldMap, REGION_AT, WORLD_TRAIL } from '../art/worldmap';
+import { heroPortrait } from '../art/heroPortrait';
 
 const NODES: Record<CampaignStageId, { x: number; y: number; enemy: EnemyId }> = {
   v1: { x: 192, y: 1008, enemy: 'slime' },
@@ -285,9 +286,9 @@ export class WorldMapScene extends Phaser.Scene {
 
     // The hero waits at the frontier.
     const fa = WORLD_TRAIL[REGION_AT[frontier]!]!;
-    const hero = this.add.image(fa.x + (fa.x < GAME_WIDTH / 2 ? 96 : -96), fa.y + 14, HEROES[done ? save.data.hero : 'mage'].texture).setScale(0.5).setDepth(42);
+    const hero = heroPortrait(this, done ? save.data.hero : 'mage', fa.x + (fa.x < GAME_WIDTH / 2 ? 96 : -96), fa.y + 14, 0.5).setDepth(42);
     hero.setFlipX(fa.x < GAME_WIDTH / 2);
-    this.tweens.add({ targets: hero, scaleY: 0.52, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: hero, scaleY: hero.scaleY * 1.04, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // Game modes: the side paths.
     const today = dailySetup(new Date());
@@ -374,7 +375,7 @@ export class WorldMapScene extends Phaser.Scene {
         bg.fillRoundedRect(-64, -78, 128, 160, 18);
         bg.fillStyle(0x1f5560, 1);
         bg.fillRoundedRect(-59, -73, 118, 150, 15);
-        slot.add([bg, this.add.image(0, -6, def.texture).setScale(0.62), uiText(this, 0, 62, def.name, 16, PAL.uiText, 4)]);
+        slot.add([bg, heroPortrait(this, cls, 0, -6, 0.62), uiText(this, 0, 62, def.name, 16, PAL.uiText, 4)]);
         slot.setSize(128, 160).setInteractive({ useHandCursor: true });
         slot.on('pointerdown', () => {
           playSfx('ui');
@@ -665,9 +666,9 @@ export class WorldMapScene extends Phaser.Scene {
       bg.fillRoundedRect(-64, -78, 128, 160, 18);
       bg.fillStyle(unlocked ? 0x3d2a6a : 0x241a3a, 1);
       bg.fillRoundedRect(-59, -73, 118, 150, 15);
-      const img = this.add.image(0, -6, def.texture).setScale(0.62);
+      const img = heroPortrait(this, cls, 0, -6, 0.62);
       if (!unlocked) img.setTint(0x111111).setAlpha(0.6);
-      if (!animate && selected) this.tweens.add({ targets: img, scale: { from: 0.74, to: 0.62 }, duration: 220, ease: 'Back.easeOut' });
+      if (!animate && selected) this.tweens.add({ targets: img, scale: { from: img.scale * 1.19, to: img.scale }, duration: 220, ease: 'Back.easeOut' });
       slot.add([bg, img, uiText(this, 0, 62, def.name, 16, unlocked ? PAL.uiText : PAL.uiDim, 4)]);
       if (!unlocked) slot.add(uiText(this, 0, -10, '🔒\nFim do\ntutorial', 15, '#ffffff', 4));
       slot.setSize(128, 160).setInteractive({ useHandCursor: true });
@@ -799,7 +800,7 @@ export class WorldMapScene extends Phaser.Scene {
     c.add([shade, g]);
     c.add(uiText(this, 0, -280, 'Desafio do dia', 40, '#ffd9f4', 8));
     c.add(uiText(this, 0, -232, 'Igual para todo mundo hoje. Quantos pontos você faz?', 20, PAL.uiDim, 4).setWordWrapWidth(560));
-    c.add(this.add.image(-170, -80, hero.texture).setScale(1.25));
+    c.add(heroPortrait(this, d.hero, -170, -80, 1.25));
     c.add(uiText(this, 80, -150, `Herói: ${hero.name}`, 26, PAL.uiText, 5));
     c.add(uiText(this, 80, -108, STAGES[d.stage].name, 22, PAL.goldCss, 5));
     c.add(uiText(this, 80, -58, `Começa com: ${boon.name}`, 22, '#e0c8ff', 5).setWordWrapWidth(330));
