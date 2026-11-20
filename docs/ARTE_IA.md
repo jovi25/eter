@@ -19,6 +19,7 @@ respiração, bote, projéteis, partículas e brilho.
 - ✅ Todas as torres (T1–T5 + Braseiro), mapas e objetos (P1–P4), monstros (M1–M5)
 - ✅ Heróis H1–H5 (Arcanista, Cavaleiro, Druida, Sacerdotisa, Urso)
 - ✅ Cartas do Grimório C1–C4 (32 artes, 2026-11-20)
+- ✅ Pacote de conteúdo 1: monstros M6 (Bolhão, Besouro, Espectro, Lebre) e cartas C5
 - ✅ Evoluções E1–E6 (2026-11-19, geradas no Gemini numa conversa nova por elemento; sem anexar
   referência, o dragão adulto foi descrito em texto no próprio pedido)
 - Dica: peça cada imagem nova numa **conversa nova**. Na mesma conversa o Gemini às vezes edita a

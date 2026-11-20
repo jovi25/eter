@@ -261,8 +261,9 @@ export class BattleScene extends Phaser.Scene {
     if (getSave().discover('enemies', type)) this.hud.floatText(GAME_WIDTH / 2, 250, 'Novo no Códice!', '#e0c8ff');
     const def = ENEMIES[type];
     const entries = Object.entries(def.resist) as [Element, number][];
-    if (entries.length === 0 && !def.rootImmune && !def.flying) return;
-    const parts: string[] = [];
+    const trick = def.splits ? 'ao morrer, se divide em gosmas' : def.shell ? 'couraça: só uma reação quebra' : def.phase ? 'fica translúcido e quase imune' : def.dash ? 'dá arrancadas: gelo e raízes seguram' : '';
+    if (entries.length === 0 && !def.rootImmune && !def.flying && !trick) return;
+    const parts: string[] = trick ? [trick] : [];
     for (const [el, r] of entries) {
       const name = ELEMENTS[el].name;
       if (r >= 1) parts.push(`imune a ${name}`);
