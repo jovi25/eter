@@ -1673,7 +1673,11 @@ export class Simulation {
   private stormTick(t: TowerState, evo: EvolutionId): void {
     const aura = EVOLUTIONS[evo].aura!;
     const dmg = this.ultBase(t) * aura.damageMult;
-    for (const e of this.inRange(t)) {
+    const foes = this.inRange(t);
+    // Each pulse that reaches someone counts as an attack (the dragon turns to the closest one and strikes).
+    const closest = foes.reduce<EnemyState | null>((b, e) => (!b || (e.x - t.x) ** 2 + (e.y - t.y) ** 2 < (b.x - t.x) ** 2 + (b.y - t.y) ** 2 ? e : b), null);
+    if (closest) this.events.emit('towerFired', { towerId: t.id, targetId: closest.id });
+    for (const e of foes) {
       this.applyHit(e, { element: TOWERS[t.type].element, damage: dmg, chillStacks: aura.chillStacks, noFreeze: aura.noFreeze, towerId: t.id, towerType: t.type });
     }
   }

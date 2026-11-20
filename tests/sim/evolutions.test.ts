@@ -85,9 +85,9 @@ describe('Evoluções', () => {
     sim.evolve(t.id, 'blizzard');
     const a = foe(sim, t.x + 60, t.y);
     const b = foe(sim, t.x - 50, t.y - 40);
-    const shots = record(sim, 'towerFired');
     for (let i = 0; i < 30; i++) sim.step();
-    expect(shots.length).toBe(0);
+    // No projectiles: the storm hits everyone in range directly (each pulse still counts as an attack pose).
+    expect(sim.state.projectiles.length).toBe(0);
     expect(a.hp).toBeLessThan(1e6);
     expect(b.hp).toBeLessThan(1e6);
   });
@@ -156,5 +156,30 @@ describe('crowd control has diminishing returns', () => {
     for (let i = 0; i < 10; i++) sim.applyHit(e, { element: 'ice', damage: 1, noFreeze: true });
     expect(e.frozenTime).toBe(0);
     expect(e.chillTime).toBeGreaterThan(0);
+  });
+});
+
+describe('every evolved tower shows its attack pose', () => {
+  it('each evolution sends towerFired while enemies are in range (aura towers too)', async () => {
+    const { TOWER_EVOLUTIONS } = await import('../../src/data/evolutions');
+    const { newSim, runSeconds } = await import('../helpers');
+    for (const [type, evos] of Object.entries(TOWER_EVOLUTIONS)) {
+      for (const evo of evos) {
+        const sim = newSim();
+        sim.rules.evolve = true;
+        sim.state.gold = 1e6;
+        const t = sim.build(1, type as never)!;
+        sim.upgrade(t.id);
+        sim.upgrade(t.id);
+        sim.evolve(t.id, evo);
+        let fired = 0;
+        sim.events.on('towerFired', (f) => {
+          if (f.towerId === t.id) fired++;
+        });
+        for (let k = 0; k < 12; k++) sim.spawnEnemy('golem', { dist: 200 + k * 30, hp: 1e6 });
+        runSeconds(sim, 10);
+        expect(fired, `${type} ${evo}`).toBeGreaterThan(3);
+      }
+    }
   });
 });
