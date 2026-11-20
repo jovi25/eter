@@ -33,7 +33,7 @@ import { HUNT, huntTime } from '../../data/hunt';
 import { MUTANT, MUTATIONS, type MutationId } from '../../data/mutations';
 import { BuildMenu } from '../battle/BuildMenu';
 import { BOONS } from '../../data/boons';
-import { CHALLENGES, challengeText, dailyScore, dailySetup, evaluateChallenges, type DailySetup } from '../../data/challenges';
+import { CHALLENGES, challengeText, clock, DAILY_TWISTS, dailyScore, dailySetup, evaluateChallenges, type DailySetup } from '../../data/challenges';
 import { CatalyzeButton } from '../battle/CatalyzeButton';
 import { HeroView, SummonView } from '../battle/HeroView';
 import { HEROES, type HeroClass } from '../../data/heroes';
@@ -306,7 +306,9 @@ export class BattleScene extends Phaser.Scene {
       seed,
       modifiers: { unlockedTowers: [...towers], ...mods, ...leg?.modifiers },
       limits: !this.trip,
-      run: leg ?? undefined,
+      // Desafio do dia: the rule of the day changes lives, gold or monster health.
+      run: leg ?? (this.daily ? DAILY_TWISTS[this.daily.twist].run : undefined),
+      trial: this.daily ? { ...DAILY_TWISTS[this.daily.twist].trial, seconds: this.daily.seconds } : undefined,
       waves: this.stageId === 'hunt' ? save.huntBosses() : undefined,
       mutation: this.mutation ?? undefined,
     });
@@ -378,6 +380,15 @@ export class BattleScene extends Phaser.Scene {
         this.sim.callNextWave();
       },
     }));
+    // Clock: the daily is lost when it runs out; a stage with a time challenge shows the goal.
+    if (this.daily) {
+      this.hud.setClock(this.daily.seconds, true);
+      const tw = DAILY_TWISTS[this.daily.twist];
+      this.time.delayedCall(600, () => this.hud.floatText(GAME_WIDTH / 2, 260, `Regra do dia: ${tw.desc} • vença em até ${clock(this.daily!.seconds)}`, '#ffd9f4'));
+    } else if (!this.trip && !this.mutation && (STAGE_ORDER as readonly string[]).includes(this.stageId)) {
+      const goal = CHALLENGES[this.stageId as CampaignStageId].find((c) => c.kind === 'time');
+      if (goal && goal.kind === 'time') this.hud.setClock(goal.seconds, false);
+    }
     this.time.delayedCall(0, () => (this.menu.onLinkPreview = (slot) => this.links.showPreview(this.sim, slot)));
     this.menu = new BuildMenu(this, this.sim, {
       build: (slot, type) => this.sim.build(slot, type),
@@ -960,6 +971,7 @@ export class BattleScene extends Phaser.Scene {
     ev.on('gameOver', (g) => {
       this.ended = true;
       this.menu.close();
+      if (!g.won && this.sim.timeLeft() === 0) this.hud.floatText(GAME_WIDTH / 2, 300, 'O TEMPO ACABOU!', '#ff6b6b');
       const save = getSave();
       const isRift = this.stageId === 'rift';
       const campaign = STAGE_ORDER.includes(this.stageId as CampaignStageId);
@@ -999,7 +1011,7 @@ export class BattleScene extends Phaser.Scene {
         else save.failExpedition();
         trip = { leg: run.leg + 1, legs: EXPEDITION.legs, finished, pact: PACTS[route.pact].name, streak: save.data.expeditionStreak };
       } else if (this.daily) {
-        const score = dailyScore(this.sim.state);
+        const score = dailyScore(this.sim.state, this.daily.seconds);
         firstDailyToday = save.data.daily.key !== this.daily.key || save.data.daily.plays === 0;
         const record = save.recordDaily(this.daily.key, score);
         daily = { score, record, best: save.dailyBest(this.daily.key) };

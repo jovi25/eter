@@ -9,6 +9,8 @@ const P = { kind: 'procedural' } as const;
 /** Illustrations made by the player in an image AI, cut out by tools/cutout.py (see docs/ARTE_IA.md). */
 /** Monster pictures are cut at twice their on-screen size (sharp on phones): draw them at this scale. */
 export const ENEMY_PIC = 0.5;
+/** Bosses are drawn this much bigger than their picture box, so they stand out from the crowd. */
+export const BOSS_PIC = 1.6;
 
 const art = (path: string) => ({ kind: 'image', url: `${import.meta.env.BASE_URL}assets/${path}` }) as const;
 

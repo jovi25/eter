@@ -122,6 +122,7 @@ export interface MatchStats {
   skillCasts: number;
   built: Record<TowerId, number>; // towers built, by type
   peakTowers: number; // most towers standing at once
+  peakLevel: number; // highest tower level reached (an evolution counts as 4)
   heroFalls: number;
   bestCombo: number;
 }

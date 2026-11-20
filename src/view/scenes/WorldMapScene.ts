@@ -10,7 +10,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
 import { BOONS } from '../../data/boons';
 import { playMusic, setMusicIntensity } from '../audio/music';
-import { CHALLENGES, challengeText, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
+import { CHALLENGES, challengeText, clock, DAILY_TWISTS, dailySetup, TOTAL_CHALLENGES } from '../../data/challenges';
 import { HERO_ORDER, HEROES } from '../../data/heroes';
 import { regionOf, REGIONS, STAGE_ORDER, STAGES, type CampaignStageId, type StageId } from '../../data/stages';
 import { ENEMIES } from '../../data/enemies';
@@ -805,9 +805,12 @@ export class WorldMapScene extends Phaser.Scene {
     c.add(uiText(this, 80, -108, STAGES[d.stage].name, 22, PAL.goldCss, 5));
     c.add(uiText(this, 80, -58, `Começa com: ${boon.name}`, 22, '#e0c8ff', 5).setWordWrapWidth(330));
     c.add(uiText(this, 80, -8, boon.desc, 18, PAL.uiDim, 4).setWordWrapWidth(330));
+    // The clock and the rule of the day.
+    const tw = DAILY_TWISTS[d.twist];
+    c.add(uiText(this, 0, 40, `⏱ Vença em até ${clock(d.seconds)}  •  ${tw.name}: ${tw.desc}`, 22, '#ffb3e6', 5).setWordWrapWidth(580));
     const best = save.dailyBest(d.key);
-    c.add(uiText(this, 0, 96, best > 0 ? `Melhor de hoje: ${best} pontos` : 'Você ainda não jogou hoje', 26, best > 0 ? PAL.goldCss : PAL.uiText, 5));
-    c.add(uiText(this, 0, 140, 'Vitória +1000 • cada vida +100 • cada reação +10', 18, PAL.uiDim, 4));
+    c.add(uiText(this, 0, 100, best > 0 ? `Melhor de hoje: ${best} pontos` : 'Você ainda não jogou hoje', 26, best > 0 ? PAL.goldCss : PAL.uiText, 5));
+    c.add(uiText(this, 0, 140, 'Vitória +1000 • vida +100 • reação +10 • segundo que sobrar +15', 18, PAL.uiDim, 4));
     c.add(
       new Button(this, 0, 240, {
         width: 360,

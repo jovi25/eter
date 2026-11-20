@@ -9,6 +9,7 @@ import { Button, uiText } from '../ui/Button';
 import { DEPTH } from './layers';
 import { NUM_FONT } from '../art/textures';
 import { LabelPool } from '../ui/LabelPool';
+import { clock } from '../../data/challenges';
 
 export interface HudCallbacks {
   onSpeed: () => void;
@@ -39,6 +40,10 @@ export class Hud {
   private last = { gold: -1, lives: -1, wave: -1, call: '', altar: '' };
   private altarBtn: Button | null = null;
   private altarGlow: Phaser.GameObjects.Image | null = null;
+  /** Clock under the top bar: the daily's countdown, or the time challenge of the stage. */
+  private clock: Phaser.GameObjects.Text | null = null;
+  private clockGoal: { seconds: number; countdown: boolean } | null = null;
+  private lastClock = '';
 
   constructor(private scene: Phaser.Scene, cb: HudCallbacks) {
     const top = scene.add.graphics().setDepth(DEPTH.hud);
@@ -103,6 +108,12 @@ export class Hud {
     bakeText(comboSubWord);
   }
 
+  /** Show a clock: `countdown` = the match is lost at zero (daily); otherwise elapsed time vs the goal. */
+  setClock(seconds: number, countdown: boolean): void {
+    this.clockGoal = { seconds, countdown };
+    this.clock ??= uiText(this.scene, GAME_WIDTH - 70, 166, '', 24, PAL.uiText, 5).setDepth(DEPTH.hud);
+  }
+
   setSpeed(speed: number): void {
     this.speedBtn.setLabel(`${speed}×`).setColor(speed > 1 ? 0xe0862f : 0x3d7bd9);
   }
@@ -122,6 +133,19 @@ export class Hud {
       this.waveText.setText(`Onda ${s.wave}/${s.totalWaves}`);
       this.pulse(this.waveText, 1.3);
       this.last.wave = s.wave;
+    }
+
+    if (this.clock && this.clockGoal) {
+      const g = this.clockGoal;
+      const left = g.seconds - s.time;
+      const text = g.countdown ? `⏱ ${clock(left)}` : `⏱ ${clock(s.time)}/${clock(g.seconds)}`;
+      if (text !== this.lastClock) {
+        this.lastClock = text;
+        // Red when time is short (or the goal was missed).
+        const color = left <= 0 ? '#ff6b6b' : left < 30 ? '#ffb347' : g.countdown ? '#ffe9a8' : PAL.uiText;
+        this.clock.setText(text).setColor(color);
+        if (g.countdown && left < 10 && left > 0) this.pulse(this.clock, 1.15);
+      }
     }
 
     let label: string;

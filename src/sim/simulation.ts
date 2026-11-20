@@ -39,6 +39,17 @@ export interface SimOptions {
   waves?: number;
   /** Semana Mutante: this week's crazy rule. */
   mutation?: MutationId;
+  /** Desafio do dia: a clock (lose when it runs out) and limits on towers. */
+  trial?: TrialRules;
+}
+
+export interface TrialRules {
+  /** Seconds of match time to win in; at zero the match is lost. */
+  seconds?: number;
+  /** At most this many towers on the map. */
+  maxTowers?: number;
+  /** Towers can't be upgraded past this level. */
+  maxLevel?: number;
 }
 
 export interface SpawnOptions {
@@ -73,6 +84,7 @@ export class Simulation {
   readonly mods: SimModifiers;
   /** Teaching limits in force (empty = everything allowed). */
   readonly rules: Pick<StageDef, 'towers' | 'evolve' | 'fusion' | 'boons' | 'links'>;
+  readonly trial: TrialRules;
 
   private readonly rng: Rng;
   /** Separate streams so boons/bonus spawns never disturb combat rolls. */
@@ -124,6 +136,7 @@ export class Simulation {
       this.stage = { ...this.stage, weather };
     }
     this.rules = opts.limits ? this.stage : {};
+    this.trial = opts.trial ?? {};
     const only = this.rules.towers;
     if (only) this.mods.unlockedTowers = this.mods.unlockedTowers.filter((t) => only.includes(t));
     this.rng = new Rng(opts.seed);
@@ -197,6 +210,7 @@ export class Simulation {
         skillCasts: 0,
         built: { archer: 0, brazier: 0, frost: 0, vine: 0, storm: 0, wind: 0 },
         peakTowers: 0,
+        peakLevel: 0,
         heroFalls: 0,
         bestCombo: 0,
       },
@@ -708,6 +722,7 @@ export class Simulation {
 
   /** Cost of the next upgrade, or null if maxed. */
   upgradeCost(tower: TowerState): number | null {
+    if (this.trial.maxLevel !== undefined && tower.level >= this.trial.maxLevel) return null;
     const next = TOWERS[tower.type].levels[tower.level];
     return next ? Math.round(next.cost * this.mods.upgradeCostMult * this.mods.towerCostMult) : null;
   }
@@ -729,12 +744,14 @@ export class Simulation {
     const pos = this.slots[slot];
     if (s.result !== 'playing' || !pos || this.towerAt(slot)) return null;
     if (!this.mods.unlockedTowers.includes(type)) return null;
+    if (this.trial.maxTowers !== undefined && s.towers.length >= this.trial.maxTowers) return null;
     const cost = this.buildCost(type);
     if (s.gold < cost) return null;
     const tower: TowerState = { id: this.nextId++, slot, type, level: 1, x: pos.x, y: pos.y, cooldown: 0, invested: cost, shots: 0, blessTime: 0, evo: null, ultTimer: 0, fusion: null };
     s.towers.push(tower);
     s.stats.built[type]++;
     s.stats.peakTowers = Math.max(s.stats.peakTowers, s.towers.length);
+    s.stats.peakLevel = Math.max(s.stats.peakLevel, 1);
     this.addGold(-cost);
     this.events.emit('towerBuilt', { towerId: tower.id, slot, type });
     return tower;
@@ -748,6 +765,7 @@ export class Simulation {
     if (cost === null || s.gold < cost) return false;
     t.level++;
     t.invested += cost;
+    s.stats.peakLevel = Math.max(s.stats.peakLevel, t.level);
     this.addGold(-cost);
     this.events.emit('towerUpgraded', { towerId: t.id, level: t.level });
     return true;
@@ -766,6 +784,11 @@ export class Simulation {
   }
 
   /** Start the next wave now. Pays a bonus for the time skipped. */
+  /** Desafio do dia: seconds left on the clock (null = no clock). */
+  timeLeft(): number | null {
+    return this.trial.seconds === undefined ? null : Math.max(0, this.trial.seconds - this.state.time);
+  }
+
   callNextWave(): boolean {
     const s = this.state;
     if (s.result !== 'playing') return false;
@@ -906,6 +929,12 @@ export class Simulation {
     if (s.result !== 'playing') return;
     s.tick++;
     s.time += DT;
+    if (this.trial.seconds !== undefined && s.time >= this.trial.seconds) {
+      // Desafio do dia: the clock ran out.
+      s.result = 'lost';
+      this.events.emit('gameOver', { won: false, stars: 0 });
+      return;
+    }
     if (s.wave > 0) s.runTime += DT;
     this.updateWaves();
     this.updateWeather();
@@ -1517,6 +1546,7 @@ export class Simulation {
     if (cost === null || s.gold < cost) return false;
     t.evo = evo;
     t.invested += cost;
+    s.stats.peakLevel = 4;
     const def = EVOLUTIONS[evo];
     t.ultTimer = def.ult ? def.ult.every * 0.4 : 0; // first ultimate comes a bit sooner
     this.addGold(-cost);
@@ -1630,6 +1660,7 @@ export class Simulation {
     const p = c.tower;
     t.fusion = c.fusion;
     t.invested += p.invested + cost;
+    s.stats.peakLevel = 4;
     t.cooldown = 0;
     s.towers.splice(s.towers.indexOf(p), 1);
     this.addGold(-cost);

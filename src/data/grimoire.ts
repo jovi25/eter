@@ -16,12 +16,12 @@ export const DECK = {
 export const STARTER: BoonId[] = ['fireMastery', 'iceMastery', 'natureMastery', 'boltMastery', 'eagleEye', 'longReach', 'treasure', 'heart', 'windMastery'];
 
 export const PACK = {
-  price: 100, // moedas
-  cards: 3,
+  price: 35, // moedas (one card at a time: a reveal of its own for each card)
+  cards: 1,
   /** Chance of each card's rarity (shown to the player in "Ver chances"). */
   odds: { common: 0.62, rare: 0.28, epic: 0.09, legendary: 0.01 } as Record<BoonRarity, number>,
-  /** At most this many packs in a row without an Épica or better. */
-  pity: 12,
+  /** At most this many packs in a row without an Épica or better (36 cards, as with the old 3-card packs). */
+  pity: 36,
 };
 
 /** Pó de Éter: a repeated card turns into dust; dust makes the exact card you want (Lendárias: only feats/packs). */

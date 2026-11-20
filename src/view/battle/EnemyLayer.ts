@@ -6,7 +6,7 @@ import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
 import { unitDepth } from './layers';
 import { quality } from '../quality';
-import { ENEMY_PIC } from '../../assets/manifest';
+import { BOSS_PIC, ENEMY_PIC } from '../../assets/manifest';
 
 const HP_W = 52;
 
@@ -33,9 +33,14 @@ class EnemyView {
   flying = false;
   fireTimer = 0;
   facing = 1;
+  /** Picture scale (bosses are drawn bigger so they stand out from the crowd). */
+  pic = ENEMY_PIC;
+  /** Glowing ring on the ground under a boss. */
+  readonly aura: Phaser.GameObjects.Image;
 
   constructor(scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, 'shadow');
+    this.aura = scene.add.image(0, 0, 'ring').setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
     this.roots = scene.add.image(0, 0, 'status_roots').setVisible(false);
     this.body = scene.add.image(0, 0, 'enemy_slime');
     this.ice = scene.add.image(0, 0, 'status_ice').setVisible(false);
@@ -44,7 +49,7 @@ class EnemyView {
     this.hpBg = scene.add.image(0, 0, 'px').setDisplaySize(HP_W + 4, 9).setTint(PAL.ink).setVisible(false);
     this.hpFill = scene.add.image(0, 0, 'px').setOrigin(0, 0.5).setDisplaySize(HP_W, 5).setTint(0x6ee66e).setVisible(false);
     this.loot = scene.add.image(0, 0, 'coin').setVisible(false);
-    this.root = scene.add.container(0, 0, [this.shadow, this.roots, this.body, this.ice, this.fragile, this.burn, this.hpBg, this.hpFill, this.loot]);
+    this.root = scene.add.container(0, 0, [this.aura, this.shadow, this.roots, this.body, this.ice, this.fragile, this.burn, this.hpBg, this.hpFill, this.loot]);
   }
 }
 
@@ -136,12 +141,13 @@ export class EnemyLayer {
     v.dying = null;
     v.flashUntil = 0;
     v.root.setVisible(true).setAlpha(1).setScale(1);
-    v.body.setTexture(`enemy_${e.type}`).setScale(ENEMY_PIC).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY).setFlipX(false);
+    v.pic = def.boss ? ENEMY_PIC * BOSS_PIC : ENEMY_PIC;
+    v.body.setTexture(`enemy_${e.type}`).setScale(v.pic).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY).setFlipX(false);
     v.facing = 1;
-    const h = v.body.height * ENEMY_PIC;
+    const h = v.body.height * v.pic;
     v.bodyY = def.flying ? -h * 0.5 - 34 : -h * 0.42;
     v.body.setPosition(0, v.bodyY);
-    v.shadow.setScale(def.radius / 30, 1).setPosition(0, 4).setAlpha(def.flying ? 0.5 : 1).setVisible(!quality.low);
+    v.shadow.setScale((def.radius / 30) * (def.boss ? BOSS_PIC : 1), def.boss ? 1.4 : 1).setPosition(0, 4).setAlpha(def.flying ? 0.5 : 1).setVisible(!quality.low);
     v.roots.setVisible(false).setScale(def.radius / 28);
     v.ice.setVisible(false).setPosition(0, v.bodyY).setScale((def.radius * 2.4) / 64);
     const top = v.bodyY - h * 0.5 - 8;
@@ -150,6 +156,14 @@ export class EnemyLayer {
     v.fragile.setPosition(HP_W / 2 + 10, top).setVisible(false);
     v.burn.setPosition(-HP_W / 2 - 10, top).setVisible(false);
     v.loot.setPosition(0, top - 22).setScale(0.7).setVisible(false);
+    // Boss: a pulsing red-gold ring on the ground.
+    this.scene.tweens.killTweensOf(v.aura);
+    v.aura.setVisible(!!def.boss);
+    if (def.boss) {
+      const r = (def.radius * BOSS_PIC * 2.6) / 108;
+      v.aura.setPosition(0, 4).setScale(r, r * 0.45).setTint(0xff5a3a).setAlpha(0.75);
+      this.scene.tweens.add({ targets: v.aura, scaleX: r * 1.18, scaleY: r * 0.53, alpha: 0.35, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
     // Breathing (squash & stretch) — bats flap faster and bob.
     v.phase = (e.id * 0.37) % 1;
     v.breathMs = def.flying ? 180 : 420 + (e.id % 5) * 40;
@@ -197,10 +211,12 @@ export class EnemyLayer {
     // Breathing (squash & stretch) computed here — bats flap faster and bob. Rooted/frozen enemies hold still.
     if (!(e.frozenTime > 0 || e.rootTime > 0)) v.phase = (v.phase + dtMs / (v.breathMs * 2)) % 1;
     const w = 0.5 - 0.5 * Math.cos(v.phase * Math.PI * 2);
-    v.body.setScale(ENEMY_PIC * (1 + (v.flying ? 0.08 : 0.05) * w), ENEMY_PIC * (1 - (v.flying ? 0.1 : 0.08) * w)).setY(v.bodyY + (v.flying ? 6 : 1) * w);
+    v.body.setScale(v.pic * (1 + (v.flying ? 0.08 : 0.05) * w), v.pic * (1 - (v.flying ? 0.1 : 0.08) * w)).setY(v.bodyY + (v.flying ? 6 : 1) * w);
   }
 
   private despawn(v: EnemyView): void {
+    this.scene.tweens.killTweensOf(v.aura);
+    v.aura.setVisible(false);
     const done = () => {
       v.root.setVisible(false);
       this.pool.push(v);
