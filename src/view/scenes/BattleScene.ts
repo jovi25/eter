@@ -68,6 +68,7 @@ export interface BattleData {
   daily?: boolean; // desafio do dia: stage, hero, seed and starting boon come from the date
   expedition?: number; // Expedição de Éter: which of the 2 trails of the saved run to play
   mutant?: boolean; // Semana Mutante: this week's rule on a won stage
+  threat?: number; // Ameaça 1-5 on a 3-star stage (Fase 20)
 }
 
 /** One match: owns the simulation, steps it at a fixed rate and turns its events into visuals and sound. */
@@ -102,6 +103,8 @@ export class BattleScene extends Phaser.Scene {
   private picker: BoonPicker | HuntShop | null = null;
   /** Semana Mutante: the rule in force (null = none). */
   private mutation: MutationId | null = null;
+  /** Ameaça picked on the map (0 = none). */
+  private threat = 0;
   private huntClock: Phaser.GameObjects.Text | null = null;
   private tutorial!: Tutorial;
   private pausePanel: PausePanel | null = null;
@@ -123,7 +126,7 @@ export class BattleScene extends Phaser.Scene {
 
   private again(stage: StageId = this.stageId): BattleData {
     if (this.trip) return { expedition: this.trip.index };
-    return this.daily ? { daily: true } : { stage, hero: this.heroClass, mutant: !!this.mutation };
+    return this.daily ? { daily: true } : { stage, hero: this.heroClass, mutant: !!this.mutation, threat: stage === this.stageId ? this.threat : 0 };
   }
   private heroClass: HeroClass = 'mage';
   private seenTypes = new Set<EnemyId>();
@@ -294,6 +297,8 @@ export class BattleScene extends Phaser.Scene {
     const learning = !this.daily && !getSave().tutorialDone();
     this.mutation = data.mutant && !this.daily && !this.trip && STAGE_ORDER.includes(this.stageId as CampaignStageId) ? getSave().mutantWeek().mutation : null;
     if (learning) this.heroClass = 'mage';
+    const cs = this.stageId as CampaignStageId;
+    this.threat = !this.daily && !this.trip && !this.mutation && STAGE_ORDER.includes(cs) ? Math.min(data.threat ?? 0, getSave().maxThreat(cs)) : 0;
     // The Grimório deck counts everywhere except the daily challenge (same for everyone).
     const save = getSave();
     // Talents, level-5 skill and the Arcanista's weapon: also left out of the daily challenge.
@@ -312,6 +317,7 @@ export class BattleScene extends Phaser.Scene {
       trial: this.daily ? { ...DAILY_TWISTS[this.daily.twist].trial, seconds: this.daily.seconds } : undefined,
       waves: this.stageId === 'hunt' ? save.huntBosses() : undefined,
       mutation: this.mutation ?? undefined,
+      threat: this.threat || undefined,
     });
     if (this.daily) {
       // The daily run starts with one boon already in hand.
@@ -346,6 +352,7 @@ export class BattleScene extends Phaser.Scene {
       const pact = PACTS[this.trip.route.pact];
       this.time.delayedCall(500, () => this.fx.bigBanner(pact.name, "#c8fff2", 46, 1600));
     }
+    if (this.threat) this.time.delayedCall(500, () => this.fx.bigBanner(`AMEAÇA ${this.threat}`, '#ff6a5a', 50, 1600));
     if (this.mutation) {
       const m = MUTATIONS[this.mutation];
       this.time.delayedCall(500, () => this.fx.bigBanner(`MUTANTE: ${m.name}`, '#' + m.color.toString(16).padStart(6, '0'), 44, 1800));
@@ -1007,6 +1014,7 @@ export class BattleScene extends Phaser.Scene {
       let hunt: { time: string; bosses: number; down: number; best: string; record: boolean } | undefined;
       let mutant: { name: string; fresh: boolean; won: number; total: number } | undefined;
       let modeCoins = -1; // Caçada / Semana Mutante pay their own way
+      let threatCoins = 0;
       if (this.stageId === 'hunt') {
         const s = this.sim.state;
         const down = g.won ? s.totalWaves : Math.max(0, s.wave - 1);
@@ -1046,6 +1054,10 @@ export class BattleScene extends Phaser.Scene {
           newChallenges = fresh.filter(Boolean).length;
           const done = save.data.challenges[id] ?? [];
           challenges = CHALLENGES[id].map((c, i) => ({ text: challengeText(c), done: !!done[i], fresh: !!fresh[i] }));
+          // Ameaça: the first win at a level gives a crown and moedas.
+          if (g.won && this.threat > 0) {
+            threatCoins = save.recordThreat(id, this.threat);
+          }
         }
       }
       const riftWave = g.won ? this.sim.state.totalWaves : Math.max(0, this.sim.state.wave - 1);
@@ -1064,7 +1076,7 @@ export class BattleScene extends Phaser.Scene {
         riftWave: rift?.wave ?? 0,
         firstDailyToday,
       });
-      save.addCoins(coins);
+      save.addCoins(coins + threatCoins);
       // Grimório: feats that grant a Lendária (Fenda, Caçada, Expedição, Semana Mutante).
       save.checkFeats().forEach((id, i) => this.time.delayedCall(2600 + i * 2200, () => this.fx.bigBanner(`CARTA LENDÁRIA!\n${BOONS[id].name}`, '#ffc93d', 46, 2000, true)));
       const next = !campaign || this.daily || this.trip || this.mutation ? undefined : STAGE_ORDER[STAGE_ORDER.indexOf(this.stageId as CampaignStageId) + 1];
@@ -1093,7 +1105,8 @@ export class BattleScene extends Phaser.Scene {
             trip,
             hunt,
             mutant,
-            coins,
+            coins: coins + threatCoins,
+            crown: threatCoins > 0 ? this.threat : undefined,
             heroXp,
           },
           { onStats: () => asUi(this, () => new StatsPanel(this, this.matchReport())), onReplay: () => (trip ? this.toMap() : this.scene.restart(this.again())), onMap: () => this.toMap(), onNext },

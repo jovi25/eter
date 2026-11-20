@@ -1,3 +1,4 @@
+import { THREAT } from '../../data/threat';
 import * as Phaser from 'phaser';
 import { ENEMY_PIC } from '../../assets/manifest';
 import { bakeInPlace } from '../ui/bake';
@@ -553,6 +554,8 @@ export class WorldMapScene extends Phaser.Scene {
     for (let s = 0; s < 3; s++) {
       label.add(this.add.image((s - 1) * 30, -2 * r - 56, s < stars ? 'star' : 'starEmpty').setScale(0.4));
     }
+    const crowns = STAGE_ORDER.includes(id as CampaignStageId) ? getSave().crowns(id as CampaignStageId) : 0;
+    if (crowns > 0) label.add(uiText(this, 62, -2 * r - 56, `👑${crowns}`, 18, '#ff9a7a', 4).setOrigin(0, 0.5));
 
     if (unlocked) {
       c.setSize(r * 2, r * 2).setInteractive({ useHandCursor: true });
@@ -620,9 +623,13 @@ export class WorldMapScene extends Phaser.Scene {
     });
     const g = this.add.graphics();
     g.fillStyle(PAL.ink, 1);
-    g.fillRoundedRect(-320, -330, 640, 720, 30);
+    // Ameaça (Fase 20): on a 3-star stage, an extra row to pick the difficulty.
+    const cid = id as CampaignStageId;
+    const maxT = STAGE_ORDER.includes(cid) && save.tutorialDone() ? save.maxThreat(cid) : 0;
+    const extra = maxT > 0 ? 112 : 0;
+    g.fillRoundedRect(-320, -330, 640, 720 + extra, 30);
     g.fillStyle(0x2a1a4d, 1);
-    g.fillRoundedRect(-315, -325, 630, 710, 26);
+    g.fillRoundedRect(-315, -325, 630, 710 + extra, 26);
     c.add([shade, g]);
     c.add(uiText(this, 0, -282, st.name, 34, '#f3e9ff', 7));
     c.add(uiText(this, 0, -236, st.subtitle, 21, PAL.uiDim, 5).setWordWrapWidth(560));
@@ -708,16 +715,18 @@ export class WorldMapScene extends Phaser.Scene {
     const strong = dk.filter((d) => BOONS[d].rarity !== 'common').length;
     if (save.tutorialDone()) c.add(uiText(this, 0, ry, `Baralho: ${dk.length} cartas (${strong} raras ou melhores)`, 19, PAL.uiDim, 4));
 
+    if (maxT > 0) this.threatRow(c, cid, maxT, shields ? 320 : 312);
+    const threat = maxT > 0 ? Math.min(this.threatPick.get(cid) ?? 0, maxT) : 0;
     c.add(
-      new Button(this, 0, shields ? 332 : 316, {
+      new Button(this, 0, (shields ? 332 : 316) + extra, {
         width: 360,
         height: shields ? 80 : 90,
-        label: 'JOGAR',
+        label: threat > 0 ? `JOGAR • 👑${threat}` : 'JOGAR',
         fontSize: 42,
         color: 0x3aa655,
         onClick: () => {
           this.cameras.main.fadeOut(220, 11, 7, 22);
-          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { stage: id, hero: getSave().data.hero }));
+          this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Battle', { stage: id, hero: getSave().data.hero, threat }));
         },
       }),
     );
@@ -726,6 +735,43 @@ export class WorldMapScene extends Phaser.Scene {
       this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
     }
     this.card = c;
+  }
+
+  /** Ameaça picked per stage while the map is open. */
+  private threatPick = new Map<CampaignStageId, number>();
+
+  /** Ameaça 0-5 buttons and the rule of the picked level. */
+  private threatRow(c: Phaser.GameObjects.Container, id: CampaignStageId, maxT: number, y: number): void {
+    const save = getSave();
+    const crowns = save.crowns(id);
+    const pick = Math.min(this.threatPick.get(id) ?? 0, maxT);
+    c.add(uiText(this, -246, y, 'Ameaça', 22, '#ff9a7a', 4));
+    for (let k = 0; k <= THREAT.max; k++) {
+      const open = k <= maxT;
+      const x = -150 + k * 76;
+      const b = this.add.graphics();
+      b.fillStyle(k === pick ? 0xffd34d : PAL.ink, 1);
+      b.fillRoundedRect(x - 32, y - 28, 64, 56, 14);
+      b.fillStyle(!open ? 0x241a3a : k === 0 ? 0x3d2a6a : k <= crowns ? 0x8a3a2a : 0x5a2a3a, 1);
+      b.fillRoundedRect(x - 28, y - 24, 56, 48, 11);
+      const t = uiText(this, x, y, open ? (k === 0 ? '–' : k <= crowns ? `👑${k}` : `${k}`) : '🔒', k <= crowns && k > 0 ? 18 : 24, open ? '#ffffff' : PAL.uiDim, 4);
+      const hit = this.add.rectangle(x, y, 68, 60, 0, 0).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        if (!open) {
+          playSfx('error');
+          return;
+        }
+        playSfx('ui');
+        this.threatPick.set(id, k);
+        this.showStageCard(id, false);
+      });
+      c.add([b, t, hit]);
+    }
+    const text =
+      pick === 0
+        ? maxT > crowns ? `Vença a Ameaça ${maxT} para ganhar uma coroa (+${THREAT.coins[maxT - 1]} moedas)` : 'Todas as coroas desta fase!'
+        : `${THREAT.levels[pick - 1]!.rule}${pick > 1 ? ` + ${pick - 1} regra${pick > 2 ? 's' : ''} de antes` : ''}${pick > crowns ? `  →  👑 +${THREAT.coins[pick - 1]}` : ''}`;
+    c.add(uiText(this, 0, y + 50, text, 16, pick === 0 ? PAL.uiDim : '#ffb3a0', 4).setWordWrapWidth(600));
   }
 
   /** Semana Mutante: this week's rule on 3 stages already won. Each win of the week pays moedas. */

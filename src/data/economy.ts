@@ -11,6 +11,8 @@ export const ECONOMY = {
 
 export const DIFFICULTY = {
   hpGrowthPerWave: 1.15,
+  /** Bosses and the Colosso grow too, more gently: without it a late Golem had more life than the Colosso. */
+  bossGrowthPerWave: 1.07,
 };
 
 export const WAVE_TIMING = {

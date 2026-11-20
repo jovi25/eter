@@ -11,6 +11,7 @@ import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, regionOf, type CampaignStageId, ty
 import { EXPEDITION, PACTS, visitRest, type ExpeditionRun, type TrailCtx } from '../data/expedition';
 import { BOON_RULES, BOONS, type BoonDef, type BoonId } from '../data/boons';
 import { HUNT } from '../data/hunt';
+import { THREAT } from '../data/threat';
 import { MUTANT, weekIndex, weekMutation, weekStages, type MutationId } from '../data/mutations';
 
 export const SAVE_VERSION = 8;
@@ -19,6 +20,8 @@ const KEY = 'eter.save';
 export interface StageProgress {
   stars: number; // best stars (0 = never won)
   wins: number;
+  /** Ameaça (Fase 20): the highest level won = crowns (0-5). */
+  threat?: number;
 }
 
 export interface SaveData {
@@ -182,7 +185,7 @@ export function migrate(raw: unknown): SaveData {
   const stages: SaveData['stages'] = {};
   for (const id of STAGE_ORDER) {
     const s = out.stages?.[id];
-    if (s) stages[id] = { stars: clampInt(s.stars, 0, 3), wins: clampInt(s.wins, 0, 1e9) };
+    if (s) stages[id] = { stars: clampInt(s.stars, 0, 3), wins: clampInt(s.wins, 0, 1e9), ...(s.threat ? { threat: clampInt(s.threat, 0, THREAT.max) } : {}) };
   }
   out.stages = stages;
   return out;
@@ -526,6 +529,32 @@ export class SaveStore {
     this.persist();
   }
 
+  /** Ameaça: crowns of a stage (highest level won). */
+  crowns(id: CampaignStageId): number {
+    return this.data.stages[id]?.threat ?? 0;
+  }
+
+  totalCrowns(): number {
+    return STAGE_ORDER.reduce((s, id) => s + this.crowns(id), 0);
+  }
+
+  /** Highest Ameaça the player may pick on a stage: needs 3 stars, then one level above the best won. */
+  maxThreat(id: CampaignStageId): number {
+    return this.stars(id) >= 3 ? Math.min(THREAT.max, this.crowns(id) + 1) : 0;
+  }
+
+  /** A win at Ameaça `level`: returns the moedas of a first win at that level (0 if it was already won). */
+  recordThreat(id: CampaignStageId, level: number): number {
+    if (level < 1 || level > this.maxThreat(id)) return 0;
+    const prev = this.crowns(id);
+    if (level <= prev) return 0;
+    this.data.stages[id] = { ...(this.data.stages[id] ?? { stars: 3, wins: 1 }), threat: level };
+    this.persist();
+    let coins = 0;
+    for (let l = prev + 1; l <= level; l++) coins += THREAT.coins[l - 1] ?? 0;
+    return coins;
+  }
+
   /** Record a finished match. Returns true if this was the first win of the stage. */
   recordResult(id: StageId, won: boolean, stars: number): boolean {
     if (!won || id === 'rift' || id === 'hunt') return false;
@@ -537,7 +566,7 @@ export class SaveStore {
     }
     const prev = this.data.stages[id];
     const first = !prev || prev.wins === 0;
-    this.data.stages[id] = { stars: Math.max(prev?.stars ?? 0, stars), wins: (prev?.wins ?? 0) + 1 };
+    this.data.stages[id] = { ...prev, stars: Math.max(prev?.stars ?? 0, stars), wins: (prev?.wins ?? 0) + 1 };
     this.persist();
     return first;
   }

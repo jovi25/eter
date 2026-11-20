@@ -58,7 +58,7 @@ export interface EnemyDef {
   resist: Resistances;
   rootImmune?: boolean;
   flying: boolean;
-  scalesWithWave: boolean; // hp × hpGrowthPerWave^wave
+  scalesWithWave: boolean; // hp × hpGrowthPerWave^wave (false: the gentler bossGrowthPerWave)
   radius: number; // body size in px (art + splash checks)
   boss?: BossDef;
   /** Healer: every `every` seconds restores `pct` of max life to the others within `radius`. */

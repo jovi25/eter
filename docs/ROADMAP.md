@@ -204,10 +204,26 @@ O jogador venceu tudo sem dificuldade: as Relíquias somam ~+60% de dano e a cal
 - [x] Relíquias saíram do jogo (eram ~+60% de dano permanente) e viraram Pó; 10 cartas novas (vento, ouro, lendárias)
 - [x] Amostra: Braseiro-criatura (Faísca → Brasito → Labarão → Dracomagma / Rubra), opção em Opções
 
-### Fase 20 — Ameaça (dificuldade escolhida pelo jogador)
-- [ ] Ameaça 1–5 em cada fase com 3★; cada nível soma uma regra dura; coroas e moedas por nível
-- [ ] Caçada e Fenda com Ameaça; robôs calibrados com baralhos fortes
-### Fase 21 — Torres-criaturas (se a amostra agradar) e Região 5 (monstros com mecânicas novas, chefe novo)
+### Fase 19b — Arte por IA e pedidos do jogador (nov/2026) ✔
+- [x] Arte nova feita no Gemini (prompts em docs/ARTE_IA.md): torres viram dragões em 3 fases + 12 evoluções, todas com pose de ataque
+- [x] 4 mapas, 23 monstros, 4 heróis, o urso e as 46 cartas do Grimório ilustrados; heróis maiores e com retrato nos menus
+- [x] Grimório: 1 carta por vez com show por raridade, 100 moedas por carta e "abrir 10"
+- [x] Desafios com relógio (vencer em até X segundos) e Desafio do dia com relógio + regra do dia
+- [x] Chefes 60% maiores na tela, com anel pulsando no chão
+
+### Fase 19c — Pacotes de conteúdo 1 e 2 ✔
+- [x] 4 monstros com truque: Bolhão (se divide), Besouro Couraçado (casca que só reação quebra), Espectro (some), Lebre-Relâmpago (arranca)
+- [x] 3 regras novas da Semana Mutante, 2 climas (Nevasca, Onda de Calor), 2 trilhas da Expedição e 14 cartas novas
+- [x] Chefes e Colosso crescem com as ondas (antes um Golem da onda 12 tinha mais vida que o Colosso)
+
+### Fase 20 — Ameaça (dificuldade escolhida pelo jogador) ✔ (primeira parte)
+- [x] Ameaça 1–5 em cada fase com 3★; cada nível soma uma regra dura; coroas e moedas na primeira vitória de cada nível
+- [x] Coroas no mapa e na tela de vitória; relatório de robôs com Ameaça 0/3/5 (os robôs jogam pior que o jogador: calibrar pelo celular)
+- [ ] (depois, se valer) Caçada e Fenda com Ameaça
+
+### Fase 21 — Região 5 (monstros com mecânicas novas, chefe novo)
+- Os dragões ilustrados já cumpriram a parte das "torres-criaturas"
+
 ### Fase 22 — Salão dos Desafios (juntar os modos, metas longas por modo)
 
 ### Fase 23 — O mundo ganha voz

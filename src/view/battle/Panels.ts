@@ -113,6 +113,8 @@ export interface EndStats {
   hunt?: { time: string; bosses: number; down: number; best: string; record: boolean };
   /** Semana Mutante: the rule and the week's progress. */
   mutant?: { name: string; fresh: boolean; won: number; total: number };
+  /** Ameaça: a new crown won at this level. */
+  crown?: number;
   coins?: number;
   heroXp?: { name: string; gained: number; level: number; levelUp: boolean; unlock?: string };
 }
@@ -191,7 +193,8 @@ export class EndPanel {
       p.add(uiText(scene, 0, 108, `${s.daily.score}`, 54, '#ffffff', 9));
       p.add(uiText(scene, 0, 154, s.daily.record ? '★ MELHOR DE HOJE! ★' : `Melhor de hoje: ${s.daily.best}`, 22, s.daily.record ? PAL.goldCss : PAL.uiDim, 5));
     } else if (s.challenges) {
-      p.add(uiText(scene, 0, 58, 'DESAFIOS', 22, PAL.uiDim, 5));
+      // A new Ameaça crown takes the place of the title.
+      if (!s.crown) p.add(uiText(scene, 0, 58, 'DESAFIOS', 22, PAL.uiDim, 5));
       s.challenges.forEach((c, i) => {
         const mark = c.done ? '✔' : '○';
         const t = uiText(scene, 0, 92 + i * 32, `${mark} ${c.text}${c.fresh ? '  NOVO!' : ''}`, 21, c.fresh ? PAL.goldCss : c.done ? '#9be89b' : PAL.uiDim, 5);
@@ -201,6 +204,11 @@ export class EndPanel {
           scene.tweens.add({ targets: t, scale: 1, delay: 1700 + i * 300, duration: 300, ease: 'Back.easeOut', onStart: () => playSfx('star', 1.2) });
         }
       });
+      if (s.crown) {
+        const t = uiText(scene, 0, 56, `👑 COROA DE AMEAÇA ${s.crown}!`, 26, '#ff9a7a', 6).setScale(0);
+        p.add(t);
+        scene.tweens.add({ targets: t, scale: 1, delay: 2300, duration: 360, ease: 'Back.easeOut', onStart: () => playSfx('mvp') });
+      }
     }
     if (s.coins) {
       const ct = uiText(scene, 16, 0, `+${s.coins} moedas`, 26, '#d6c4ff', 6).setOrigin(0, 0.5);

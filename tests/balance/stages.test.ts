@@ -1,6 +1,7 @@
 declare const process: { env: Record<string, string | undefined> };
 import { describe, expect, it } from 'vitest';
-import { Simulation } from '../../src/sim/simulation';
+import { Simulation, type SimOptions } from '../../src/sim/simulation';
+import { BOONS } from '../../src/data/boons';
 import { SIM_TICKS_PER_SECOND } from '../../src/data/config';
 import { STAGE_ORDER, type StageId } from '../../src/data/stages';
 import type { TowerId } from '../../src/data/towers';
@@ -16,8 +17,9 @@ function slotOrder(sim: Simulation): number[] {
   return cov.sort((a, b) => b.n - a.n).map((c) => c.i);
 }
 
-export function play(stage: StageId, plan: TowerId[], seed: number, heroClass: HeroClass = 'mage', boonPick = 0) {
-  const sim = new Simulation({ stage, seed, modifiers: { heroClass }, limits: true });
+export function play(stage: StageId, plan: TowerId[], seed: number, heroClass: HeroClass = 'mage', boonPick = 0, extra: Partial<SimOptions> & { deck?: string[] } = {}) {
+  const { deck, ...rest } = extra;
+  const sim = new Simulation({ stage, seed, modifiers: { heroClass, ...(deck ? { boonDeck: deck as never } : {}) }, limits: true, ...rest });
   // Tutorial stages only allow some towers: robots swap the rest for an allowed one.
   const allowed = sim.mods.unlockedTowers;
   plan = plan.map((t, i) => (allowed.includes(t) ? t : allowed[i % allowed.length]!));
@@ -90,6 +92,21 @@ describe.runIf(process.env.npm_lifecycle_event === 'balance')('heroes × boons r
         return `${cls}:${res.join('/')}`;
       });
       console.log(st, out.join('  '));
+    }
+  });
+});
+
+// Ameaça (Fase 20): the smart build with a hero and a strong deck (every rare/epic card), at Ameaça 0, 3 and 5.
+describe.runIf(process.env.npm_lifecycle_event === 'balance')('Ameaça report', () => {
+  it('stages × threat', () => {
+    const plan: TowerId[] = ['vine', 'brazier', 'frost', 'storm', 'brazier', 'vine', 'frost', 'storm', 'archer', 'brazier', 'frost', 'vine'];
+    const deck = Object.entries(BOONS).filter(([, b]) => b.rarity === 'rare' || b.rarity === 'epic').map(([id]) => id);
+    for (const st of STAGE_ORDER) {
+      const out = [0, 3, 5].map((threat) => {
+        const res = [1, 2].map((seed) => { const sim = play(st, plan, seed, 'knight', 0, { threat, deck }); return sim.state.result === 'won' ? `W${sim.state.lives}` : `L${sim.state.wave}`; });
+        return `T${threat}:${res.join('/')}`;
+      });
+      console.log('threat', st, out.join('  '));
     }
   });
 });

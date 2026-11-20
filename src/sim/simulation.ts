@@ -15,6 +15,7 @@ import { STATUS } from '../data/statuses';
 import { WEATHER, type WeatherDef, type WeatherId } from '../data/weather';
 import { HUNT } from '../data/hunt';
 import { MUTATIONS, type MutationId } from '../data/mutations';
+import { applyThreat } from '../data/threat';
 import { RUNE_RULES, RUNES, type RuneKind } from '../data/runes';
 import { SKILL2, SKILL2_NUM, TALENT_NUM, WEAPONS, type TalentId } from '../data/talents';
 import { FUSION, FUSIONS, fusionOf, type FusionId } from '../data/fusions';
@@ -41,6 +42,8 @@ export interface SimOptions {
   mutation?: MutationId;
   /** Desafio do dia: a clock (lose when it runs out) and limits on towers. */
   trial?: TrialRules;
+  /** Ameaça (Fase 20): 0-5, the extra rules the player picked on a 3-star stage. */
+  threat?: number;
 }
 
 export interface TrialRules {
@@ -126,6 +129,7 @@ export class Simulation {
     });
     this.mods = { ...defaultModifiers(), ...opts.modifiers };
     if (opts.mutation) MUTATIONS[opts.mutation].apply(this.mods);
+    if (opts.threat) applyThreat(this.mods, opts.threat);
     if (opts.waves) this.stage = { ...this.stage, waves: this.stage.waves.slice(0, Math.max(1, opts.waves)) };
     if (this.mods.wildWeather) {
       // Céu Louco: every wave brings a weather (its own stream: the battle's rolls stay the same).
@@ -1047,8 +1051,8 @@ export class Simulation {
     const s = this.state;
     const def = ENEMIES[type];
     const wave = opts.wave ?? Math.max(1, s.wave);
-    const growth = def.scalesWithWave ? Math.pow(DIFFICULTY.hpGrowthPerWave, wave - 1) : 1;
-    const hp = opts.hp ?? Math.round(def.hp * growth * this.stage.hpMult * this.mods.enemyHpMult);
+    const growth = Math.pow(def.scalesWithWave ? DIFFICULTY.hpGrowthPerWave : DIFFICULTY.bossGrowthPerWave, wave - 1);
+    const hp = opts.hp ?? Math.round(def.hp * growth * this.stage.hpMult * this.mods.enemyHpMult * (def.scalesWithWave ? 1 : this.mods.bossHpMult));
     const dist = opts.dist ?? 0;
     const pathIndex = Math.min(opts.path ?? 0, this.paths.length - 1);
     const pos = this.paths[pathIndex]!.pointAt(dist, this.tmp);

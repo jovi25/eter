@@ -40,6 +40,7 @@ export interface SimModifiers {
   noSell: boolean;
   plainHitMult: number; // damage of hits that do NOT set off a reaction
   enemyHpMult: number;
+  bossHpMult: number; // Ameaça: bosses and the Colosso
   enemySpeedMult: number;
   enemyCountMult: number; // monsters per group (bosses stay alone)
   towerRateMult: number;
@@ -94,6 +95,7 @@ export function defaultModifiers(): SimModifiers {
     noSell: false,
     plainHitMult: 1,
     enemyHpMult: 1,
+    bossHpMult: 1,
     enemySpeedMult: 1,
     enemyCountMult: 1,
     towerRateMult: 1,
