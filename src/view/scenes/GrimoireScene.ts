@@ -192,6 +192,7 @@ export class GrimoireScene extends Phaser.Scene {
   /** The pack opens: one card at a time, face down and glowing in its rarity; a tap turns it over and the
    *  background bursts into that rarity's show (gold rays for a Lendária, a violet vortex for an Épica...). */
   private openPack(results: { id: BoonId; fresh: boolean; dust: number }[]): void {
+    if (results.length === 0) return;
     this.refreshWallet();
     this.overlay?.destroy();
     const o = this.add.container(0, 0).setDepth(30);
