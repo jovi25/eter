@@ -23,6 +23,7 @@ const EMBLEM: Record<BoonId, Emblem> = {
   tallVines: 'vine', heavyHand: 'fist', ironArrows: 'arrows', deepRoots: 'roots', sharpMelt: 'drop', quickHands: 'wing',
   galeForce: 'wind', goldPact: 'pact', cyclone: 'wind', goldRain: 'coins', sunOfEter: 'sun', phoenix: 'feather',
   worldSeed: 'tree', timeCrown: 'crown',
+  harvest: 'leaf', trueShot: 'arrows', livingWall: 'heart', interest: 'coins', emberBurst: 'flame', stickyMud: 'drop', secondChance: 'heart', bossHunter: 'sword',
 };
 
 const FRAME: Record<BoonRarity, { a: string; b: string; c: string; line: string; gem: number }> = {

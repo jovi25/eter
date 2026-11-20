@@ -570,3 +570,40 @@ contract scroll sealed with a heart-shaped wax seal. 9: the eye of a cyclone cra
 rings of runes. 3: a phoenix feather blazing with fire. 4: a glowing world seed sprouting a tiny world tree.
 5: a crown of time with clock faces and floating golden gears. 6: leave this square plain white.
 ```
+
+---
+
+## 7. Pacote de conteúdo 1
+
+### M6-A — Bolhão e Lebre-Relâmpago (fundo magenta)
+Recorte: `python tools/cutout.py fit <imagem> public/assets/enemies broodmother:200:184 hare:160:140`
+```
+Generate an image. Wide landscape image (3:2). Two different monsters for a cute mobile fantasy tower defense game,
+side by side with wide empty space between them, both facing right in a 3/4 side view, full body, nothing cut off.
+They are villains: cute but grumpy or sneaky. Left: a big round teal slime mother blob with a grumpy face, a shiny
+highlight and two tiny baby slimes visible inside its jelly body. Right: a small fluffy yellow hare with
+lightning-bolt shaped ears and a crackling electric tail, in a fast running pose.
+Style: polished professional 2D game illustration, cute chibi proportions, soft cel shading with gentle gradients,
+clean dark-brown outline, expressive eyes of natural size (not bulging), saturated colors, light from the top left.
+Background: one solid flat magenta color (#FF00FF) filling everything. No gradient, no ground, no shadow, no
+floating particles, no text, no labels.
+```
+
+### M6-B — Besouro Couraçado e Espectro (fundo verde)
+Recorte: `python tools/cutout.py fit <imagem> public/assets/enemies beetle:176:152 wraith:176:192`
+```
+... Left: a stout armored beetle with a thick shiny bronze and steel-blue shell, small horns and grumpy eyes,
+walking. Right: a small hooded ghost wraith of pale blue-white mist with glowing cyan eyes and a wispy tail,
+floating low. ... Background: one solid flat green color (#00FF00) ...
+```
+
+### C5 — 8 cartas novas (grade 3×3, a 9ª célula sobra)
+Recorte: `python tools/cutout.py grid <imagem> public/assets/cards harvest trueShot livingWall interest emberBurst stickyMud secondChance bossHunter -`
+```
+1: a golden wheat harvest with gold coins among the stalks. 2: a single glowing arrow hitting the exact center of
+a target. 3: a living wall of stone and green vines with a glowing heart in the middle. 4: a stack of gold coins
+growing into a taller stack with a soft magic glow (interest). 5: a burning ember bursting into a ring of fire.
+6: thick sticky purple-brown mud with bubbles and a stuck boot. 7: a cracked crystal heart being healed by pink
+light, a second chance. 8: a hunter's trophy: a big monster horn crossed with a glowing spear. 9: plain white.
+[estilo comum das cartas]
+```

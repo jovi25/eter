@@ -53,6 +53,9 @@ export interface EnemyState {
   formOrder: number[]; // shuffled order of the forms (empty for everyone else)
   stolen: number; // Diabrete Ladrão: gold it carries
   fleeing: boolean; // it already grabbed the gold and runs
+  shell: boolean; // Besouro Couraçado: shell still on
+  phaseTimer: number; // Espectro / Lebre: seconds to the next fade or dash
+  phaseTime: number; // seconds left translucent (Espectro) or dashing (Lebre)
 }
 
 export interface TowerState {

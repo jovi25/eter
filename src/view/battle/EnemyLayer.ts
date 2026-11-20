@@ -6,7 +6,7 @@ import type { Simulation } from '../../sim/simulation';
 import { PAL } from '../art/palette';
 import { unitDepth } from './layers';
 import { quality } from '../quality';
-import { BOSS_PIC, ENEMY_PIC } from '../../assets/manifest';
+import { BOSS_PIC, ENEMY_PIC, enemyKey } from '../../assets/manifest';
 
 const HP_W = 52;
 
@@ -142,7 +142,7 @@ export class EnemyLayer {
     v.flashUntil = 0;
     v.root.setVisible(true).setAlpha(1).setScale(1);
     v.pic = def.boss ? ENEMY_PIC * BOSS_PIC : ENEMY_PIC;
-    v.body.setTexture(`enemy_${e.type}`).setScale(v.pic).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY).setFlipX(false);
+    v.body.setTexture(enemyKey(this.scene.textures, e.type)).setScale(v.pic).setAlpha(1).clearTint().setTintMode(Phaser.TintModes.MULTIPLY).setFlipX(false);
     v.facing = 1;
     const h = v.body.height * v.pic;
     v.bodyY = def.flying ? -h * 0.5 - 34 : -h * 0.42;
@@ -194,6 +194,10 @@ export class EnemyLayer {
     v.loot.setVisible(e.stolen > 0);
     if (e.stolen > 0) v.loot.setY(v.bodyY - v.body.displayHeight * 0.5 - 30 + Math.sin(now / 120) * 4);
     v.burn.setVisible(e.burnTime > 0);
+    // Espectro: translucent while it fades. Lebre: a little stretch while it dashes. Besouro: darker while shelled.
+    const def = ENEMIES[e.type];
+    if (def.phase) v.body.setAlpha(e.phaseTime > 0 ? 0.3 : 1);
+    if (def.shell && e.shell && now >= v.flashUntil && e.frozenTime <= 0 && e.burnTime <= 0) v.body.setTint(0xc8c0d8);
     const damaged = e.hp < e.maxHp;
     v.hpBg.setVisible(damaged);
     v.hpFill.setVisible(damaged);
@@ -211,7 +215,8 @@ export class EnemyLayer {
     // Breathing (squash & stretch) computed here — bats flap faster and bob. Rooted/frozen enemies hold still.
     if (!(e.frozenTime > 0 || e.rootTime > 0)) v.phase = (v.phase + dtMs / (v.breathMs * 2)) % 1;
     const w = 0.5 - 0.5 * Math.cos(v.phase * Math.PI * 2);
-    v.body.setScale(v.pic * (1 + (v.flying ? 0.08 : 0.05) * w), v.pic * (1 - (v.flying ? 0.1 : 0.08) * w)).setY(v.bodyY + (v.flying ? 6 : 1) * w);
+    const dash = ENEMIES[e.type].dash && e.phaseTime > 0 ? 1.25 : 1;
+    v.body.setScale(v.pic * dash * (1 + (v.flying ? 0.08 : 0.05) * w), (v.pic / dash) * (1 - (v.flying ? 0.1 : 0.08) * w)).setY(v.bodyY + (v.flying ? 6 : 1) * w);
   }
 
   private despawn(v: EnemyView): void {

@@ -20,7 +20,11 @@ export type EnemyId =
   | 'gargoyle'
   | 'titan'
   | 'imp'
-  | 'prism';
+  | 'prism'
+  | 'broodmother'
+  | 'beetle'
+  | 'wraith'
+  | 'hare';
 
 export interface BossDef {
   cycle: number; // every N seconds...
@@ -61,6 +65,14 @@ export interface EnemyDef {
   heal?: { every: number; radius: number; pct: number };
   /** Gold thief: at this share of the road it grabs gold and runs (speed × fleeMult). Killed: gives it back twice. */
   thief?: { at: number; steal: number; fleeMult: number };
+  /** Bolhão: when it dies it splits into `count` of `into` (they pay `goldMult` of their gold). */
+  splits?: { into: EnemyId; count: number; goldMult: number };
+  /** Besouro Couraçado: takes only `taken` of the damage until a reaction hits it (then the shell is gone). */
+  shell?: { taken: number };
+  /** Espectro: every `every` s it fades for `duration` s and takes only `taken` of the damage. */
+  phase?: { every: number; duration: number; taken: number };
+  /** Lebre-Relâmpago: every `every` s it dashes at `mult`× speed for `duration` s. */
+  dash?: { every: number; duration: number; mult: number };
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -148,6 +160,16 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     scalesWithWave: false,
     radius: 36,
   },
+
+  // ── Pacote de conteúdo 1: four monsters, each with something to learn ──
+  /** Splits into two Gosmas when it dies: kill it where your towers can finish the little ones. */
+  broodmother: { name: 'Bolhão', hp: 150, speed: 55, gold: 14, livesCost: 2, attack: 12, resist: {}, flying: false, scalesWithWave: true, radius: 30, splits: { into: 'slime', count: 2, goldMult: 0.4 } },
+  /** Hard shell: plain hits barely scratch it until a reaction cracks it open. */
+  beetle: { name: 'Besouro Couraçado', hp: 125, speed: 60, gold: 16, livesCost: 1, attack: 12, resist: { physical: 0.2 }, flying: false, scalesWithWave: true, radius: 24, shell: { taken: 0.5 } },
+  /** Fades out now and then: almost immune while translucent. */
+  wraith: { name: 'Espectro', hp: 120, speed: 75, gold: 15, livesCost: 1, attack: 9, resist: { physical: 0.3, arcane: -0.4 }, rootImmune: true, flying: false, scalesWithWave: true, radius: 22, phase: { every: 5, duration: 1.2, taken: 0.3 } },
+  /** Sudden dashes: slow it (ice, roots) or it races past the towers. */
+  hare: { name: 'Lebre-Relâmpago', hp: 55, speed: 95, gold: 10, livesCost: 1, attack: 5, resist: { lightning: 0.5 }, flying: false, scalesWithWave: true, radius: 20, dash: { every: 4, duration: 0.6, mult: 2.5 } },
 
   // ── Bonus: runs fast, costs no lives, pays a lot if you catch it ──
   treasure: { name: 'Gosma Dourada', hp: 110, speed: 135, gold: 45, livesCost: 0, attack: 0, resist: {}, flying: false, scalesWithWave: true, radius: 20 },

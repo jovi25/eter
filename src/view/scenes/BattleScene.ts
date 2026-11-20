@@ -750,6 +750,23 @@ export class BattleScene extends Phaser.Scene {
       playSfx('reaction_melt', 1.3);
       vibrate(15);
     });
+    ev.on('shellBroken', (sh) => {
+      this.fx.shockwave(sh.x, sh.y - 20, 0xd8c8a0, 1.2, 320);
+      this.fx.dust(sh.x, sh.y - 20, 0x8a7a6a, 10);
+      this.hud.floatText(sh.x, sh.y - 60 - this.cameras.main.scrollY, 'Couraça quebrada!', '#f0e0b0');
+      playSfx('reaction_melt', 1.4);
+    });
+    ev.on('emberBurst', (b) => {
+      this.fx.shockwave(b.x, b.y - 16, 0xff7a2e, b.radius / 54, 380);
+      this.fx.burst(b.x, b.y - 16, 0xffb347, 10);
+    });
+    ev.on('secondChance', (c) => {
+      this.fx.bigBanner('SEGUNDA CHANCE!', '#ff8ab0', 64, 1300, true);
+      this.hud.floatText(this.map.crystal.x, this.map.crystal.y - 80, `+${c.lives} vidas`, '#ff8ab0');
+      this.shake(300, 0.01);
+      playSfx('mvp');
+      vibrate([60, 40, 120]);
+    });
     ev.on('shieldBroken', (sh) => {
       this.shields.down(sh.enemyId);
       this.fx.bigBanner('ESCUDO QUEBRADO!', PAL.goldCss, 64, 900, true);

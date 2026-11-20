@@ -45,6 +45,14 @@ export interface SimModifiers {
   towerRateMult: number;
   enemyScale: number; // view only: how big the monsters look
   wildWeather: boolean; // a random weather every wave
+  // Pacote de conteúdo 1 (new Bênçãos)
+  waveGoldPerTower: number; // Colheita: gold per tower when a wave is cleared
+  maxLevelDamageMult: number; // Tiro Certeiro: damage of level-3 (and evolved) towers
+  interestRate: number; // Juros de Éter: share of saved gold paid when a wave is cleared...
+  interestCap: number; // ...up to this much
+  emberBurst: number; // Faísca Final: damage of the burst when a burning enemy dies (0 = off)
+  secondChance: number; // Segunda Chance: lives restored once when they hit 0 (0 = none)
+  bossDamageMult: number; // Caçador de Chefes
 }
 
 export function defaultModifiers(): SimModifiers {
@@ -81,5 +89,12 @@ export function defaultModifiers(): SimModifiers {
     towerRateMult: 1,
     enemyScale: 1,
     wildWeather: false,
+    waveGoldPerTower: 0,
+    maxLevelDamageMult: 1,
+    interestRate: 0,
+    interestCap: 0,
+    emberBurst: 0,
+    secondChance: 0,
+    bossDamageMult: 1,
   };
 }

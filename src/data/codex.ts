@@ -3,7 +3,7 @@ import { ELEMENTS, type Element } from './elements';
 import { ENEMIES, type EnemyId } from './enemies';
 import { REACTION_TABLE, REACTIONS, type ReactionId } from './reactions';
 
-export const CODEX_ENEMIES: EnemyId[] = ['slime', 'wolf', 'bat', 'golem', 'salamander', 'yeti', 'skeleton', 'shaman', 'mudling', 'colossus', 'treasure', 'herald', 'sentinel', 'devourer', 'monk', 'gargoyle', 'titan', 'imp', 'prism'];
+export const CODEX_ENEMIES: EnemyId[] = ['slime', 'wolf', 'bat', 'golem', 'salamander', 'yeti', 'skeleton', 'shaman', 'mudling', 'colossus', 'treasure', 'herald', 'sentinel', 'devourer', 'monk', 'gargoyle', 'titan', 'imp', 'prism', 'broodmother', 'beetle', 'wraith', 'hare'];
 
 export const REACTION_EFFECT: Record<ReactionId, string> = {
   wildfire: '×2 de dano e o fogo pula para quem está perto',
@@ -48,6 +48,10 @@ export function enemyFacts(id: EnemyId): string[] {
   else if (d.livesCost > 1) facts.push(`Tira ${d.livesCost} vidas se chegar ao cristal`);
   if (d.heal) facts.push('Cura os monstros em volta a cada ' + d.heal.every + ' s');
   if (d.thief) facts.push('Rouba ' + d.thief.steal + ' de ouro e foge; pego, devolve o dobro');
+  if (d.splits) facts.push(`Ao morrer, se divide em ${d.splits.count} ${ENEMIES[d.splits.into].name}s`);
+  if (d.shell) facts.push(`Couraça: leva só ${Math.round(d.shell.taken * 100)}% do dano até sofrer uma reação`);
+  if (d.phase) facts.push(`Fica translúcido a cada ${d.phase.every} s e quase não sofre dano`);
+  if (d.dash) facts.push(`Dá arrancadas ${d.dash.mult}× mais rápidas a cada ${d.dash.every} s (gelo e raízes seguram)`);
   if (d.boss?.forms) facts.push('Chefe que troca de elemento 4 vezes: resiste a um e é fraco a outro');
   else if (d.boss?.shields) facts.push(`Chefe com escudos: ${d.boss.shields.reactions.map((r) => REACTIONS[r].name).join(' → ')}`);
   else if (d.boss) facts.push('Chefe: fica imune a Resfriado e chama ajuda');

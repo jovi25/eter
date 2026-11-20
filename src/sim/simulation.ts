@@ -1021,7 +1021,10 @@ export class Simulation {
     if (s.result !== 'playing' || this.clearedWaves.has(wave)) return;
     if (!this.waveFinishedSpawning(wave) || (this.aliveByWave.get(wave) ?? 0) > 0) return;
     this.clearedWaves.add(wave);
-    const bonus = ECONOMY.waveClearBonusBase + ECONOMY.waveClearBonusPerWave * wave;
+    let bonus = ECONOMY.waveClearBonusBase + ECONOMY.waveClearBonusPerWave * wave;
+    // Colheita and Juros de Éter pay on top of the usual bonus.
+    bonus += this.mods.waveGoldPerTower * s.towers.length;
+    if (this.mods.interestRate > 0) bonus += Math.min(this.mods.interestCap, Math.floor(s.gold * this.mods.interestRate));
     this.addGold(bonus);
     this.events.emit('waveCleared', { wave, bonus });
     if (this.stage.hunt && s.wavePhase === 'fight' && wave === s.wave) {
@@ -1084,6 +1087,9 @@ export class Simulation {
       formOrder: [],
       stolen: 0,
       fleeing: false,
+      shell: !!def.shell,
+      phaseTimer: def.phase?.every ?? def.dash?.every ?? 0,
+      phaseTime: 0,
     };
     s.enemies.push(e);
     this.enemyById.set(e.id, e);
@@ -1234,12 +1240,22 @@ export class Simulation {
       if (e.isBoss) this.tickBoss(e);
       const def = ENEMIES[e.type];
       if (def.heal) this.tickHealer(e, def.heal);
+      const timed = def.phase ?? def.dash;
+      if (timed) {
+        // Espectro fades / Lebre dashes on a timer (a frozen or rooted one can't start a dash).
+        if (e.phaseTime > 0) e.phaseTime = Math.max(0, e.phaseTime - DT);
+        else if ((e.phaseTimer -= DT) <= 0 && !(def.dash && (e.frozenTime > 0 || e.rootTime > 0))) {
+          e.phaseTimer = timed.every;
+          e.phaseTime = timed.duration;
+        }
+      }
       if (e.rootTime > 0 || e.frozenTime > 0 || e.blockedBy !== 0) continue;
       const slow = e.chillStacks > 0 && e.chillTime > 0 ? STATUS.chilled.slow : 0;
       const before = e.dist;
       let speed = def.speed * this.mods.enemySpeedMult;
       if (e.flying) speed *= this.weatherDef?.flyerSpeed ?? 1;
       if (e.fleeing && def.thief) speed *= def.thief.fleeMult;
+      if (def.dash && e.phaseTime > 0) speed *= def.dash.mult;
       e.dist += speed * (1 - slow) * DT;
       // Ponte levadiça up: ground enemies stop in front of it.
       const bd = this.bridgeDist[e.pathIndex] ?? -1;
@@ -1346,6 +1362,13 @@ export class Simulation {
     this.events.emit('enemyLeaked', { enemyId: e.id, livesLost: lost });
     this.events.emit('livesChanged', { lives: s.lives, delta: -lost });
     this.onEnemyGone(e);
+    if (s.lives <= 0 && s.result === 'playing' && this.mods.secondChance > 0) {
+      // Segunda Chance: once per match, the crystal comes back.
+      s.lives = this.mods.secondChance;
+      this.mods.secondChance = 0;
+      this.events.emit('secondChance', { lives: s.lives });
+      this.events.emit('livesChanged', { lives: s.lives, delta: s.lives });
+    }
     if (s.lives <= 0 && s.result === 'playing') {
       s.result = 'lost';
       this.events.emit('gameOver', { won: false, stars: 0 });
@@ -1359,6 +1382,19 @@ export class Simulation {
     const gold = Math.round(e.gold * this.mods.goldMult);
     this.addGold(gold);
     this.events.emit('enemyKilled', { enemyId: e.id, type: e.type, x: e.x, y: e.y, gold, isBoss: e.isBoss });
+    const def = ENEMIES[e.type];
+    if (def.splits) {
+      // Bolhão: the little ones pop out around where it fell (same wave, so the wave waits for them).
+      for (let k = 0; k < def.splits.count; k++) {
+        this.spawnEnemy(def.splits.into, { dist: Math.max(0, e.dist - 12 + k * 12), wave: e.wave, path: e.pathIndex, goldMult: def.splits.goldMult });
+      }
+    }
+    if (this.mods.emberBurst > 0 && e.burnTime > 0) {
+      // Faísca Final: a burning enemy bursts and singes the ones around it.
+      const R = 75;
+      this.events.emit('emberBurst', { x: e.x, y: e.y, radius: R });
+      for (const o of this.enemiesNear(e.x, e.y, R)) if (o !== e) this.dealDamage(o, this.mods.emberBurst, 'fire', { dot: true });
+    }
     if (e.stolen > 0) {
       // Caught the thief: the stolen gold comes back twice over.
       const back = e.stolen * 2;
@@ -1906,6 +1942,10 @@ export class Simulation {
         this.events.emit('shieldBroken', { enemyId: e.id, reaction: r, x: e.x, y: e.y });
       } else this.events.emit('shieldHit', { enemyId: e.id, reaction: e.shield, left: e.shieldHits, x: e.x, y: e.y });
     }
+    if (found && e.shell) {
+      e.shell = false;
+      this.events.emit('shellBroken', { enemyId: e.id, x: e.x, y: e.y });
+    }
     if (found) {
       this.consumeAura(e, found.aura);
       const comboMult = this.bumpCombo();
@@ -2119,6 +2159,14 @@ export class Simulation {
     dmg *= this.weatherDef?.damage?.[element as 'fire'] ?? 1;
     if (e.fragileTime > 0) dmg *= 1 + STATUS.fragile.damageTakenBonus;
     if (e.shield) dmg *= ENEMIES[e.type].boss?.shields?.taken ?? 1;
+    const def = ENEMIES[e.type];
+    if (e.shell) dmg *= def.shell?.taken ?? 1;
+    if (def.phase && e.phaseTime > 0) dmg *= def.phase.taken;
+    if (e.isBoss) dmg *= this.mods.bossDamageMult;
+    if (opts.towerId !== undefined && this.mods.maxLevelDamageMult !== 1) {
+      const t = this.getTower(opts.towerId);
+      if (t && (t.level >= MAX_LEVEL || t.evo || t.fusion)) dmg *= this.mods.maxLevelDamageMult;
+    }
     if (e.rootTime > 0 && this.talent('hungrySoil')) dmg *= TALENT_NUM.hungrySoil.rootedDamageTaken;
     const final = Math.max(1, Math.round(dmg));
     e.hp -= final;

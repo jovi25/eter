@@ -52,6 +52,12 @@ export interface SimEvents {
   shieldUp: { enemyId: number; reaction: ReactionId; hits: number };
   shieldHit: { enemyId: number; reaction: ReactionId; left: number; x: number; y: number };
   shieldBroken: { enemyId: number; reaction: ReactionId; x: number; y: number };
+  /** Besouro Couraçado: a reaction cracked its shell. */
+  shellBroken: { enemyId: number; x: number; y: number };
+  /** Faísca Final: a burning enemy burst on death. */
+  emberBurst: { x: number; y: number; radius: number };
+  /** Segunda Chance: the crystal came back from 0 lives. */
+  secondChance: { lives: number };
   /** Two towers became one (the partner's slot is free again). */
   /** Vínculo de Éter: a tower hit its target with a neighbour's element. */
   linkEcho: { towerId: number; fromId: number; targetId: number; element: Element; x: number; y: number };

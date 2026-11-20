@@ -9,6 +9,13 @@ const P = { kind: 'procedural' } as const;
 /** Illustrations made by the player in an image AI, cut out by tools/cutout.py (see docs/ARTE_IA.md). */
 /** Monster pictures are cut at twice their on-screen size (sharp on phones): draw them at this scale. */
 export const ENEMY_PIC = 0.5;
+/** New monsters borrow a look-alike picture until their own is drawn (docs/ARTE_IA.md, M6). */
+const ENEMY_STAND_IN: Record<string, string> = { broodmother: 'slime', beetle: 'golem', wraith: 'skeleton', hare: 'wolf' };
+/** Texture key of an enemy's picture (its own, or a stand-in while it has none). */
+export function enemyKey(has: { exists(key: string): boolean }, type: string): string {
+  const own = `enemy_${type}`;
+  return has.exists(own) || !ENEMY_STAND_IN[type] ? own : `enemy_${ENEMY_STAND_IN[type]}`;
+}
 /** Bosses are drawn this much bigger than their picture box, so they stand out from the crowd. */
 export const BOSS_PIC = 1.6;
 
