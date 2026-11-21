@@ -115,12 +115,14 @@ export interface EndStats {
   mutant?: { name: string; fresh: boolean; won: number; total: number };
   /** Ameaça: a new crown won at this level. */
   crown?: number;
+  /** Ameaça: the next crown level offered as a button (0/undefined = none). */
+  nextThreat?: number;
   coins?: number;
   heroXp?: { name: string; gained: number; level: number; levelUp: boolean; unlock?: string };
 }
 
 export class EndPanel {
-  constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void; onStats?: () => void }) {
+  constructor(scene: Phaser.Scene, s: EndStats, cb: { onReplay: () => void; onMap: () => void; onNext?: () => void; onStats?: () => void; onThreat?: () => void }) {
     backdrop(scene);
     const p = panel(scene, 600, 880);
     const title = uiText(scene, 0, -340, s.hunt ? (s.won ? 'CAÇADA COMPLETA!' : 'FIM DA CAÇADA') : s.rift ? 'FIM DA FENDA' : s.trip?.finished ? 'EXPEDIÇÃO COMPLETA!' : s.trip && !s.won ? 'FIM DA EXPEDIÇÃO' : s.won ? 'VITÓRIA!' : 'DERROTA', s.rift ? 60 : s.hunt || (s.trip && (s.trip.finished || !s.won)) ? 46 : 72, s.won || s.rift ? PAL.goldCss : PAL.redCss, 12);
@@ -218,7 +220,11 @@ export class EndPanel {
       row.setScale(0);
       scene.tweens.add({ targets: row, scale: 1, delay: 900, duration: 300, ease: 'Back.easeOut', onStart: () => playSfx('coin', 1.2) });
     }
-    if (cb.onStats) p.add(new Button(scene, 0, 214, { width: 300, height: 52, label: 'Ver estatísticas', fontSize: 22, color: 0x5a3fb0, onClick: cb.onStats }));
+    if (cb.onThreat && s.nextThreat) {
+      // Ameaça: one tap to play this stage again one crown harder.
+      if (cb.onStats) p.add(new Button(scene, -150, 214, { width: 250, height: 56, label: 'Estatísticas', fontSize: 22, color: 0x5a3fb0, onClick: cb.onStats }));
+      p.add(new Button(scene, cb.onStats ? 140 : 0, 214, { width: 290, height: 56, label: `👑 Ameaça ${s.nextThreat} ▶`, fontSize: 24, color: 0xb8452f, onClick: cb.onThreat }));
+    } else if (cb.onStats) p.add(new Button(scene, 0, 214, { width: 300, height: 52, label: 'Ver estatísticas', fontSize: 22, color: 0x5a3fb0, onClick: cb.onStats }));
     if (cb.onNext) {
       p.add(new Button(scene, 0, 284, { width: 440, height: 80, label: s.trip ? 'SEGUIR A TRILHA ▶' : 'PRÓXIMA FASE ▶', fontSize: 32, color: 0x3aa655, onClick: cb.onNext }));
       p.add(new Button(scene, -112, 374, { width: 216, height: 64, label: s.trip ? 'Expedição' : 'Repetir', fontSize: 24, color: 0x3d7bd9, onClick: cb.onReplay }));

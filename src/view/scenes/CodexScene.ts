@@ -14,11 +14,20 @@ import { Button, uiText } from '../ui/Button';
 
 type Tab = 'enemies' | 'reactions';
 
+/** The page scrolls between the top bar (title + tabs) and the footer. */
+const TOP = 216;
+const BOTTOM = GAME_HEIGHT - 116;
+
 /** Códice: a book filled by playing — enemies met and reactions caused. */
 export class CodexScene extends Phaser.Scene {
   private page: Phaser.GameObjects.Container | null = null;
   private detail: Phaser.GameObjects.Container | null = null;
   private tabs: Record<Tab, Button> | null = null;
+  /** Scrolling list: drag (or mouse wheel) moves the page between the top bar and the footer. */
+  private scrollMax = 0;
+  private drag: { y: number; from: number; moved: boolean } | null = null;
+  /** True right after a drag, so releasing on a card does not open it. */
+  private dragged = false;
 
   constructor() {
     super('Codex');
@@ -30,19 +39,22 @@ export class CodexScene extends Phaser.Scene {
     paintMapBackground(this, [], 'codex_bg');
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b0716, 0.55);
     const save = getSave();
+    // Top bar (title + tabs) stays above the scrolling page, like the footer.
     const head = this.add.graphics();
-    head.fillStyle(PAL.panel, 0.92);
-    head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, 140, 24);
-    bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: 148 }, 'codex_head');
-    uiText(this, GAME_WIDTH / 2, 44, 'Códice', 44, '#f3e9ff', 8);
+    head.fillStyle(PAL.panel, 0.96);
+    head.fillRoundedRect(-20, -20, GAME_WIDTH + 40, TOP + 20, 24);
+    head.setDepth(20);
+    bakeInPlace(head, { x0: -24, y0: -24, w: GAME_WIDTH + 48, h: TOP + 28 }, 'codex_head2');
+    uiText(this, GAME_WIDTH / 2, 44, 'Códice', 44, '#f3e9ff', 8).setDepth(21);
     const ne = save.data.codex.enemies.length;
     const nr = save.data.codex.reactions.length;
-    uiText(this, GAME_WIDTH / 2, 94, `Inimigos ${ne}/${CODEX_ENEMIES.length}   •   Reações ${nr}/${REACTION_IDS.length}`, 24, PAL.goldCss, 5);
+    uiText(this, GAME_WIDTH / 2, 94, `Inimigos ${ne}/${CODEX_ENEMIES.length}   •   Reações ${nr}/${REACTION_IDS.length}`, 24, PAL.goldCss, 5).setDepth(21);
 
     this.tabs = {
       enemies: new Button(this, 190, 176, { width: 300, height: 64, label: 'Inimigos', fontSize: 26, onClick: () => this.show('enemies') }),
       reactions: new Button(this, 530, 176, { width: 300, height: 64, label: 'Reações', fontSize: 26, onClick: () => this.show('reactions') }),
     };
+    for (const b of Object.values(this.tabs)) b.setDepth(21);
     // Footer: always on top of the pages, with its own solid bar.
     const foot = this.add.graphics().setDepth(20);
     foot.fillStyle(PAL.panel, 0.96);
@@ -56,6 +68,7 @@ export class CodexScene extends Phaser.Scene {
       color: 0x6b6480,
       onClick: () => this.scene.start('WorldMap'),
     }).setDepth(21);
+    this.setupScroll();
     this.show('enemies');
     this.cameras.main.fadeIn(200, 11, 7, 22);
   }
@@ -68,12 +81,33 @@ export class CodexScene extends Phaser.Scene {
     this.page = this.add.container(0, 0);
     if (tab === 'enemies') this.enemyGrid();
     else this.reactionList();
+    // How far the page can move: its lowest item must reach just above the footer.
+    const b = this.page.getBounds();
+    this.scrollMax = Math.max(0, b.bottom + 24 - BOTTOM);
+    this.page.y = 0;
+  }
+
+  private setupScroll(): void {
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.dragged = false;
+      this.drag = !this.detail && p.y > TOP && p.y < BOTTOM ? { y: p.y, from: this.page?.y ?? 0, moved: false } : null;
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.drag || !p.isDown || !this.page || this.scrollMax <= 0) return;
+      const dy = p.y - this.drag.y;
+      if (!this.drag.moved && Math.abs(dy) > 12) this.drag.moved = this.dragged = true;
+      if (this.drag.moved) this.page.y = Phaser.Math.Clamp(this.drag.from + dy, -this.scrollMax, 0);
+    });
+    this.input.on('pointerup', () => (this.drag = null));
+    this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      if (this.page && !this.detail) this.page.y = Phaser.Math.Clamp(this.page.y - dy, -this.scrollMax, 0);
+    });
   }
 
   private enemyGrid(): void {
     const known = new Set(getSave().data.codex.enemies);
     CODEX_ENEMIES.forEach((id, i) => {
-      // 4 per row so every monster fits above the footer.
+      // 4 per row; the page scrolls when there are more rows than fit.
       const col = i % 4;
       const row = Math.floor(i / 4);
       const x = 99 + col * 174;
@@ -89,7 +123,8 @@ export class CodexScene extends Phaser.Scene {
       if (!seen) img.setTint(0x0d0a16).setAlpha(0.85);
       c.add([g, img, uiText(this, 0, 58, seen ? ENEMIES[id].name : '???', 16, seen ? PAL.uiText : PAL.uiDim, 4).setWordWrapWidth(150)]);
       c.setSize(164, 162).setInteractive({ useHandCursor: true });
-      c.on('pointerdown', () => {
+      c.on('pointerup', () => {
+        if (this.dragged || this.detail) return;
         playSfx(seen ? 'ui' : 'error');
         if (seen) this.enemyDetail(id);
       });
@@ -99,9 +134,10 @@ export class CodexScene extends Phaser.Scene {
 
   private enemyDetail(id: EnemyId): void {
     this.detail?.destroy();
-    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(10);
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(30);
     const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.65).setInteractive();
-    shade.on('pointerdown', () => {
+    // Closes on release, so the same touch does not reach the card underneath.
+    shade.on('pointerup', () => {
       c.destroy();
       this.detail = null;
     });
@@ -123,7 +159,7 @@ export class CodexScene extends Phaser.Scene {
   private reactionList(): void {
     const known = new Set(getSave().data.codex.reactions);
     REACTION_IDS.forEach((id, i) => {
-      const y = 280 + i * 100; // compact rows: all reactions fit above the footer
+      const y = 280 + i * 100;
       const seen = known.has(id);
       const color = REACTIONS[id].color;
       const g = this.add.graphics();

@@ -1019,6 +1019,7 @@ export class BattleScene extends Phaser.Scene {
       let mutant: { name: string; fresh: boolean; won: number; total: number } | undefined;
       let modeCoins = -1; // Caçada / Semana Mutante pay their own way
       let threatCoins = 0;
+      let nextThreat = 0;
       if (this.stageId === 'hunt') {
         const s = this.sim.state;
         const down = g.won ? s.totalWaves : Math.max(0, s.wave - 1);
@@ -1062,6 +1063,8 @@ export class BattleScene extends Phaser.Scene {
           if (g.won && this.threat > 0) {
             threatCoins = save.recordThreat(id, this.threat);
           }
+          // Next crown still to win: offer it right on the end panel.
+          if (g.won && save.tutorialDone() && save.maxThreat(id) > save.crowns(id)) nextThreat = save.maxThreat(id);
         }
       }
       const riftWave = g.won ? this.sim.state.totalWaves : Math.max(0, this.sim.state.wave - 1);
@@ -1111,9 +1114,10 @@ export class BattleScene extends Phaser.Scene {
             mutant,
             coins: coins + threatCoins,
             crown: threatCoins > 0 ? this.threat : undefined,
+            nextThreat,
             heroXp,
           },
-          { onStats: () => asUi(this, () => new StatsPanel(this, this.matchReport())), onReplay: () => (trip ? this.toMap() : this.scene.restart(this.again())), onMap: () => this.toMap(), onNext },
+          { onStats: () => asUi(this, () => new StatsPanel(this, this.matchReport())), onReplay: () => (trip ? this.toMap() : this.scene.restart(this.again())), onMap: () => this.toMap(), onNext, onThreat: nextThreat ? () => this.scene.restart({ ...this.again(), threat: nextThreat }) : undefined },
         ));
       });
     });
