@@ -119,6 +119,7 @@ export class GrimoireScene extends Phaser.Scene {
     foot.fillStyle(PAL.panel, 0.96);
     foot.fillRoundedRect(-20, GAME_HEIGHT - 116, GAME_WIDTH + 40, 140, 24);
     new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 58, { width: 360, height: 80, label: '◀ Voltar ao mapa', fontSize: 28, color: 0x6b6480, onClick: () => this.scene.start('WorldMap') }).setDepth(21);
+    this.input.on('pointerup', () => this.hidePeek());
     this.show(this.tab);
     this.cameras.main.fadeIn(200, 11, 7, 22);
   }
@@ -602,7 +603,7 @@ export class GrimoireScene extends Phaser.Scene {
       const y = 690 + row * 200;
       const card = cardView(this, id, x, y, 0.42, false);
       card.setInteractive({ useHandCursor: true });
-      card.on('pointerdown', () => {
+      this.pressable(card, id, () => {
         const why = getSave().swapDeck(id, into);
         if (why) {
           playSfx('error');
@@ -617,7 +618,7 @@ export class GrimoireScene extends Phaser.Scene {
       });
       o.add(card);
     });
-    o.add(uiText(this, GAME_WIDTH / 2, 1150, 'toque fora para cancelar', 18, PAL.uiDim, 4));
+    o.add(uiText(this, GAME_WIDTH / 2, 1150, 'segure uma carta para ver o que faz  •  toque fora para cancelar', 18, PAL.uiDim, 4));
   }
 
   // ───────────────────────────── deck editor ─────────────────────────────
@@ -661,7 +662,7 @@ export class GrimoireScene extends Phaser.Scene {
         p.add(ring);
       }
       card.setInteractive({ useHandCursor: true });
-      card.on('pointerdown', () => {
+      this.pressable(card, id, () => {
         if (this.swapIn) {
           if (!leaving) return playSfx('error');
           const why = save.swapDeck(id, this.swapIn);
@@ -734,7 +735,7 @@ export class GrimoireScene extends Phaser.Scene {
         p.add(ring);
       }
       card.setInteractive({ useHandCursor: true });
-      card.on('pointerdown', () => {
+      this.pressable(card, id, () => {
         if (!save.toggleDeck(id)) {
           playSfx('upgrade');
           this.swapIn = null;
@@ -756,7 +757,57 @@ export class GrimoireScene extends Phaser.Scene {
       arrow(110, '◀', -1);
       arrow(610, '▶', 1);
     }
-    p.add(uiText(this, GAME_WIDTH / 2, 1116, pages > 1 ? `${this.deckPageIndex + 1}/${pages}  •  toque para pôr ou tirar` : 'toque para pôr ou tirar', 18, PAL.uiDim, 4));
+    p.add(uiText(this, GAME_WIDTH / 2, 1116, pages > 1 ? `${this.deckPageIndex + 1}/${pages}  •  toque: pôr/tirar  •  segure: ver` : 'toque: pôr ou tirar  •  segure: ver o que faz', 18, PAL.uiDim, 4));
+  }
+
+  // ───────────────────────────── hold to peek ─────────────────────────────
+
+  private peek: Phaser.GameObjects.Container | null = null;
+
+  /** Tap = `onTap`; hold = the card shown big with its text, only while the finger stays down. */
+  private pressable(obj: Phaser.GameObjects.Container, id: BoonId, onTap: () => void): void {
+    let down = false;
+    let shown = false;
+    let timer: Phaser.Time.TimerEvent | null = null;
+    obj.on('pointerdown', () => {
+      down = true;
+      shown = false;
+      timer = this.time.delayedCall(280, () => {
+        if (!down) return;
+        shown = true;
+        this.showPeek(id);
+      });
+    });
+    const end = (tap: boolean) => {
+      if (!down) return;
+      down = false;
+      timer?.remove();
+      timer = null;
+      if (shown) this.hidePeek();
+      else if (tap) onTap();
+    };
+    obj.on('pointerup', () => end(true));
+    obj.on('pointerout', () => end(false));
+  }
+
+  private showPeek(id: BoonId): void {
+    this.hidePeek();
+    const def = BOONS[id] as BoonDef;
+    const o = this.add.container(0, 0).setDepth(45);
+    o.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.75));
+    if (def.rarity !== 'common') o.add(this.add.image(GAME_WIDTH / 2, 560, 'spark').setScale(18).setTint(RARITY_COLOR[def.rarity]).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD));
+    const card = cardView(this, id, GAME_WIDTH / 2, 560, 1.2);
+    o.add(card);
+    card.setScale(1);
+    this.tweens.add({ targets: card, scale: 1.2, duration: 140, ease: 'Back.easeOut' });
+    o.add(uiText(this, GAME_WIDTH / 2, 1000, 'solte para fechar', 20, PAL.uiDim, 4));
+    this.peek = o;
+    vibrate(15);
+  }
+
+  private hidePeek(): void {
+    this.peek?.destroy();
+    this.peek = null;
   }
 
   private toast(msg: string): void {
