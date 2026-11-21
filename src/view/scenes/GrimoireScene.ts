@@ -49,6 +49,16 @@ function ensureRay(scene: Phaser.Scene): string {
   return key;
 }
 
+/** Shrink a text's font until it fits the box (word wrap follows the new size). */
+function fitText(t: Phaser.GameObjects.Text, maxW: number, maxH: number, minPx: number): void {
+  let px = parseInt(String(t.style.fontSize), 10);
+  while ((t.width > maxW || t.height > maxH) && px > minPx) {
+    px--;
+    t.setFontSize(px);
+    if (t.style.wordWrapWidth) t.setWordWrapWidth(maxW);
+  }
+}
+
 /** Collection order: rarity, then name. */
 const ORDER: BoonId[] = [...BOON_IDS].sort((a, b) => {
   const ra = RARITIES.indexOf((BOONS[a] as BoonDef).rarity);
@@ -66,11 +76,21 @@ export function cardView(scene: Phaser.Scene, id: BoonId, x: number, y: number, 
   const img = scene.add.image(0, 0, ensureCard(scene, id));
   c.add(img);
   const top = -CARD_H / 2;
-  const name = uiText(scene, 0, top + CARD_ART_BOTTOM + 34, def.name, full ? 25 : 30, '#ffffff', 6).setWordWrapWidth(CARD_W - 40);
-  c.add(name);
+  // The text box under the art is ~130 px tall: everything shrinks to fit inside it (long names used to spill out).
+  const boxTop = top + CARD_ART_BOTTOM;
   if (full) {
-    if (rarityLine) c.add(uiText(scene, 0, top + CARD_ART_BOTTOM + 62, RARITY_LABEL[def.rarity].toUpperCase(), 15, css(RARITY_COLOR[def.rarity]), 4));
-    c.add(uiText(scene, 0, top + CARD_ART_BOTTOM + 104, def.desc, 17, PAL.uiText, 4).setWordWrapWidth(CARD_W - 44).setLineSpacing(-2));
+    const name = uiText(scene, 0, boxTop + 26, def.name, 25, '#ffffff', 6);
+    fitText(name, CARD_W - 50, 34, 14); // one line
+    c.add(name);
+    if (rarityLine) c.add(uiText(scene, 0, boxTop + 50, RARITY_LABEL[def.rarity].toUpperCase(), 14, css(RARITY_COLOR[def.rarity]), 4));
+    const descTop = boxTop + (rarityLine ? 64 : 50);
+    const desc = uiText(scene, 0, descTop, def.desc, 17, PAL.uiText, 4).setOrigin(0.5, 0).setWordWrapWidth(CARD_W - 50).setLineSpacing(-2);
+    fitText(desc, CARD_W - 50, top + CARD_H - 16 - descTop, 11);
+    c.add(desc);
+  } else {
+    const name = uiText(scene, 0, boxTop + 44, def.name, 30, '#ffffff', 6).setWordWrapWidth(CARD_W - 44);
+    fitText(name, CARD_W - 44, 96, 16); // up to two lines
+    c.add(name);
   }
   if (def.rarity === 'legendary' || def.rarity === 'epic') {
     // A band of light sweeps across the card now and then.
