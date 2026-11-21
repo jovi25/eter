@@ -42,7 +42,7 @@ export interface SimOptions {
   mutation?: MutationId;
   /** Desafio do dia: a clock (lose when it runs out) and limits on towers. */
   trial?: TrialRules;
-  /** Ameaça (Fase 20): 0-5, the extra rules the player picked on a 3-star stage. */
+  /** Ameaça (Fase 20): 0-3, the extra rules the player picked on a 3-star stage. */
   threat?: number;
 }
 

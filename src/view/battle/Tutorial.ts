@@ -90,18 +90,21 @@ export class Tutorial {
     const cardY = target && target.y - scrollY < GAME_HEIGHT / 2 ? 900 : 300;
     const shade = s.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.35).setDepth(DEPTH.panel - 2).setInteractive();
     const c = s.add.container(GAME_WIDTH / 2, cardY).setDepth(DEPTH.panel - 1);
+    const text = uiText(s, -270, -36, tip.text, 21, PAL.uiText, 4).setOrigin(0, 0).setAlign('left').setWordWrapWidth(540);
+    // The card grows with the text (long tips used to run into the button row).
+    const h = Math.max(250, text.height + 160);
     const g = s.add.graphics();
     g.fillStyle(PAL.ink, 1);
-    g.fillRoundedRect(-310, -120, 620, 250, 26);
+    g.fillRoundedRect(-310, -120, 620, h, 26);
     g.fillStyle(0xffd34d, 1);
-    g.fillRoundedRect(-305, -115, 610, 240, 22);
+    g.fillRoundedRect(-305, -115, 610, h - 10, 22);
     g.fillStyle(0x2a1a4d, 1);
-    g.fillRoundedRect(-299, -109, 598, 228, 18);
+    g.fillRoundedRect(-299, -109, 598, h - 22, 18);
     const bulb = s.add.image(-250, -70, 'star').setScale(0.42);
     const title = uiText(s, -222, -70, tip.title, 30, '#ffe34d', 6).setOrigin(0, 0.5);
-    const text = uiText(s, -270, -36, tip.text, 21, PAL.uiText, 4).setOrigin(0, 0).setAlign('left').setWordWrapWidth(540);
-    const ok = new Button(s, 200, 82, { width: 170, height: 58, label: 'Entendi', fontSize: 24, color: 0x3aa655, onClick: () => this.close() });
-    const tag = uiText(s, -270, 84, 'Dica', 18, PAL.uiDim, 4).setOrigin(0, 0.5);
+    const row = -120 + h - 48;
+    const ok = new Button(s, 200, row, { width: 170, height: 58, label: 'Entendi', fontSize: 24, color: 0x3aa655, onClick: () => this.close() });
+    const tag = uiText(s, -270, row + 2, 'Dica', 18, PAL.uiDim, 4).setOrigin(0, 0.5);
     c.add([g, bulb, title, text, ok, tag]);
     pin(shade);
     pin(c);
@@ -132,4 +135,16 @@ export class Tutorial {
     this.close();
     this.queue = [];
   }
+}
+
+/** Menus (map, Grimório, hero sheet): show a tip once, right away, on top of everything. */
+export function menuTip(scene: Phaser.Scene, id: TipId, delayMs = 250): void {
+  if (tipSeen(id)) return;
+  scene.time.delayedCall(delayMs, () => {
+    if (tipSeen(id) || !scene.sys.isActive()) return;
+    const t = new Tutorial(scene);
+    t.request(id);
+    t.update(0, true);
+    scene.events.once('shutdown', () => t.destroy());
+  });
 }

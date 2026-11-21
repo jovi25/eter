@@ -26,13 +26,20 @@ describe('Ameaça', () => {
     expect(THREAT.coins.length).toBe(THREAT.max);
     const base = new Simulation({ stage: 'v3', seed: 1 });
     const t2 = new Simulation({ stage: 'v3', seed: 1, threat: 2 });
-    const t5 = new Simulation({ stage: 'v3', seed: 1, threat: 5 });
+    const t5 = new Simulation({ stage: 'v3', seed: 1, threat: 3 });
     const hp = (s: Simulation, type: 'slime' | 'colossus') => s.spawnEnemy(type, { wave: 5 }).maxHp;
     expect(hp(t2, 'slime')).toBeGreaterThan(hp(base, 'slime'));
     expect(hp(t2, 'colossus') / hp(base, 'colossus')).toBeCloseTo(1.2 * 1.4, 1);
     expect(t5.mods.enemySpeedMult).toBeGreaterThan(base.mods.enemySpeedMult);
     expect(t5.mods.towerCostMult).toBeGreaterThan(1);
     expect(hp(t5, 'slime')).toBeGreaterThan(hp(t2, 'slime'));
+  });
+
+  it('old saves with 5 levels keep their crowns on the 3-level scale', async () => {
+    const { migrate, newSave } = await import('../../src/meta/save');
+    const old = { ...newSave(), version: 8, stages: { v1: { stars: 3, wins: 2, threat: 5 }, v2: { stars: 3, wins: 1, threat: 4 }, v3: { stars: 3, wins: 1, threat: 1 } } };
+    const d = migrate(JSON.parse(JSON.stringify(old)));
+    expect([d.stages.v1?.threat, d.stages.v2?.threat, d.stages.v3?.threat]).toEqual([3, 2, 1]);
   });
 
   it('opens only after 3 stars, one level at a time, and pays once per level', () => {

@@ -35,7 +35,17 @@ export type TipId =
   | 'prism'
   | 'wind'
   | 'hunt'
-  | 'mutant';
+  | 'mutant'
+  | 'map'
+  | 'stageCard'
+  | 'threat'
+  | 'grimoire'
+  | 'heroPanel'
+  | 'daily'
+  | 'expedition'
+  | 'evolved'
+  | 'fused'
+  | 'trickMonster';
 
 export interface TipDef {
   title: string;
@@ -80,11 +90,23 @@ export const TIPS: Record<TipId, TipDef> = {
   healer: { title: 'Monge do Gelo', text: 'Ele cura os monstros em volta a cada 3 s. Derrube-o primeiro!' },
   wind: { title: 'Torre do Vento', text: 'Empurra os monstros e os deixa Soprados. Vento + Queimando = LABAREDA, Vento + Resfriado = VENDAVAL GELADO, Raio + Soprado = TORMENTA.' },
   // ── Região 4 ──
-  weather: { title: 'Clima', text: 'Nas Ilhas do Vazio o tempo muda. O ícone no alto avisa o clima da PRÓXIMA onda: Chuva enfraquece o Fogo e fortalece o Raio, Ventania acelera os voadores, Eclipse dobra as reações.' },
+  weather: { title: 'Clima', text: 'O tempo muda em algumas fases. O ícone no alto avisa o clima da PRÓXIMA onda e o que ele faz: Chuva ajuda o Raio, Nevasca ajuda o Gelo, Onda de Calor ajuda o Fogo, Eclipse dobra as reações.' },
   thief: { title: 'Diabrete Ladrão', text: 'No meio do caminho ele rouba ouro e corre. Pegue-o antes que fuja: ele devolve o DOBRO.' },
   prism: { title: 'Prisma do Vazio', text: 'Ele troca de elemento 4 vezes: resiste a um e é fraco contra outro. A cor dele mostra a forma; mude a defesa quando ele mudar.' },
   // ── Região 2 ──
   scroll: { title: 'Mapa maior', text: 'Os mapas dos Ermos são mais altos que a tela: arraste para cima e para baixo. As setas ▲ ▼ contam os inimigos fora da tela.' },
   gate: { title: 'Comporta', text: 'Toque na placa da Comporta para mandar os próximos inimigos pelo outro caminho. Os que já passaram não mudam.' },
+  // ── Torres: o que acontece depois do nível 3 ──
+  evolved: { title: 'Torre evoluída', text: 'Evolução feita! Ela agora tem um poder novo (veja no menu dela). Cada tipo de torre tem 2 evoluções: experimente a outra em outra partida.' },
+  fused: { title: 'Torre de fusão', text: 'Duas torres viraram uma só, com os dois elementos: ela causa reações sozinha. E o espaço da outra ficou livre para uma torre nova!' },
+  trickMonster: { title: 'Monstro com truque', text: 'Alguns monstros têm um truque: dividir-se, ter casca, sumir ou correr de repente. O aviso no alto conta como vencê-los, e o Códice guarda tudo.' },
+  // ── Fora da batalha (aparecem depois do tutorial) ──
+  map: { title: 'Mapa de Éter', text: 'Cada região tem 5 fases. Faça 3 estrelas em todas para abrir a próxima. Em volta ficam os modos extras: Fenda, Desafio do dia, Caçada, Semana Mutante e Expedição.' },
+  stageCard: { title: 'Antes de jogar', text: 'Escolha o herói: cada um joga de um jeito. Embaixo estão os DESAFIOS da fase: cumpri-los dá moedas, e moedas abrem cartas no Grimório.' },
+  threat: { title: 'Ameaça 👑', text: '3 estrelas aqui! Agora você pode escolher a AMEAÇA: cada nível deixa a fase mais dura. A primeira vitória em cada nível dá uma coroa e moedas.' },
+  grimoire: { title: 'Grimório', text: 'Cada Bênção é uma carta. Abra pacotes com moedas. Seu BARALHO (9 cartas) decide quais Bênçãos aparecem nas partidas. Cartas repetidas viram Pó de Éter, que cria a carta que você quiser.' },
+  heroPanel: { title: 'Ficha do herói', text: 'O herói ganha XP a cada onda vencida. Subindo de nível ele abre TALENTOS (escolha 1, troque quando quiser) e, no nível 5, uma segunda habilidade.' },
+  daily: { title: 'Desafio do dia', text: 'Fase, herói e regra iguais para todos hoje, com relógio. Vença rápido e com vidas para fazer mais pontos. Amanhã é outro!' },
+  expedition: { title: 'Expedição', text: 'Uma trilha de 5 paradas com um chefe no fim. Vidas e Bênçãos vão com você de uma batalha para a outra. Cada trilha tem um pacto: uma vantagem e um preço.' },
   shield: { title: 'Escudo elemental', text: 'Este chefe quase não sente dano enquanto o escudo está de pé. Só a reação escrita nele quebra o escudo: monte as torres certas!' },
 };

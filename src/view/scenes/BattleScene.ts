@@ -201,6 +201,7 @@ export class BattleScene extends Phaser.Scene {
         return e ? { x: e.x, y: e.y } : null;
       };
       if (s.isBoss) t.request(def.boss?.forms ? 'prism' : 'boss', where);
+      else if (def.splits || def.shell || def.phase || def.dash) t.request('trickMonster', where);
       else if (def.thief) t.request('thief', where);
       else if (def.heal) t.request('healer', where);
       else if (def.flying) t.request('flying', where);
@@ -220,8 +221,11 @@ export class BattleScene extends Phaser.Scene {
       };
       t.request('shield', where);
     });
+    ev.on('towerEvolved', () => t.request('evolved'));
+    ev.on('towerFused', () => t.request('fused'));
     ev.on('towerUpgraded', (u) => {
-      if (u.level < MAX_LEVEL) return;
+      // Evolutions open only from Campos de Vellmora IV: before that, level 3 is just the top.
+      if (u.level < MAX_LEVEL || sim.rules.evolve === false) return;
       const tw = sim.getTower(u.towerId);
       t.request('maxLevel', () => (tw ? { x: tw.x, y: tw.y } : null));
     });

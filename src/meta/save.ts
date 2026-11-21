@@ -11,10 +11,10 @@ import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, regionOf, type CampaignStageId, ty
 import { EXPEDITION, PACTS, visitRest, type ExpeditionRun, type TrailCtx } from '../data/expedition';
 import { BOON_RULES, BOONS, type BoonDef, type BoonId } from '../data/boons';
 import { HUNT } from '../data/hunt';
-import { THREAT } from '../data/threat';
+import { OLD_THREAT_TO_NEW, THREAT } from '../data/threat';
 import { MUTANT, weekIndex, weekMutation, weekStages, type MutationId } from '../data/mutations';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 const KEY = 'eter.save';
 
 export interface StageProgress {
@@ -181,6 +181,11 @@ export function migrate(raw: unknown): SaveData {
     ex && typeof ex === 'object' && Array.isArray(ex.boons) && Array.isArray(ex.nodes) && ex.nodes.length > 0 && ex.nodes.every(okRoute) && ex.hero in HEROES
       ? { seed: clampInt(ex.seed, 0, 4294967295), leg: clampInt(ex.leg, 0, EXPEDITION.legs), lives: clampInt(ex.lives, 1, 99), boons: ex.boons.filter((b) => typeof b === 'string'), hero: ex.hero, nodes: ex.nodes }
       : null;
+  if (out.version < 9) {
+    // v9: Ameaça went from 5 levels to 3.
+    for (const st of Object.values(out.stages ?? {})) if (st?.threat) st.threat = OLD_THREAT_TO_NEW[clampInt(st.threat, 0, 5)] ?? 0;
+    out = { ...out, version: 9 };
+  }
   // Sanitize
   const stages: SaveData['stages'] = {};
   for (const id of STAGE_ORDER) {

@@ -1,3 +1,4 @@
+import { menuTip } from '../battle/Tutorial';
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import { ELEMENTS } from '../../data/elements';
@@ -43,6 +44,7 @@ export class HeroPanel {
     const xp = save.data.heroes[cls].xp;
     const equipped = save.data.heroes[cls].talent;
     const c = scene.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(80);
+    menuTip(scene, 'heroPanel');
     const shade = scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.75).setInteractive();
     const g = scene.add.graphics();
     g.fillStyle(PAL.ink, 1);

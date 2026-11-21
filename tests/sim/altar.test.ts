@@ -86,3 +86,9 @@ describe('Códice', () => {
     expect(enemyFacts('treasure').join(' ')).toContain('Não tira vida');
   });
 });
+
+describe('music arpeggios', () => {
+  it('every arpeggio step points at a chord tone that exists', () => {
+    for (const th of Object.values(THEMES)) for (const i of th.arp) expect(i).toBeLessThan(8);
+  });
+});

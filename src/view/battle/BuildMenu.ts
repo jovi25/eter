@@ -96,7 +96,7 @@ export class BuildMenu {
       const off = offsets[i]!;
       const def = TOWERS[type];
       const locked = !this.sim.mods.unlockedTowers.includes(type);
-      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, dragonArt(this.scene.textures, type, 1, null)?.key && isCreature(type, this.scene.textures) ? dragonArt(this.scene.textures, type, 1, null)!.key : `tower_${type}`, this.sim.buildCost(type), locked, () => {
+      const opt = this.option(off.x, off.y, ELEMENTS[def.element].color, this.towerIcon(type, 1, null), this.sim.buildCost(type), locked, () => {
         if (this.sim.state.gold < this.sim.buildCost(type) || locked) {
           playSfx('error');
           this.shake(opt.root);
@@ -132,7 +132,10 @@ export class BuildMenu {
     const evolving = fork; // the fork: choose 1 of 2 final forms (or fuse)
     // Below max level: upgrade. Level 3 is the end of the line: evolve, fuse or keep it (no endless Reforço).
     if (!maxed) {
-      const up = this.option(0, -96, 0x3aa655, 'icon_play', this.sim.upgradeCost(tower), false, () => {
+      // The upgrade shows the next form of the dragon (old painted towers: an arrow).
+      const nextIcon = this.towerIcon(tower.type, tower.level + 1, null);
+      const art = nextIcon.startsWith('creature_');
+      const up = this.option(0, -96, 0x3aa655, art ? nextIcon : 'icon_play', this.sim.upgradeCost(tower), false, () => {
         const cost = this.sim.upgradeCost(tower);
         if (cost === null || this.sim.state.gold < cost) {
           playSfx('error');
@@ -142,7 +145,8 @@ export class BuildMenu {
         this.actions.upgrade(tower.id);
         this.close();
       });
-      (up.root.list[2] as Phaser.GameObjects.Image).setAngle(-90).setScale(1);
+      if (art) up.root.add(this.scene.add.image(30, -30, 'icon_play').setAngle(-90).setScale(0.55));
+      else (up.root.list[2] as Phaser.GameObjects.Image).setAngle(-90).setScale(1);
       root.add(up.root);
       this.options.push(up);
     }
@@ -297,7 +301,7 @@ export class BuildMenu {
       const def = EVOLUTIONS[evo];
       const x = i === 0 ? -110 : 110;
       const cost = this.sim.evolveCost(tower, evo);
-      const opt = this.option(x, -104, def.color, `tower_${tower.type}`, cost, false, () => {
+      const opt = this.option(x, -104, def.color, this.towerIcon(tower.type, 3, evo), cost, false, () => {
         const c = this.sim.evolveCost(tower, evo);
         if (picked !== evo) {
           picked = evo;
@@ -354,6 +358,12 @@ export class BuildMenu {
     this.scene.tweens.add({ targets: root, scale: 1, alpha: 1, duration: 180, ease: 'Back.easeOut' });
     this.root = root;
     return root;
+  }
+
+  /** The illustrated dragon of this level / evolution, or the old painted tower when the art is off. */
+  private towerIcon(type: TowerId, level: number, evo: EvolutionId | null): string {
+    const a = isCreature(type, this.scene.textures) ? dragonArt(this.scene.textures, type, level, evo) : null;
+    return a ? a.key : `tower_${type}`;
   }
 
   private option(x: number, y: number, color: number, icon: string, cost: number | null, locked: boolean, onTap: () => void): Option {

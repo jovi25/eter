@@ -1,3 +1,4 @@
+import { menuTip } from '../battle/Tutorial';
 import * as Phaser from 'phaser';
 import { BOON_IDS, BOONS, RARITIES, RARITY_COLOR, RARITY_LABEL, type BoonDef, type BoonId, type BoonRarity } from '../../data/boons';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
@@ -99,6 +100,7 @@ export class GrimoireScene extends Phaser.Scene {
   create(): void {
     fitCamera(this);
     frameCap(this, 'menu');
+    menuTip(this, 'grimoire', 400);
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x2a1858, 0x2a1858, 0x0b0716, 0x0b0716, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);

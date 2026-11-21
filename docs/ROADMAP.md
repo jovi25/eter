@@ -217,7 +217,9 @@ O jogador venceu tudo sem dificuldade: as Relíquias somam ~+60% de dano e a cal
 - [x] Chefes e Colosso crescem com as ondas (antes um Golem da onda 12 tinha mais vida que o Colosso)
 
 ### Fase 20 — Ameaça (dificuldade escolhida pelo jogador) ✔ (primeira parte)
-- [x] Ameaça 1–5 em cada fase com 3★; cada nível soma uma regra dura; coroas e moedas na primeira vitória de cada nível
+- [x] Ameaça em cada fase com 3★ (5 níveis viraram 3, a pedido do jogador); cada nível soma regras duras; coroas e moedas na primeira vitória de cada nível
+- [x] Dicas fora da batalha (mapa, Grimório, herói, Ameaça, Desafio do dia, Expedição) e depois do nível 3 (evolução, fusão, monstros com truque)
+- [x] Trilha sonora nova (sino, flauta, harpa, eco estéreo, melodias com motivo) e botões de melhoria com o dragão da próxima forma
 - [x] Coroas no mapa e na tela de vitória; relatório de robôs com Ameaça 0/3/5 (os robôs jogam pior que o jogador: calibrar pelo celular)
 - [ ] (depois, se valer) Caçada e Fenda com Ameaça
 

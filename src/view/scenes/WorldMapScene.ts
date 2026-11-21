@@ -1,3 +1,4 @@
+import { dragonArt, isCreature } from '../art/creatures';
 import { THREAT } from '../../data/threat';
 import * as Phaser from 'phaser';
 import { ENEMY_PIC } from '../../assets/manifest';
@@ -5,7 +6,7 @@ import { bakeInPlace } from '../ui/bake';
 import { getSettings, setSetting } from '../settings';
 import { refreshMusic } from '../audio/music';
 import { economyButton } from '../battle/Panels';
-import { resetTips } from '../battle/Tutorial';
+import { menuTip, resetTips, tipSeen } from '../battle/Tutorial';
 import { fitCamera, frameCap } from '../perf';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../data/config';
 import type { EnemyId } from '../../data/enemies';
@@ -96,6 +97,7 @@ export class WorldMapScene extends Phaser.Scene {
     fitCamera(this);
     frameCap(this, 'menu');
     const save = getSave();
+    if (save.tutorialDone()) menuTip(this, 'map', 600);
     // Open where the player was: the region asked for, the last one seen, or the Mapa de Éter.
     let region = data?.region ?? lastRegion;
     if (region >= 0 && !save.isRegionOpen(region)) region = -1;
@@ -320,6 +322,7 @@ export class WorldMapScene extends Phaser.Scene {
    */
   private showExpeditionCard(animate = true): void {
     this.card?.destroy();
+    menuTip(this, 'expedition');
     const save = getSave();
     const run = save.data.expedition;
     const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(50);
@@ -586,7 +589,9 @@ export class WorldMapScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.22);
     g.fillEllipse(-6, -17, 52, 20);
     c.add(g);
-    const icon = this.add.image(0, -4, 'tower_wind').setScale(0.62);
+    const wind = isCreature('wind', this.textures) ? dragonArt(this.textures, 'wind', 1, null) : null;
+    const icon = this.add.image(0, -4, wind ? wind.key : 'tower_wind');
+    icon.setScale(wind ? Math.min(76 / icon.width, 66 / icon.height) : 0.62);
     if (!open) icon.setTint(0x222222).setAlpha(0.7);
     c.add(icon);
     if (!open) c.add(uiText(this, 0, 0, '🔒', 30, '#ffffff', 5));
@@ -716,6 +721,11 @@ export class WorldMapScene extends Phaser.Scene {
     if (save.tutorialDone()) c.add(uiText(this, 0, ry, `Baralho: ${dk.length} cartas (${strong} raras ou melhores)`, 19, PAL.uiDim, 4));
 
     if (maxT > 0) this.threatRow(c, cid, maxT, shields ? 320 : 312);
+    // First visits after the tutorial: what the card is for, then (on a 3-star stage) the Ameaça.
+    if (save.totalStars() > 0 && STAGE_ORDER.includes(cid)) {
+      if (!tipSeen('stageCard')) menuTip(this, 'stageCard');
+      else if (maxT > 0) menuTip(this, 'threat');
+    }
     const threat = maxT > 0 ? Math.min(this.threatPick.get(cid) ?? 0, maxT) : 0;
     c.add(
       new Button(this, 0, (shields ? 332 : 316) + extra, {
@@ -748,7 +758,7 @@ export class WorldMapScene extends Phaser.Scene {
     c.add(uiText(this, -246, y, 'Ameaça', 22, '#ff9a7a', 4));
     for (let k = 0; k <= THREAT.max; k++) {
       const open = k <= maxT;
-      const x = -150 + k * 76;
+      const x = -110 + k * 96;
       const b = this.add.graphics();
       b.fillStyle(k === pick ? 0xffd34d : PAL.ink, 1);
       b.fillRoundedRect(x - 32, y - 28, 64, 56, 14);
@@ -828,6 +838,7 @@ export class WorldMapScene extends Phaser.Scene {
   /** Today's challenge: fixed stage, hero, starting boon and seed — the same for everyone. */
   private showDailyCard(): void {
     this.card?.destroy();
+    menuTip(this, 'daily');
     const d = dailySetup(new Date());
     const save = getSave();
     const boon = BOONS[d.boon];
