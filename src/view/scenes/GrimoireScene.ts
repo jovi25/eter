@@ -12,7 +12,7 @@ import { vibrate } from '../settings';
 import { bakeInPlace } from '../ui/bake';
 import { Button, uiText } from '../ui/Button';
 
-type Tab = 'packs' | 'collection';
+type Tab = 'packs' | 'collection' | 'deck';
 const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 const PER_PAGE = 12;
 /** The card being opened: where and how big. */
@@ -111,8 +111,9 @@ export class GrimoireScene extends Phaser.Scene {
     uiText(this, GAME_WIDTH / 2, 44, 'Grimório', 44, '#f3e9ff', 8);
     this.wallet = uiText(this, GAME_WIDTH / 2, 94, '', 24, PAL.goldCss, 5);
     this.tabs = {
-      packs: new Button(this, 190, 176, { width: 300, height: 64, label: 'Pacotes', fontSize: 26, onClick: () => this.show('packs') }),
-      collection: new Button(this, 530, 176, { width: 300, height: 64, label: 'Coleção e baralho', fontSize: 24, onClick: () => this.show('collection') }),
+      packs: new Button(this, 130, 176, { width: 220, height: 64, label: 'Pacotes', fontSize: 26, onClick: () => this.show('packs') }),
+      collection: new Button(this, 360, 176, { width: 220, height: 64, label: 'Coleção', fontSize: 26, onClick: () => this.show('collection') }),
+      deck: new Button(this, 590, 176, { width: 220, height: 64, label: 'Baralho', fontSize: 26, onClick: () => this.show('deck') }),
     };
     const foot = this.add.graphics().setDepth(20);
     foot.fillStyle(PAL.panel, 0.96);
@@ -134,6 +135,7 @@ export class GrimoireScene extends Phaser.Scene {
     for (const [k, b] of Object.entries(this.tabs!)) b.setColor(k === tab ? 0x8a3fd0 : 0x4a3a66);
     this.refreshWallet();
     if (tab === 'packs') this.packsPage();
+    else if (tab === 'deck') this.deckPage();
     else this.collectionPage();
   }
 
@@ -528,6 +530,12 @@ export class GrimoireScene extends Phaser.Scene {
           onClick: () => {
             const why = save.toggleDeck(id);
             if (why) {
+              // Full deck (or that rarity at its limit): show the cards that could leave for this one.
+              const out = inDeck ? [] : save.replaceable(id);
+              if (out.length > 0) {
+                this.swapPicker(id, out);
+                return;
+              }
               playSfx('error');
               this.toast(why);
               return;
@@ -559,8 +567,8 @@ export class GrimoireScene extends Phaser.Scene {
               }
               playSfx('star');
               vibrate([30, 30, 60]);
+              this.show(this.tab); // the collection behind shows the new card at once
               this.cardDetail(id);
-              this.refreshWallet();
             },
           }),
         );
@@ -569,6 +577,186 @@ export class GrimoireScene extends Phaser.Scene {
       o.add(uiText(this, GAME_WIDTH / 2, cost > 0 ? y + 64 : y, how, 19, PAL.uiDim, 4).setWordWrapWidth(640));
     }
     o.add(uiText(this, GAME_WIDTH / 2, 1150, 'toque fora para fechar', 18, PAL.uiDim, 4));
+  }
+
+  /** "Which card leaves?": the deck cards that can make room for `into`. */
+  private swapPicker(into: BoonId, out: BoonId[]): void {
+    this.overlay?.destroy();
+    const o = this.add.container(0, 0).setDepth(30);
+    this.overlay = o;
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040f, 0.9).setInteractive();
+    shade.on('pointerdown', () => {
+      o.destroy();
+      this.overlay = null;
+    });
+    o.add(shade);
+    o.add(uiText(this, GAME_WIDTH / 2, 150, 'Baralho cheio', 38, '#ffe34d', 7));
+    o.add(uiText(this, GAME_WIDTH / 2, 196, `Toque na carta que sai para entrar ${BOONS[into].name}`, 22, PAL.uiText, 5).setWordWrapWidth(640));
+    o.add(cardView(this, into, GAME_WIDTH / 2, 380, 0.62));
+    o.add(uiText(this, GAME_WIDTH / 2, 530, '▼ entra no lugar de ▼', 22, '#9be89b', 5));
+    // Up to 9 cards: a row of 5 and a row of 4.
+    out.forEach((id, i) => {
+      const row = i < 5 ? 0 : 1;
+      const inRow = row === 0 ? Math.min(5, out.length) : out.length - 5;
+      const x = GAME_WIDTH / 2 + ((row === 0 ? i : i - 5) - (inRow - 1) / 2) * 138;
+      const y = 690 + row * 200;
+      const card = cardView(this, id, x, y, 0.42, false);
+      card.setInteractive({ useHandCursor: true });
+      card.on('pointerdown', () => {
+        const why = getSave().swapDeck(id, into);
+        if (why) {
+          playSfx('error');
+          this.toast(why);
+          return;
+        }
+        playSfx('upgrade');
+        o.destroy();
+        this.overlay = null;
+        this.show(this.tab);
+        this.toast(`${BOONS[into].name} entrou, ${BOONS[id].name} saiu`);
+      });
+      o.add(card);
+    });
+    o.add(uiText(this, GAME_WIDTH / 2, 1150, 'toque fora para cancelar', 18, PAL.uiDim, 4));
+  }
+
+  // ───────────────────────────── deck editor ─────────────────────────────
+
+  private deckFilter: BoonRarity | 'all' = 'all';
+  private deckPageIndex = 0;
+  /** A card from the collection waiting for a deck card to swap with (deck full). */
+  private swapIn: BoonId | null = null;
+
+  /** Baralho: the 9 cards on top (tap = take out), the rest of the collection below (tap = put in / swap). */
+  private deckPage(): void {
+    const save = getSave();
+    const p = this.page!;
+    const deck = save.data.deck;
+    const count = (r: BoonRarity) => deck.filter((d) => BOONS[d].rarity === r).length;
+    const swapOut = this.swapIn ? save.replaceable(this.swapIn) : [];
+    if (this.swapIn && swapOut.length === 0) this.swapIn = null;
+    p.add(
+      uiText(this, GAME_WIDTH / 2, 236, this.swapIn ? `Toque na carta que sai para entrar ${BOONS[this.swapIn].name}` : `${deck.length}/${DECK.size} cartas   •   Raras ${count('rare')}/${DECK.max.rare}   Épicas ${count('epic')}/${DECK.max.epic}   Lendária ${count('legendary')}/${DECK.max.legendary}`, 19, this.swapIn ? '#9be89b' : PAL.uiText, 4).setWordWrapWidth(680),
+    );
+    // The deck: 5 + 4 cards.
+    for (let i = 0; i < DECK.size; i++) {
+      const row = i < 5 ? 0 : 1;
+      const inRow = row === 0 ? 5 : 4;
+      const x = GAME_WIDTH / 2 + ((row === 0 ? i : i - 5) - (inRow - 1) / 2) * 130;
+      const y = 340 + row * 170;
+      const id = deck[i];
+      if (!id) {
+        const g = this.add.graphics();
+        g.lineStyle(3, 0x6b6480, 1);
+        g.strokeRoundedRect(x - 54, y - 76, 108, 152, 12);
+        p.add([g, uiText(this, x, y, '+', 40, '#6b6480', 4)]);
+        continue;
+      }
+      const card = cardView(this, id, x, y, 0.36, false);
+      const leaving = swapOut.includes(id);
+      if (this.swapIn && !leaving) card.setAlpha(0.35);
+      if (leaving) {
+        const ring = this.add.rectangle(x, y, 118, 162).setStrokeStyle(5, 0x9be89b);
+        this.tweens.add({ targets: ring, alpha: 0.3, duration: 450, yoyo: true, repeat: -1 });
+        p.add(ring);
+      }
+      card.setInteractive({ useHandCursor: true });
+      card.on('pointerdown', () => {
+        if (this.swapIn) {
+          if (!leaving) return playSfx('error');
+          const why = save.swapDeck(id, this.swapIn);
+          if (why) return this.toast(why);
+          playSfx('upgrade');
+          this.swapIn = null;
+          return this.show('deck');
+        }
+        const why = save.toggleDeck(id);
+        if (why) {
+          playSfx('error');
+          return this.toast(why);
+        }
+        playSfx('ui');
+        this.show('deck');
+      });
+      p.add(card);
+    }
+    // Tools: build automatically / cancel a swap.
+    p.add(
+      new Button(this, GAME_WIDTH / 2, 626, {
+        width: 360,
+        height: 56,
+        label: this.swapIn ? 'Cancelar troca' : '✨ Montar automático',
+        fontSize: 22,
+        color: this.swapIn ? 0x6b6480 : 0x8a3fd0,
+        onClick: () => {
+          if (this.swapIn) this.swapIn = null;
+          else {
+            save.autoDeck();
+            playSfx('star');
+            this.toast('Baralho montado com as cartas mais fortes');
+          }
+          this.show('deck');
+        },
+      }),
+    );
+    // Filters by rarity.
+    const filters: (BoonRarity | 'all')[] = ['all', ...RARITIES];
+    filters.forEach((f, i) => {
+      const label = f === 'all' ? 'Todas' : RARITY_LABEL[f];
+      p.add(
+        new Button(this, 80 + i * 140, 700, {
+          width: 130,
+          height: 50,
+          label,
+          fontSize: 18,
+          color: this.deckFilter === f ? (f === 'all' ? 0x8a3fd0 : RARITY_COLOR[f]) : 0x3a2d55,
+          onClick: () => {
+            this.deckFilter = f;
+            this.deckPageIndex = 0;
+            this.show('deck');
+          },
+        }),
+      );
+    });
+    // The rest of the collection (owned, not in the deck).
+    const pool = ORDER.filter((id) => save.data.cards.includes(id) && !deck.includes(id) && (this.deckFilter === 'all' || BOONS[id].rarity === this.deckFilter));
+    const per = 8;
+    const pages = Math.max(1, Math.ceil(pool.length / per));
+    this.deckPageIndex = Math.min(this.deckPageIndex, pages - 1);
+    const list = pool.slice(this.deckPageIndex * per, (this.deckPageIndex + 1) * per);
+    if (list.length === 0) p.add(uiText(this, GAME_WIDTH / 2, 880, this.deckFilter === 'all' ? 'Todas as suas cartas já estão no baralho.\nAbra pacotes para ganhar mais!' : 'Nenhuma carta desta raridade fora do baralho', 22, PAL.uiDim, 4));
+    list.forEach((id, i) => {
+      const x = GAME_WIDTH / 2 + ((i % 4) - 1.5) * 160;
+      const y = 804 + Math.floor(i / 4) * 186;
+      const card = cardView(this, id, x, y, 0.42, false);
+      if (this.swapIn === id) {
+        const ring = this.add.rectangle(x, y, 134, 186).setStrokeStyle(5, 0xffe34d);
+        p.add(ring);
+      }
+      card.setInteractive({ useHandCursor: true });
+      card.on('pointerdown', () => {
+        if (!save.toggleDeck(id)) {
+          playSfx('upgrade');
+          this.swapIn = null;
+          return this.show('deck');
+        }
+        if (save.replaceable(id).length === 0) {
+          playSfx('error');
+          return this.toast('Nenhuma carta do baralho pode sair para esta (limite de raridade)');
+        }
+        playSfx('ui');
+        this.swapIn = this.swapIn === id ? null : id;
+        this.show('deck');
+      });
+      p.add(card);
+    });
+    if (pages > 1) {
+      const arrow = (x: number, label: string, d: number) =>
+        p.add(new Button(this, x, 1116, { width: 110, height: 50, label, fontSize: 26, color: 0x4a3a66, onClick: () => { this.deckPageIndex = (this.deckPageIndex + d + pages) % pages; this.show('deck'); } }));
+      arrow(110, '◀', -1);
+      arrow(610, '▶', 1);
+    }
+    p.add(uiText(this, GAME_WIDTH / 2, 1116, pages > 1 ? `${this.deckPageIndex + 1}/${pages}  •  toque para pôr ou tirar` : 'toque para pôr ou tirar', 18, PAL.uiDim, 4));
   }
 
   private toast(msg: string): void {

@@ -94,7 +94,25 @@ describe('Grimório — save', () => {
     expect(save.data.packs.pending).toBeNull();
   });
 
-  it('craft with dust; deck toggling respects the rules', () => {
+  it('full deck: the replaceable cards, a swap keeps the place, and the auto deck takes the rarest', () => {
+    const save = new SaveStore(mem());
+    const rares = cardsOf('rare').slice(0, 4);
+    save.data.cards.push(...rares);
+    expect(save.replaceable(rares[0]!)).toEqual(STARTER); // any of the 9 can leave
+    expect(save.swapDeck(STARTER[2]!, rares[0]!)).toBeNull();
+    expect(save.data.deck[2]).toBe(rares[0]);
+    save.swapDeck(STARTER[3]!, rares[1]!);
+    save.swapDeck(STARTER[4]!, rares[2]!);
+    // 3 Raras = the limit: only a Rara can leave for the 4th one.
+    expect(save.replaceable(rares[3]!).sort()).toEqual(rares.slice(0, 3).sort());
+    expect(save.swapDeck(STARTER[0]!, rares[3]!)).toMatch(/Raras/);
+    save.data.deck = STARTER.slice(0, 5);
+    save.autoDeck();
+    expect(save.data.deck.length).toBe(9);
+    expect(save.data.deck.filter((d) => rarity(d) === 'rare').length).toBe(3);
+  });
+
+    it('craft with dust; deck toggling respects the rules', () => {
     const save = new SaveStore(mem());
     const rare = cardsOf('rare')[0]!;
     expect(save.craft(rare)).toBe(false);

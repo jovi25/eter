@@ -4,7 +4,7 @@
 import { HERO_ORDER, HEROES, type HeroClass } from '../data/heroes';
 import { HERO_LEVELS, MAX_HERO_LEVEL, SKILL2, TALENTS, WEAPONS, heroLevel, type TalentId, type WeaponElement, type WeaponId } from '../data/talents';
 import { RELICS } from '../data/relics';
-import { DUST, FEATS, PACK, STARTER, craftCost, deckProblem, rollPack, type FeatState } from '../data/grimoire';
+import { DECK, DUST, FEATS, PACK, STARTER, craftCost, deckProblem, rollPack, type FeatState } from '../data/grimoire';
 import { ENEMIES } from '../data/enemies';
 import { REACTIONS } from '../data/reactions';
 import { REGIONS, STAGE_ORDER, TUTORIAL_LAST, regionOf, type CampaignStageId, type StageId } from '../data/stages';
@@ -359,6 +359,40 @@ export class SaveStore {
     this.data.deck = next;
     this.persist();
     return null;
+  }
+
+  /** Deck cards that could leave to make room for `id` (deck full or its rarity at the limit). */
+  replaceable(id: BoonId): BoonId[] {
+    const deck = this.data.deck;
+    if (deck.includes(id) || !this.data.cards.includes(id)) return [];
+    return deck.filter((out) => !deckProblem([...deck.filter((c) => c !== out), id], this.data.cards));
+  }
+
+  /** Swap a deck card for one from the collection (same place in the deck). Returns null when it worked, or why not. */
+  swapDeck(out: BoonId, into: BoonId): string | null {
+    const deck = this.data.deck;
+    if (!deck.includes(out) || deck.includes(into)) return 'Troca inválida';
+    const next = deck.map((c) => (c === out ? into : c));
+    const why = deckProblem(next, this.data.cards);
+    if (why) return why;
+    this.data.deck = next;
+    this.persist();
+    return null;
+  }
+
+  /** Montar automático: the strongest legal deck from the collection (rarest first, then the starter order). */
+  autoDeck(): void {
+    const rank: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 };
+    const owned = [...this.data.cards].sort((a, b) => rank[(BOONS[a] as BoonDef).rarity]! - rank[(BOONS[b] as BoonDef).rarity]! || (STARTER.indexOf(a) + 99) % 99 - (STARTER.indexOf(b) + 99) % 99);
+    const deck: BoonId[] = [];
+    for (const id of owned) {
+      if (deck.length >= DECK.size) break;
+      if (!deckProblem([...deck, id], this.data.cards)) deck.push(id);
+    }
+    if (deck.length >= BOON_RULES.choices) {
+      this.data.deck = deck;
+      this.persist();
+    }
   }
 
   featState(): FeatState {
