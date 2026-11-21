@@ -43,7 +43,7 @@ class EnemyView {
     this.aura = scene.add.image(0, 0, 'ring').setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
     this.roots = scene.add.image(0, 0, 'status_roots').setVisible(false);
     this.body = scene.add.image(0, 0, 'enemy_slime');
-    this.ice = scene.add.image(0, 0, 'status_ice').setVisible(false);
+    this.ice = scene.add.image(0, 0, 'status_ice').setVisible(false).setAlpha(0.7);
     this.fragile = scene.add.image(0, 0, 'status_fragile').setVisible(false);
     this.burn = scene.add.image(0, 0, 'status_burn').setVisible(false);
     this.hpBg = scene.add.image(0, 0, 'px').setDisplaySize(HP_W + 4, 9).setTint(PAL.ink).setVisible(false);

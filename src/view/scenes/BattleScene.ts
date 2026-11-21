@@ -800,12 +800,12 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       const def = WEATHER[w.kind];
-      this.fx.bigBanner(`${def.icon} ${def.name.toUpperCase()}!\n${def.text}`, `#${def.color.toString(16).padStart(6, '0')}`, 34, 1500);
+      this.fx.bigBanner(`${def.name.toUpperCase()}!\n${def.text}`, `#${def.color.toString(16).padStart(6, '0')}`, 34, 1500, false, `weather_${w.kind}`);
       playSfx(w.kind === 'eclipse' ? 'boss_cast' : 'ui', 0.7);
     });
     ev.on('weatherForecast', (f) => {
       const def = WEATHER[f.kind];
-      this.hud.floatText(GAME_WIDTH / 2, 250, `Próxima onda: ${def.icon} ${def.name}`, `#${def.color.toString(16).padStart(6, '0')}`);
+      this.hud.floatText(GAME_WIDTH / 2, 250, `Próxima onda: ${def.name}`, `#${def.color.toString(16).padStart(6, '0')}`);
     });
     ev.on('goldStolen', (g) => {
       if (g.amount <= 0) return;

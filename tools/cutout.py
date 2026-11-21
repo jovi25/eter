@@ -20,6 +20,10 @@ Usage:
   python tools/cutout.py grid <image> <out_dir> <name1> <name2> ...
       A grid of paintings separated by white gutters (card art): finds the cells, row by row, and saves each
       one (inner border trimmed) as <name>.webp, 320x300. Use '-' to skip a cell.
+  python tools/cutout.py icons <image> <out_dir> <cols>x<rows> <name:w:h[:b]> ...
+      A grid of separate objects on a flat background (icons, props): every blob goes to the grid cell its
+      centre falls in; cells are read row by row. Each is fitted into w x h, centred (or standing on the
+      bottom edge with :b). Use '-' to skip a cell.
 """
 import json
 import sys
@@ -233,6 +237,43 @@ def grid(path: str, out_dir: str, *names: str) -> None:
             print(name, (x0, y0, x1, y1))
 
 
+def icons(path: str, out_dir: str, layout: str, *specs: str) -> None:
+    from scipy import ndimage
+
+    cols, rows = (int(v) for v in layout.lower().split('x'))
+    arr = key_out(path)
+    h, w = arr.shape[:2]
+    solid = ndimage.binary_dilation(arr[..., 3] > 40, iterations=max(2, w // 200))
+    lab, count = ndimage.label(solid)
+    sizes = ndimage.sum(solid, lab, range(1, count + 1))
+    centres = ndimage.center_of_mass(solid, lab, range(1, count + 1))
+    cell_of = np.zeros(count + 1, np.int32) - 1
+    for i, ((cy, cx), size) in enumerate(zip(centres, sizes), start=1):
+        if size < sizes.max() * 0.004:
+            continue  # stray specks (watermark, dust)
+        cell_of[i] = min(rows - 1, int(cy / h * rows)) * cols + min(cols - 1, int(cx / w * cols))
+    for k, spec in enumerate(specs):
+        if spec == '-':
+            continue
+        name, tw, th, *mode = spec.split(':')
+        tw, th = int(tw), int(th)
+        mask = np.isin(lab, np.where(cell_of == k)[0]) & (arr[..., 3] > 0)
+        if not mask.any():
+            print(name, 'EMPTY CELL')
+            continue
+        one = isolate(arr, mask)
+        ys = np.where((one[..., 3] > 20).any(axis=1))[0]
+        xs = np.where((one[..., 3] > 20).any(axis=0))[0]
+        img = Image.fromarray(one.round().astype(np.uint8), 'RGBA').crop((xs[0], ys[0], xs[-1] + 1, ys[-1] + 1))
+        s = min(tw / img.width, th / img.height)
+        img = img.resize((max(1, round(img.width * s)), max(1, round(img.height * s))), Image.LANCZOS)
+        canvas = Image.new('RGBA', (tw, th), (0, 0, 0, 0))
+        top = th - img.height if mode == ['b'] else (th - img.height) // 2
+        canvas.paste(img, ((tw - img.width) // 2, top), img)
+        canvas.save(f'{out_dir}/{name}.webp', 'WEBP', quality=92, method=6)
+        print(name, img.size)
+
+
 if __name__ == '__main__':
     cmd, args = sys.argv[1], sys.argv[2:]
     if cmd == 'sheet':
@@ -245,5 +286,7 @@ if __name__ == '__main__':
         fit(*args)
     elif cmd == 'grid':
         grid(*args)
+    elif cmd == 'icons':
+        icons(*args)
     elif cmd == 'map':
         map_bg(args[0], args[1], *(int(v) for v in args[2:4]))

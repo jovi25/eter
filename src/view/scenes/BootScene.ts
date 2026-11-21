@@ -46,8 +46,9 @@ export class BootScene extends Phaser.Scene {
     const crystal = this.add.image(cx, 520, 'crystal').setScale(2.6);
     this.tweens.add({ targets: crystal, y: 490, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    uiText(this, cx, 830, 'ÉTER', 140, '#f3e9ff', 14);
-    uiText(this, cx, 920, 'Defenda o Cristal com combos elementais', 28, PAL.uiDim, 5);
+    const logo = this.add.image(cx, 830, 'logo').setScale(0.75);
+    this.tweens.add({ targets: logo, scale: 0.78, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    uiText(this, cx, 1005, 'Defenda o Cristal com combos elementais', 28, PAL.uiDim, 5);
 
     const play = new Button(this, cx, 1160, {
       width: 420,

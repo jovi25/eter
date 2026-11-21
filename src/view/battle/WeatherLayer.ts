@@ -21,6 +21,7 @@ export class WeatherLayer {
   private readonly chip: Phaser.GameObjects.Container;
   private readonly chipBg: Phaser.GameObjects.Graphics;
   private readonly chipText: Phaser.GameObjects.Text;
+  private readonly chipIcon: Phaser.GameObjects.Image;
   private readonly chipBar: Phaser.GameObjects.Rectangle;
   private readonly parts: { x: number; y: number; v: number; len: number }[] = [];
   private shown: WeatherId | null = null;
@@ -33,7 +34,8 @@ export class WeatherLayer {
     this.chipBg = scene.add.graphics();
     this.chipText = uiText(scene, 0, 0, '', 18, '#ffffff', 4).setOrigin(0, 0.5);
     this.chipBar = scene.add.rectangle(0, 13, 108, 4, 0xffffff, 0.9).setOrigin(0, 0.5);
-    this.chip = pin(scene.add.container(12, 122, [this.chipBg, this.chipText, this.chipBar]).setDepth(DEPTH.hud).setVisible(false));
+    this.chipIcon = scene.add.image(28, -2, 'px');
+    this.chip = pin(scene.add.container(12, 122, [this.chipBg, this.chipIcon, this.chipText, this.chipBar]).setDepth(DEPTH.hud).setVisible(false));
     for (let i = 0; i < Math.max(DROPS, STREAKS); i++) this.parts.push({ x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT, v: 0.7 + Math.random() * 0.6, len: 0.6 + Math.random() * 0.8 });
   }
 
@@ -134,18 +136,20 @@ export class WeatherLayer {
       return;
     }
     const def = WEATHER[kind];
-    const label = now ? `${def.icon} ${def.name}` : `Próxima: ${def.icon}`;
+    const label = now ? def.name : 'Próxima:';
     const key = `${now ? 1 : 0}${kind}`;
     if (key !== this.chipKey) {
       this.chipKey = key;
       this.chipText.setText(label);
-      const w = this.chipText.width + 24;
+      this.chipIcon.setTexture(`weather_${kind}`);
+      this.chipIcon.setScale(32 / Math.max(this.chipIcon.width, this.chipIcon.height));
+      const w = this.chipText.width + 60;
       this.chipBg.clear();
       this.chipBg.fillStyle(PAL.ink, 0.8);
       this.chipBg.fillRoundedRect(0, -20, w, 42, 14);
       this.chipBg.lineStyle(3, def.color, 1);
       this.chipBg.strokeRoundedRect(0, -20, w, 42, 14);
-      this.chipText.setPosition(12, -3);
+      this.chipText.setPosition(48, -3);
       this.chipBar.setPosition(12, 13).setFillStyle(def.color, 0.95);
       this.chipBar.width = w - 24;
       this.chip.setData('w', w - 24);

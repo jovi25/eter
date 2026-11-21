@@ -219,16 +219,8 @@ function compass(c: Ctx, x: number, y: number, r: number): void {
  * Paints the world. `reached` = how many regions are open: the trail is bright up to the last open
  * region and faded beyond it. `modesOpen` brightens the side paths to the game modes.
  */
-export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: boolean): Phaser.GameObjects.Image {
-  const W = GAME_WIDTH;
-  const H = GAME_HEIGHT;
-  canvas ??= document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  const c = canvas.getContext('2d')!;
-  const rng = new Rng(4242);
-
-  // Ground: four lands blending into each other.
+/** The world drawn in code: four lands, a river and landmarks. */
+function paintGround(c: Ctx, rng: Rng, W: number, H: number): void {
   const g = c.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#1d1438');
   g.addColorStop(0.17, '#43356f');
@@ -306,6 +298,21 @@ export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: b
   for (const [x, y, w, h] of [[650, 690, 130, 62], [300, 745, 100, 46], [660, 810, 90, 40]] as const) mesa(c, x, y, w, h);
   for (const [x, y, w] of [[650, 322, 100], [100, 258, 84], [395, 168, 80]] as const) island(c, x, y, w);
   for (const [x, y, s] of [[650, 312, 26], [100, 248, 22], [395, 158, 20], [160, 200, 16]] as const) crystal(c, x, y, s);
+}
+
+export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: boolean): Phaser.GameObjects.Image {
+  const W = GAME_WIDTH;
+  const H = GAME_HEIGHT;
+  canvas ??= document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const c = canvas.getContext('2d')!;
+  const rng = new Rng(4242);
+
+  // Ground: the painted map when there is one (docs/ARTE_IA.md, P5), else four lands drawn in code.
+  const painted = scene.textures.exists('map_world');
+  if (painted) c.drawImage(scene.textures.get('map_world').getSourceImage() as CanvasImageSource, 0, 0, W, H);
+  else paintGround(c, rng, W, H);
 
   // The trail: bright where the player can walk, faded beyond.
   const lastOpen = REGION_AT[Math.max(0, Math.min(reached, REGION_AT.length) - 1)]!;
@@ -326,14 +333,16 @@ export function paintWorldMap(scene: Phaser.Scene, reached: number, modesOpen: b
   }
 
   // Little bridge where the trail crosses the river.
-  c.save();
-  c.translate(372, 905);
-  c.rotate(-0.72);
-  c.fillStyle = '#3a2412';
-  c.fillRect(-36, -19, 72, 38);
-  c.fillStyle = '#b07a44';
-  for (let i = 0; i < 6; i++) c.fillRect(-33 + i * 11.2, -15, 9, 30);
-  c.restore();
+  if (!painted) {
+    c.save();
+    c.translate(372, 905);
+    c.rotate(-0.72);
+    c.fillStyle = '#3a2412';
+    c.fillRect(-36, -19, 72, 38);
+    c.fillStyle = '#b07a44';
+    for (let i = 0; i < 6; i++) c.fillRect(-33 + i * 11.2, -15, 9, 30);
+    c.restore();
+  }
 
   compass(c, 52, 166, 28);
 

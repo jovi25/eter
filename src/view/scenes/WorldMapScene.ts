@@ -306,7 +306,7 @@ export class WorldMapScene extends Phaser.Scene {
     stop(m.hunt.x, m.hunt.y, 46, 0xc0504a, 'enemy_herald', 0.42 * ENEMY_PIC, 'Caçada', huntSub, huntOpen, () => this.showStageCard('hunt'), `Vença o chefe de ${STAGES[HUNT.bosses[HUNT.minBosses - 1]!.stage].name} para abrir`, false, huntOpen && save.data.hunt.best === 0);
     const week = done ? save.mutantWeek() : null;
     const mut = week ? MUTATIONS[week.mutation] : null;
-    stop(m.mutant.x, m.mutant.y, 46, mut?.color ?? 0x8a5fd0, 'icon_mutant', 0.8, 'Semana Mutante', week && mut ? `${mut.name} • ${week.won.length}/${week.stages.length}` : 'Fim do tutorial', done, () => this.showMutantCard(), lockTip, false, !!week && week.won.length === 0);
+    stop(m.mutant.x, m.mutant.y, 46, mut?.color ?? 0x8a5fd0, week ? `mut_${week.mutation}` : 'icon_mutant', week ? 0.6 : 0.8, 'Semana Mutante', week && mut ? `${mut.name} • ${week.won.length}/${week.stages.length}` : 'Fim do tutorial', done, () => this.showMutantCard(), lockTip, false, !!week && week.won.length === 0);
     stop(m.expedition.x, m.expedition.y, 46, 0x2f9a8a, 'chest', 0.3, 'Expedição', done ? (run ? `Parada ${run.leg + 1} de ${EXPEDITION.legs}` : 'Trilha de 5 paradas') : 'Fim do tutorial', done, () => this.showExpeditionCard(), lockTip, false, done && save.data.expeditionWins === 0 && !run);
 
     this.navBar(false);
@@ -808,7 +808,12 @@ export class WorldMapScene extends Phaser.Scene {
     c.add(uiText(this, 0, -330, 'Semana Mutante', 40, '#f3e9ff', 8));
     const left = daysLeft(new Date());
     c.add(uiText(this, 0, -292, left <= 1 ? 'A regra muda amanhã!' : `A regra muda em ${left} dias (toda segunda)`, 19, PAL.uiDim, 4));
-    c.add(uiText(this, 0, -232, `${m.icon} ${m.name}`, 40, css, 8));
+    const title = uiText(this, 0, -232, m.name, 40, css, 8);
+    const icon = this.add.image(0, -232, `mut_${w.mutation}`).setScale(0.7);
+    const gx = -(icon.displayWidth + 12 + title.width) / 2;
+    icon.setX(gx + icon.displayWidth / 2);
+    title.setX(gx + icon.displayWidth + 12 + title.width / 2);
+    c.add([icon, title]);
     c.add(uiText(this, 0, -164, m.desc, 21, PAL.uiText, 5).setWordWrapWidth(540));
     c.add(uiText(this, 0, -66, `Vitórias desta semana: ${w.won.length} de ${w.stages.length}`, 24, PAL.goldCss, 5));
     c.add(uiText(this, 0, -30, `+${MUTANT.coinsPerWin} moedas por fase • +${MUTANT.allBonus} pelas 3`, 18, PAL.uiDim, 4));

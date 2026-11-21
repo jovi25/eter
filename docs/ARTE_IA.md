@@ -22,6 +22,8 @@ respiração, bote, projéteis, partículas e brilho.
 - ✅ Pacote de conteúdo 1: monstros M6 (Bolhão, Besouro, Espectro, Lebre) e cartas C5
 - ✅ Evoluções E1–E6 (2026-11-19, geradas no Gemini numa conversa nova por elemento; sem anexar
   referência, o dragão adulto foi descrito em texto no próprio pedido)
+- ✅ Pacote D (2026-11-21, Gemini): enfeites do mapa, tiros, status, ícones (moeda, coração, estrelas,
+  Catalisar), ícones de clima e mutações, logo e mapa-mundi pintado. Recorte: `python tools/cutout.py icons`.
 - Dica: peça cada imagem nova numa **conversa nova**. Na mesma conversa o Gemini às vezes edita a
   imagem anterior (o urso saiu com a Sacerdotisa por cima).
 

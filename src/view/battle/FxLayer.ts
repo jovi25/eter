@@ -427,23 +427,24 @@ export class FxLayer {
 
   /**
    * Full-width banner in the middle of the screen (wave start, boss, MVP!). Queued so two never overlap;
-   * `urgent` skips the queue (used for MVP!).
+   * `urgent` skips the queue (used for MVP!). `icon` (a texture key) is shown above the text.
    */
-  bigBanner(text: string, color: string, size = 72, hold = 900, urgent = false): void {
+  bigBanner(text: string, color: string, size = 72, hold = 900, urgent = false, icon?: string): void {
     const now = this.scene.time.now;
     const start = urgent ? now : Math.max(now, this.bannerFreeAt);
     const total = 280 + hold + 300;
     this.bannerFreeAt = start + total;
     if (start > now) {
-      this.scene.time.delayedCall(start - now, () => this.showBigBanner(text, color, size, hold));
+      this.scene.time.delayedCall(start - now, () => this.showBigBanner(text, color, size, hold, icon));
     } else {
-      this.showBigBanner(text, color, size, hold);
+      this.showBigBanner(text, color, size, hold, icon);
     }
   }
 
   private currentBanner: Phaser.GameObjects.Text | null = null;
+  private bannerIcon: Phaser.GameObjects.Image | null = null;
 
-  private showBigBanner(text: string, color: string, size: number, hold: number): void {
+  private showBigBanner(text: string, color: string, size: number, hold: number, icon?: string): void {
     // Only one big banner at a time: a newer one (urgent or queued) clears whatever is still on screen.
     const old = this.currentBanner;
     if (old && old.active && old.visible) {
@@ -454,5 +455,13 @@ export class FxLayer {
     this.scene.tweens.add({ targets: b, scale: 1, alpha: 1, duration: 280, ease: 'Back.easeOut' });
     this.scene.tweens.add({ targets: b, alpha: 0, y: 520, delay: 280 + hold, duration: 300, onComplete: () => this.labels.release(b) });
     this.currentBanner = b;
+    const ic = (this.bannerIcon ??= this.scene.add.image(0, 0, 'px').setDepth(DEPTH.banner + 1).setScrollFactor(0));
+    this.scene.tweens.killTweensOf(ic);
+    ic.setVisible(!!icon).setAlpha(0);
+    if (!icon) return;
+    const top = 560 - b.height / 2 - 60;
+    ic.setTexture(icon).setPosition(GAME_WIDTH / 2, top).setScale(0);
+    this.scene.tweens.add({ targets: ic, scale: 1.1, alpha: 1, duration: 280, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: ic, alpha: 0, y: top - 40, delay: 280 + hold, duration: 300 });
   }
 }
